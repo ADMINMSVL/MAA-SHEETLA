@@ -29,7 +29,7 @@ const ITEM_TYPES = [
   "PIPES",
 ];
 
-const SCHEMES = ["Ripur", "For", "Basic"];
+const SCHEMES = ["Raipur", "For 12MM", "Basic"];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const SalesContractForm = () => {
