@@ -9,34 +9,24 @@ const API_BASE = `${API_URL}/api/sales`;
 const CUSTOMERS = [
   "ABC Industries",
   "XYZ Traders",
-  "Global Chemicals",
-  "Sunrise Pvt Ltd",
-  "Metro Exports",
-  "National Corp",
-];
+  ];
 
 const PAYMENT_TERMS = [
   "Prepaid",
   "Postpaid",
-  "Advance 50%",
-  "Credit 30 Days",
 ];
 
 const SALES_PERSONS = [
-  "Rahul Sharma",
-  "Priya Mehta",
-  "Amit Patel",
-  "Sneha Joshi",
-  "Vikram Singh",
-];
+  "Sohan Singh",
+  "Anik Agarwal",
+  ];
 
 const ITEM_TYPES = [
-  "Tyre",
-  "Tube",
-  "Flap",
-  "Battery",
-  "Lubricant",
-  "Spare Part",
+  "TMT",
+  "BILLET",
+  "MIS SCALE",
+  "BEZA",
+  "PIPES",
 ];
 
 const SCHEMES = ["Ripur", "For", "Basic"];
