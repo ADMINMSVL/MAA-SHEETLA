@@ -7,26 +7,26 @@ const Home = () => {
 
   const modules = [
   {
-    number: "1",
+    number: "2",
     title: "Finance & Accounting",
     icon: "💳",
     path: "/finance-module",
   },
   {
-    number: "2",
+    number: "1",
     title: "Manufacturing",
     icon: "🏗️",
     path: "/manufacturing",
   },
   {
     number: "3",
-    title: "HRM",
+    title: "HRMS & PAYROLL",
     icon: "🧑‍💼",
     path: "/hrm-module",
   },
   {
     number: "4",
-    title: "Reports",
+    title: "Reports & Communication",
     icon: "📈",
     path: "/reports-module",
   },
