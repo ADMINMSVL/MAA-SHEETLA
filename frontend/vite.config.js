@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://vehicleguard-kkd6.onrender.com" ||"http://localhost:5000",
+        target: "https://maasheetla.netlify.app" ||"http://localhost:5000",
         changeOrigin: true,
       },
     },
