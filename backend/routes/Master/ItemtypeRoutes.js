@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ItemType = require("../../models/Master/ItemType");
+const ItemType = require("../../models/Master/Itemtype");
 
 router.post("/create-item-type", async (req, res) => {
   try {
