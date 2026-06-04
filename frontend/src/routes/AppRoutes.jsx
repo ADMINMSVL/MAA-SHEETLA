@@ -43,7 +43,7 @@ import SiteMaster from "../pages/Manufacturing/Masters/SiteMaster/SiteMaster";
 import CreateSite from "../pages/Manufacturing/Masters/SiteMaster/CreateSite";
 
 // MASTERS — batch 2
-import ItemCategory        from "../pages/Manufacturing/Masters/ItemCategory/ItemCategory";
+import ItemCategory        from "../pages/Manufacturing/Masters/ItemCategory/Itemcategory";
 import CreateItemCategory  from "../pages/Manufacturing/Masters/ItemCategory/CreateItemCategory";
 import ItemType            from "../pages/Manufacturing/Masters/ItemType/ItemType";
 import CreateItemType      from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
