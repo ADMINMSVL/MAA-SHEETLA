@@ -3,7 +3,7 @@ import axios from "axios";
 import "./CreateTransaction.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
-import { MODULE_BUSINESS_MAP, MODULES } from "../../../../../module/moduleBusinessMap";
+import { MODULE_BUSINESS_MAP, MODULES } from "../../../../module/moduleBusinessMap";
 
 const CreateTransaction = () => {
 
