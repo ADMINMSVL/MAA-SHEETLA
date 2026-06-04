@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "../PartyMaster/PartyMaster.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
-import { MODULE_BUSINESS_MAP, MODULES, SOLUTION_MAP } from "../../../../config/moduleBusinessMap";
+import { MODULE_BUSINESS_MAP, MODULES, SOLUTION_MAP } from "../../../../module/moduleBusinessMap";
 
 const INDIAN_STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",

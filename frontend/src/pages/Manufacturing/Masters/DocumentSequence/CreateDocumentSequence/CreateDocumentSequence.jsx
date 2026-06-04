@@ -4,7 +4,7 @@ import "./CreateDocumentSequence.css";
 import ModuleNavbar from "../../../../../components/ModuleNavbar/ModuleNavbar";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../../../../config";
-import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../../config/moduleBusinessMap";
+import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../../module/moduleBusinessMap";
 
 /* ─── helper: build date segment (same logic as backend) ─── */
 const buildDatePart = (format) => {
