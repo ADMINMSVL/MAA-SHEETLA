@@ -36,9 +36,9 @@ const PartyTypeRoutes      = require("./routes/Master/PartyTypeRoutes");
 const ItemCategoryRoutes      = require("./routes/Master/ItemCategoryRoutes");
 const ItemTypeRoutes      = require("./routes/Master/ItemtypeRoutes");
 const TaxDetailsRoutes      = require("./routes/Master/TaxDetailsRoutes");
-const ProductionDetailsRoutes      = require("./routes/Master/ProductionDetailsRoutes");
-const SchemeMasterRoutes      = require("./routes/Master/SchemeMasterRoutes");
-const SiteMasterRoutes       = require("./routes/Master/siteMasterRoutes");
+const ProductionDetailsRoutes      = require("./routes/Master/ProductiondetailsRoutes");
+const SchemeMasterRoutes      = require("./routes/Master/SchememasterRoutes");
+const SiteMasterRoutes       = require("./routes/Master/SiteMasterRoutes");
 
 // Specific prefixes BEFORE generic /api to avoid route conflicts
 app.use("/api/auth",        authRoutes);
