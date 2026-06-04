@@ -1,6 +1,6 @@
 const express = require("express");
 const router  = express.Router({ mergeParams: true });
-const Weighment = require("../models/Weighment");
+const Weighment = require("../../models/Inventory/Weighment");
 
 /* POST / — create new weighment */
 router.post("/", async (req, res) => {

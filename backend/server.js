@@ -23,12 +23,22 @@ console.log(process.env.FRONTEND_URL);
 
 /* ROUTES */
 const authRoutes             = require("./routes/authRoutes");
-const transactionRoutes      = require("./routes/transactionRoutes");
-const documentSequenceRoutes = require("./routes/documentSequenceRoutes");
-const goodsInwardNoteRoutes  = require("./routes/goodsInwardNoteRoutes");
-const weighmentRoutes        = require("./routes/weighmentRoutes");
-const Directgrnroutes        = require("./routes/Directgrnroutes");
-const Salesroutes            = require("./routes/Salesroutes");   // ← NEW
+const transactionRoutes      = require("./routes/Master/transactionRoutes");
+const documentSequenceRoutes = require("./routes/Master/documentSequenceRoutes");
+const goodsInwardNoteRoutes  = require("./routes/Inventory/goodsInwardNoteRoutes");
+const weighmentRoutes        = require("./routes/Inventory/weighmentRoutes");
+const Directgrnroutes        = require("./routes/Inventory/Directgrnroutes");
+const Salesroutes            = require("./routes/Sales/Salesroutes");   // ← NEW
+const PartyRoutes      = require("./routes/Master/PartyRoutes");
+const ItemRoutes      = require("./routes/Master/ItemRoutes");
+const UomRoutes      = require("./routes/Master/UomRoutes");
+const PartyTypeRoutes      = require("./routes/Master/PartyTypeRoutes");
+const ItemCategoryRoutes      = require("./routes/Master/ItemCategoryRoutes");
+const ItemTypeRoutes      = require("./routes/Master/ItemTypeRoutes");
+const TaxDetailsRoutes      = require("./routes/Master/TaxDetailsRoutes");
+const ProductionDetailsRoutes      = require("./routes/Master/ProductionDetailsRoutes");
+const SchemeMasterRoutes      = require("./routes/Master/SchemeMasterRoutes");
+const SiteMasterRoutes       = require("./routes/Master/siteMasterRoutes");
 
 // Specific prefixes BEFORE generic /api to avoid route conflicts
 app.use("/api/auth",        authRoutes);
@@ -40,6 +50,16 @@ app.use("/api/sales",       Salesroutes);   // ← NEW
 app.use("/api", transactionRoutes);
 app.use("/api", documentSequenceRoutes);
 app.use("/api", goodsInwardNoteRoutes);
+app.use("/api", PartyRoutes);
+app.use("/api", ItemRoutes);
+app.use("/api", UomRoutes);
+app.use("/api", PartyTypeRoutes);
+app.use("/api", ItemCategoryRoutes);
+app.use("/api", ItemTypeRoutes);
+app.use("/api", TaxDetailsRoutes);
+app.use("/api", ProductionDetailsRoutes);
+app.use("/api", SchemeMasterRoutes);
+app.use("/api", SiteMasterRoutes);
 
 /* TEST */
 app.get("/", (req, res) => {

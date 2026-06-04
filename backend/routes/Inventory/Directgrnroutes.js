@@ -1,6 +1,6 @@
 const express = require("express");
 const router  = express.Router();
-const DirectGRN = require("../models/Directgrn");
+const DirectGRN = require("../../models/Inventory/Directgrn");
 
 /* ── POST / — create ── */
 router.post("/", async (req, res) => {

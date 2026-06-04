@@ -1,723 +1,312 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
-
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-
 import { useNavigate } from "react-router-dom";
-
 import "./Transaction.css";
-
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
-
 import { API_URL } from "../../../../config";
+import {
+  MODULE_BUSINESS_MAP,
+  MODULES,
+  SOLUTION_MAP,
+} from "../../../../config/moduleBusinessMap";
 
 const Transaction = () => {
-
   const navigate = useNavigate();
 
-  /* ALL DATA */
-  const [transactions, setTransactions] =
-    useState([]);
-
-  /* FILTERED DATA */
-  const [filteredData, setFilteredData] =
-    useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
 
   /* SEARCH FIELDS */
-  const [module, setModule] =
-    useState("");
+  const [module, setModule]                   = useState("");
+  const [businessEntity, setBusinessEntity]   = useState("");
+  const [status, setStatus]                   = useState("");
+  const [transactionCode, setTransactionCode] = useState("");
+  const [description, setDescription]         = useState("");
 
-  const [businessEntity, setBusinessEntity] =
-    useState("");
+  /* EDIT STATE */
+  const [editId, setEditId]     = useState(null);
+  const [editData, setEditData] = useState({
+    module: "",
+    businessEntity: "",
+    transactionCategoryCode: "",
+    categoryDescription: "",
+    status: "",
+  });
 
-  const [status, setStatus] =
-    useState("");
+  /* Cascade helpers */
+  const searchEntities = module ? MODULE_BUSINESS_MAP[module] || [] : [];
+  const editEntities   = editData.module ? MODULE_BUSINESS_MAP[editData.module] || [] : [];
 
-  const [transactionCode, setTransactionCode] =
-    useState("");
-
-  const [description, setDescription] =
-    useState("");
-
-  /* EDIT STATES */
-  const [editId, setEditId] =
-    useState(null);
-
-  const [editData, setEditData] =
-    useState({
-      module: "",
-      businessEntity: "",
-      transactionCategoryCode: "",
-      categoryDescription: "",
-      status: "",
-    });
-
-  /* FETCH DATA */
+  /* FETCH */
   const fetchTransactions = async () => {
-
     try {
-
-      const response = await axios.get(
-        `${API_URL}/api/transactions`
-      );
-
-      setTransactions(response.data);
-
-      setFilteredData(response.data);
-
-    } catch (error) {
-
-      console.log(error);
-
-    }
-
+      const res = await axios.get(`${API_URL}/api/transactions`);
+      setTransactions(res.data);
+      setFilteredData(res.data);
+    } catch (err) { console.log(err); }
   };
 
-  useEffect(() => {
-
-    fetchTransactions();
-
-  }, []);
+  useEffect(() => { fetchTransactions(); }, []);
 
   /* SEARCH */
   const handleSearch = () => {
-
-    let filtered = [...transactions];
-
-    /* MODULE */
-    if (module) {
-
-      filtered = filtered.filter(
-        (item) =>
-
-          item.module &&
-          item.module
-            .toLowerCase()
-            .includes(
-              module.toLowerCase()
-            )
-      );
-
-    }
-
-    /* BUSINESS ENTITY */
-    if (businessEntity) {
-
-      filtered = filtered.filter(
-        (item) =>
-
-          item.businessEntity &&
-          item.businessEntity
-            .toLowerCase()
-            .includes(
-              businessEntity.toLowerCase()
-            )
-      );
-
-    }
-
-    /* STATUS */
-    if (status) {
-
-      filtered = filtered.filter(
-        (item) =>
-
-          item.status &&
-          item.status
-            .toLowerCase()
-            .includes(
-              status.toLowerCase()
-            )
-      );
-
-    }
-
-    /* TRANSACTION CATEGORY CODE */
-    if (transactionCode) {
-
-      filtered = filtered.filter(
-        (item) =>
-
-          item.transactionCategoryCode &&
-          item.transactionCategoryCode
-            .toLowerCase()
-            .includes(
-              transactionCode.toLowerCase()
-            )
-      );
-
-    }
-
-    /* DESCRIPTION */
-    if (description) {
-
-      filtered = filtered.filter(
-        (item) =>
-
-          item.categoryDescription &&
-          item.categoryDescription
-            .toLowerCase()
-            .includes(
-              description.toLowerCase()
-            )
-      );
-
-    }
-
-    setFilteredData(filtered);
-
+    let f = [...transactions];
+    if (module)          f = f.filter((i) => i.module === module);
+    if (businessEntity)  f = f.filter((i) => i.businessEntity === businessEntity);
+    if (status)          f = f.filter((i) => i.status?.toLowerCase().includes(status.toLowerCase()));
+    if (transactionCode) f = f.filter((i) => i.transactionCategoryCode?.toLowerCase().includes(transactionCode.toLowerCase()));
+    if (description)     f = f.filter((i) => i.categoryDescription?.toLowerCase().includes(description.toLowerCase()));
+    setFilteredData(f);
   };
 
   /* RESET */
   const handleReset = () => {
-
-    setModule("");
-
-    setBusinessEntity("");
-
-    setStatus("");
-
-    setTransactionCode("");
-
-    setDescription("");
-
+    setModule(""); setBusinessEntity(""); setStatus("");
+    setTransactionCode(""); setDescription("");
     setFilteredData(transactions);
-
   };
 
   /* DELETE */
   const handleDelete = async (id) => {
-
     try {
-
-      await axios.delete(
-        `${API_URL}/api/transactions/${id}`
-      );
-
+      await axios.delete(`${API_URL}/api/transaction/${id}`);
       fetchTransactions();
-
-    } catch (error) {
-
-      console.log(error);
-
-    }
-
+    } catch (err) { console.log(err); }
   };
 
   /* EDIT */
   const handleEdit = (item) => {
-
     setEditId(item._id);
-
     setEditData({
-      module: item.module,
-      businessEntity:
-        item.businessEntity,
-
-      transactionCategoryCode:
-        item.transactionCategoryCode,
-
-      categoryDescription:
-        item.categoryDescription,
-
-      status: item.status,
+      module:                  item.module,
+      businessEntity:          item.businessEntity,
+      transactionCategoryCode: item.transactionCategoryCode,
+      categoryDescription:     item.categoryDescription,
+      status:                  item.status,
     });
-
   };
 
   /* UPDATE */
   const handleUpdate = async (id) => {
-
     try {
-
-      await axios.put(
-        `${API_URL}/api/transactions/${id}`,
-        editData
-      );
-
+      await axios.put(`${API_URL}/api/transaction/${id}`, editData);
       setEditId(null);
-
       fetchTransactions();
-
-    } catch (error) {
-
-      console.log(error);
-
-    }
-
+    } catch (err) { console.log(err); }
   };
+
+  /* Grouped <optgroup> module selector — reused in search + edit */
+  const ModuleSelect = ({ value, onChange, placeholder = "- Select -" }) => (
+    <select value={value} onChange={onChange}>
+      <option value="">{placeholder}</option>
+      {Object.entries(SOLUTION_MAP).map(([solution, mods]) => (
+        <optgroup key={solution} label={`── ${solution} ──`}>
+          {mods.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
 
   return (
     <div className="transaction-page">
-
       <ModuleNavbar />
 
       {/* TOPBAR */}
       <div className="transaction-topbar">
-
-        <h1>
-          Transaction Category
-        </h1>
-
-        <button
-          className="create-btn"
-          onClick={() =>
-            navigate("/create-transaction")
-          }
-        >
+        <h1>Transaction Category</h1>
+        <button className="create-btn" onClick={() => navigate("/create-transaction")}>
           Create ▼
         </button>
-
       </div>
 
-      {/* SEARCH */}
+      {/* SEARCH BOX */}
       <div className="search-container">
-
-        <div className="search-title">
-          Search
-        </div>
+        <div className="search-title">Search</div>
 
         <div className="search-grid">
 
-          {/* MODULE */}
+          {/* MODULE — grouped by solution */}
           <div className="form-group">
-
-            <label>
-              Module
-            </label>
-
-            <select
+            <label>Module</label>
+            <ModuleSelect
               value={module}
-              onChange={(e) =>
-                setModule(
-                  e.target.value
-                )
-              }
-            >
-
-              <option value="">
-                - Select -
-              </option>
-
-              <option value="Home">
-                Home
-              </option>
-
-              <option value="Procurement">
-                Procurement
-              </option>
-
-              <option value="Sales">
-                Sales
-              </option>
-
-              <option value="Inventory">
-                Inventory
-              </option>
-
-              <option value="Production">
-                Production
-              </option>
-
-              <option value="Quality">
-                Quality
-              </option>
-
-            </select>
-
+              onChange={(e) => { setModule(e.target.value); setBusinessEntity(""); }}
+            />
           </div>
 
-          {/* BUSINESS ENTITY */}
+          {/* BUSINESS ENTITY — cascades from module */}
           <div className="form-group">
-
-            <label>
-              Business Entity
-            </label>
-
+            <label>Business Entity</label>
             <select
               value={businessEntity}
-              onChange={(e) =>
-                setBusinessEntity(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setBusinessEntity(e.target.value)}
+              disabled={!module}
             >
-
               <option value="">
-                - Select -
+                {module ? "- Select -" : "- Select Module first -"}
               </option>
-
-              <option value="Direct GRN">
-                Direct GRN
-              </option>
-
-              <option value="Bin Transfer">
-                Bin Transfer
-              </option>
-
-              <option value="Document Upload">
-                Document Upload
-              </option>
-
-              <option value="FG Revaluation">
-                FG Revaluation
-              </option>
-
+              {searchEntities.map((be) => (
+                <option key={be} value={be}>{be}</option>
+              ))}
             </select>
-
           </div>
 
           {/* STATUS */}
           <div className="form-group">
-
-            <label>
-              Status
-            </label>
-
-            <select
-              value={status}
-              onChange={(e) =>
-                setStatus(
-                  e.target.value
-                )
-              }
-            >
-
-              <option value="">
-                - Select -
-              </option>
-
-              <option value="Open">
-                Open
-              </option>
-
-              <option value="Closed">
-                Closed
-              </option>
-
+            <label>Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">- Select -</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
             </select>
-
           </div>
 
-          {/* TRANSACTION CATEGORY CODE */}
+          {/* TRANSACTION CODE */}
           <div className="form-group">
-
-            <label>
-              Transaction Category Code
-            </label>
-
+            <label>Transaction Category Code</label>
             <input
               type="text"
               value={transactionCode}
-              onChange={(e) =>
-                setTransactionCode(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setTransactionCode(e.target.value)}
             />
-
           </div>
 
           {/* DESCRIPTION */}
           <div className="form-group">
-
-            <label>
-              Category Description
-            </label>
-
+            <label>Category Description</label>
             <input
               type="text"
               value={description}
-              onChange={(e) =>
-                setDescription(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setDescription(e.target.value)}
             />
-
           </div>
 
         </div>
 
-        {/* BUTTONS */}
-        <div className="search-buttons">
-
-          <button
-            className="search-btn"
-            onClick={handleSearch}
-          >
-            Search
-          </button>
-
-          <button
-            className="reset-btn"
-            onClick={handleReset}
-          >
-            Reset
-          </button>
-
+        <div className="button-group">
+          <button className="search-btn" onClick={handleSearch}>Search</button>
+          <button className="reset-btn" onClick={handleReset}>Reset</button>
         </div>
 
         {/* TABLE */}
         <div className="table-container">
-
           <table>
-
             <thead>
-
               <tr>
-
                 <th>S No</th>
-
                 <th>Module</th>
-
                 <th>Business Entity</th>
-
-                <th>
-                  Transaction Category Code
-                </th>
-
+                <th>Transaction Category Code</th>
                 <th>Description</th>
-
                 <th>Status</th>
-
                 <th>Action</th>
-
               </tr>
-
             </thead>
-
             <tbody>
-
               {filteredData.length > 0 ? (
+                filteredData.map((item, index) => (
+                  <tr key={item._id}>
+                    <td>{index + 1}</td>
 
-                filteredData.map(
-                  (item, index) => (
+                    {/* MODULE inline edit */}
+                    <td>
+                      {editId === item._id ? (
+                        <ModuleSelect
+                          value={editData.module}
+                          onChange={(e) =>
+                            setEditData({ ...editData, module: e.target.value, businessEntity: "" })
+                          }
+                        />
+                      ) : item.module}
+                    </td>
 
-                    <tr key={item._id}>
+                    {/* BUSINESS ENTITY inline edit — cascades */}
+                    <td>
+                      {editId === item._id ? (
+                        <select
+                          value={editData.businessEntity}
+                          onChange={(e) =>
+                            setEditData({ ...editData, businessEntity: e.target.value })
+                          }
+                          disabled={!editData.module}
+                        >
+                          <option value="">- Select -</option>
+                          {editEntities.map((be) => (
+                            <option key={be} value={be}>{be}</option>
+                          ))}
+                        </select>
+                      ) : item.businessEntity}
+                    </td>
 
-                      <td>
-                        {index + 1}
-                      </td>
+                    {/* TRANSACTION CODE */}
+                    <td>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.transactionCategoryCode}
+                          onChange={(e) =>
+                            setEditData({ ...editData, transactionCategoryCode: e.target.value })
+                          }
+                        />
+                      ) : item.transactionCategoryCode}
+                    </td>
 
-                      {/* MODULE */}
-                      <td>
+                    {/* DESCRIPTION */}
+                    <td>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.categoryDescription}
+                          onChange={(e) =>
+                            setEditData({ ...editData, categoryDescription: e.target.value })
+                          }
+                        />
+                      ) : item.categoryDescription}
+                    </td>
 
-                        {editId === item._id ? (
-
-                          <input
-                            type="text"
-                            value={
-                              editData.module
-                            }
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                module:
-                                  e.target.value,
-                              })
-                            }
-                          />
-
-                        ) : (
-
-                          item.module
-
-                        )}
-
-                      </td>
-
-                      {/* BUSINESS ENTITY */}
-                      <td>
-
-                        {editId === item._id ? (
-
-                          <input
-                            type="text"
-                            value={
-                              editData.businessEntity
-                            }
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                businessEntity:
-                                  e.target.value,
-                              })
-                            }
-                          />
-
-                        ) : (
-
-                          item.businessEntity
-
-                        )}
-
-                      </td>
-
-                      {/* TRANSACTION CATEGORY CODE */}
-                      <td>
-
-                        {editId === item._id ? (
-
-                          <input
-                            type="text"
-                            value={
-                              editData.transactionCategoryCode
-                            }
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                transactionCategoryCode:
-                                  e.target.value,
-                              })
-                            }
-                          />
-
-                        ) : (
-
-                          item.transactionCategoryCode
-
-                        )}
-
-                      </td>
-
-                      {/* DESCRIPTION */}
-                      <td>
-
-                        {editId === item._id ? (
-
-                          <input
-                            type="text"
-                            value={
-                              editData.categoryDescription
-                            }
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                categoryDescription:
-                                  e.target.value,
-                              })
-                            }
-                          />
-
-                        ) : (
-
-                          item.categoryDescription
-
-                        )}
-
-                      </td>
-
-                      {/* STATUS */}
-                      <td>
-
-                        {editId === item._id ? (
-
-                          <select
-                            value={
-                              editData.status
-                            }
-                            onChange={(e) =>
-                              setEditData({
-                                ...editData,
-                                status:
-                                  e.target.value,
-                              })
-                            }
-                          >
-
-                            <option value="Open">
-                              Open
-                            </option>
-
-                            <option value="Closed">
-                              Closed
-                            </option>
-
-                          </select>
-
-                        ) : (
-
-                          item.status
-
-                        )}
-
-                      </td>
-
-                      {/* ACTION */}
-                      <td>
-
-                        {editId === item._id ? (
-
-                          <button
-                            className="save-btn"
-                            onClick={() =>
-                              handleUpdate(
-                                item._id
-                              )
-                            }
-                          >
-                            Save
-                          </button>
-
-                        ) : (
-
-                          <button
-                            className="edit-btn"
-                            onClick={() =>
-                              handleEdit(
-                                item
-                              )
-                            }
-                          >
-                            Edit
-                          </button>
-
-                        )}
-
-                        <button
-                          className="delete-btn"
-                          onClick={() =>
-                            handleDelete(
-                              item._id
-                            )
+                    {/* STATUS */}
+                    <td>
+                      {editId === item._id ? (
+                        <select
+                          value={editData.status}
+                          onChange={(e) =>
+                            setEditData({ ...editData, status: e.target.value })
                           }
                         >
-                          Delete
+                          <option value="Open">Open</option>
+                          <option value="Closed">Closed</option>
+                        </select>
+                      ) : item.status}
+                    </td>
+
+                    {/* ACTION */}
+                    <td>
+                      {editId === item._id ? (
+                        <button className="save-btn" onClick={() => handleUpdate(item._id)}>
+                          Save
                         </button>
-
-                      </td>
-
-                    </tr>
-
-                  )
-                )
-
+                      ) : (
+                        <button className="edit-btn" onClick={() => handleEdit(item)}>
+                          Edit
+                        </button>
+                      )}
+                      <button className="delete-btn" onClick={() => handleDelete(item._id)}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
               ) : (
-
                 <tr>
-
-                  <td
-                    colSpan="7"
-                    className="no-data"
-                  >
-                    No Data Found
-                  </td>
-
+                  <td colSpan="7" className="no-data">No Data Found</td>
                 </tr>
-
               )}
-
             </tbody>
-
           </table>
-
         </div>
-
       </div>
-
     </div>
   );
 };

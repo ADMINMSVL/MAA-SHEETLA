@@ -1,7 +1,7 @@
 const express = require("express");
 const router  = express.Router();
-const Weighment       = require("../models/Weighment");
-const GoodsInwardNote = require("../models/GoodsInwardNote");
+const Weighment       = require("../../models/Inventory/Weighment");
+const GoodsInwardNote = require("../../models/Inventory/GoodsInwardNote");
 
 /* ══════════════════════════════════════════════
    POST — Create new GIN
