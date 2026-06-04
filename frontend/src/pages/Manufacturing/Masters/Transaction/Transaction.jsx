@@ -8,7 +8,7 @@ import {
   MODULE_BUSINESS_MAP,
   MODULES,
   SOLUTION_MAP,
-} from "../../../../config/moduleBusinessMap";
+} from "../../../../../config/moduleBusinessMap";
 
 const Transaction = () => {
   const navigate = useNavigate();
