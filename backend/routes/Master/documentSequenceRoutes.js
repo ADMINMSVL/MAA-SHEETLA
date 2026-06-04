@@ -10,7 +10,7 @@ const buildDatePart = (format) => {
   const yyyy  = String(today.getFullYear());
   if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
   if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;   // default: dd/mm/yyyy  →  DDMMYYYY
+  return `${dd}${mm}${yyyy}`;   // default: dd/mm/yyyy  →  DDMMYYYY`
 };
 
 /* ══════════════════════════════════════════

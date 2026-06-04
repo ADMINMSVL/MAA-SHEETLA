@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const UOM = require("../../models/Master/UOM");
+const UOM = require("../../models/Master/Uom");
 
 /* CREATE */
 router.post("/create-uom", async (req, res) => {
