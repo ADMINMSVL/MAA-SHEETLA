@@ -1,23 +1,25 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./Home.css";
+import bahubali from "../../assets/bahubali1.png"; // adjust path if needed
 
 const Home = () => {
   const navigate = useNavigate();
 
   const modules = [
+      {
+    number: "1",
+    title: "Manufacturing",
+    icon: "🏗️",
+    path: "/manufacturing",
+  },
   {
     number: "2",
     title: "Finance & Accounting",
     icon: "💳",
     path: "/finance-module",
   },
-  {
-    number: "1",
-    title: "Manufacturing",
-    icon: "🏗️",
-    path: "/manufacturing",
-  },
+
   {
     number: "3",
     title: "HRMS & PAYROLL",

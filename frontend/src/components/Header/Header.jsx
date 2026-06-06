@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import "./Header.css";
+import logo from "../../assets/logo.png";
+
 
 function Header() {
   const [user,     setUser]     = useState(null);
@@ -32,15 +34,20 @@ function Header() {
     <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
 
       {/* Logo */}
-      <div className="nav-logo">
-        <Link to="/">
-          <span className="logo-icon">🛡️</span>
-          <span className="logo-text">SMS</span>
-        </Link>
-      </div>
+    <div className="nav-logo">
+      <Link to="/">
+        <span className="logo-text">SMS</span>
+         {/* <span className="logo-icon">
+          <img src={logo } alt="logo" width="120" />
+        </span> */}
+      </Link>
+    </div>
 
    <div className="nav-center">
-    <h2>Steel Manufacturing Solution</h2>
+      <span className="logo-icon">
+          <img src={logo } alt="logo" width="120" />
+        </span>
+    <h2>Maa Sheetla Ventures Limited</h2>
   </div>
 
       {/* Right side: user chip + logout OR login/signup */}
