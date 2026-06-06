@@ -57,6 +57,9 @@ import CreateProductionDetails from "../pages/Manufacturing/Masters/ProductionDe
 import SchemeMaster        from "../pages/Manufacturing/Masters/SchemeMaster/SchemeMaster";
 import CreateSchemeMaster  from "../pages/Manufacturing/Masters/SchemeMaster/CreateSchemeMaster";
 import ItemDetail from "../pages/Manufacturing/Masters/ItemMaster/ItemDetail";
+import CreatePurchaseOrder from "../pages/Manufacturing/Procurement/PurchaseOrder/CreatePurchaseOrder";
+import PurchaseOrder from "../pages/Manufacturing/Procurement/PurchaseOrder/PurchaseOrder";
+import PODetail from "../pages/Manufacturing/Procurement/PurchaseOrder/PODetails";
 
 const AppRoutes = () => {
   return (
@@ -88,6 +91,12 @@ const AppRoutes = () => {
       <Route path="/goods-receipt-note"       element={<GoodsReceiptNote />} />
       <Route path="/direct-grn"               element={<DirectGRN />} />
       <Route path="/item-inventory"           element={<ItemInventory />} />
+
+      {/* PO */}
+      <Route path="/create-purchase-order"           element={<CreatePurchaseOrder />} />
+      <Route path="/purchase-order"           element={<PurchaseOrder />} />
+      <Route path="/purchase-order-detail/:id"           element={<PODetail />} />
+
 
       {/* WEIGHMENT */}
       <Route path="/weighment-search"         element={<WeighmentSearch />} />

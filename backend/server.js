@@ -39,7 +39,7 @@ const TaxDetailsRoutes      = require("./routes/Master/TaxDetailsRoutes");
 const ProductionDetailsRoutes      = require("./routes/Master/ProductiondetailsRoutes");
 const SchemeMasterRoutes      = require("./routes/Master/SchememasterRoutes");
 const SiteMasterRoutes       = require("./routes/Master/SiteMasterRoutes");
-
+const PurchaseOrderRoutes    =require("./routes/Procurement/PurchaseOrderRoutes")
 // Specific prefixes BEFORE generic /api to avoid route conflicts
 app.use("/api/auth",        authRoutes);
 app.use("/api/weighment",   weighmentRoutes);
@@ -60,6 +60,7 @@ app.use("/api", TaxDetailsRoutes);
 app.use("/api", ProductionDetailsRoutes);
 app.use("/api", SchemeMasterRoutes);
 app.use("/api", SiteMasterRoutes);
+app.use("/api", PurchaseOrderRoutes);
 
 /* TEST */
 app.get("/", (req, res) => {

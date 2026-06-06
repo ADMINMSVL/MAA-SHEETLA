@@ -436,23 +436,50 @@ table td select:focus {
 
 /* Back button */
 .back-btn {
-  height: var(--btn-h);
-  padding: 0 14px;
-  background: var(--c-white);
-  border: 1px solid var(--c-border);
-  color: var(--c-text-label);
-  border-radius: var(--radius-sm);
-  font-size: var(--fz-base);
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 40px;
+  padding: 0 18px;
+
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
+
+  color: #ffffff;
+
+  border: none;
+  border-radius: 10px;
+
+  font-size: 14px;
+  font-weight: 600;
+
   cursor: pointer;
-  font-family: var(--font);
-  white-space: nowrap;
-  transition: all 0.15s;
+
+  box-shadow:
+    0 4px 12px rgba(37, 99, 235, 0.25);
+
+  transition: all 0.25s ease;
 }
+
 .back-btn:hover {
-  background: var(--c-primary-lt);
-  border-color: var(--c-primary);
-  color: var(--c-primary-dk);
+  transform: translateY(-2px);
+
+  background: linear-gradient(
+    135deg,
+    #1d4ed8,
+    #1e40af
+  );
+
+  box-shadow:
+    0 8px 18px rgba(37, 99, 235, 0.35);
+}
+
+.back-btn:active {
+  transform: scale(0.97);
 }
 
 /* ── Main card ────────────────────────────────────────────────────── */

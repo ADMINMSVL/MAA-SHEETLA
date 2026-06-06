@@ -77,36 +77,41 @@ const CreateGIN = () => {
 
     const fetchGinNo = async () => {
       try {
-        /* Look up existing sequences for Inventory / Inward to get the next increment */
         const listRes  = await axios.get(`${API_URL}/api/document-sequence`);
         const matching = listRes.data.filter(
           (r) => r.module === "Inventory" && r.businessEntity === "Inward"
         );
 
-        /* Determine next increment number */
+        // Sort descending by createdAt to get the latest settings record
+        const lastRecord = matching.sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        )[0];
+
+        // Next number = max existing incrementNo + 1, or 1 if no records yet
         const nextIncrement = matching.length > 0
           ? Math.max(...matching.map((r) => Number(r.incrementNo))) + 1
           : 1;
 
-        /* Determine the sequenceFormat saved for this entity (use last record's format, or default) */
-        const lastRecord = matching.sort((a, b) =>
-          new Date(b.createdAt) - new Date(a.createdAt)
-        )[0];
-        const sequenceFormat = lastRecord?.sequenceFormat || "dd/mm/yyyy";
+        // Read ALL settings from the saved sequence master record
+        const prefix      = lastRecord?.entityPrefix    || "GIN";
+        const digits      = Math.max(1, Number(lastRecord?.sequenceDigits) || 2);
+        const seqFormat   = lastRecord?.sequenceFormat  || "dd/mm/yyyy";
+        const useDateFrag = lastRecord?.useDateFragment ?? true; // GIN default: use date
 
-        /* Build the GIN No locally (same logic as backend buildDatePart) */
-        const d     = new Date();
-        const dd    = String(d.getDate()).padStart(2, "0");
-        const mm    = String(d.getMonth() + 1).padStart(2, "0");
-        const yyyy  = String(d.getFullYear());
+        // Only include date part if master says so
+        let datePart = "";
+        if (useDateFrag) {
+          const d    = new Date();
+          const dd   = String(d.getDate()).padStart(2, "0");
+          const mm   = String(d.getMonth() + 1).padStart(2, "0");
+          const yyyy = String(d.getFullYear());
+          if (seqFormat === "mm/dd/yyyy")      datePart = `${mm}${dd}${yyyy}`;
+          else if (seqFormat === "yyyy/mm/dd") datePart = `${yyyy}${mm}${dd}`;
+          else                                 datePart = `${dd}${mm}${yyyy}`;
+        }
 
-        let datePart;
-        if (sequenceFormat === "mm/dd/yyyy") datePart = `${mm}${dd}${yyyy}`;
-        else if (sequenceFormat === "yyyy/mm/dd") datePart = `${yyyy}${mm}${dd}`;
-        else datePart = `${dd}${mm}${yyyy}`;  // default dd/mm/yyyy
-
-        const paddedNo = String(nextIncrement).padStart(2, "0");
-        const ginNo    = `${datePart}${paddedNo}`;
+        const paddedNo = String(nextIncrement).padStart(digits, "0");
+        const ginNo    = `${prefix}${datePart}${paddedNo}`;
 
         setForm((p) => ({
           ...p,
@@ -117,13 +122,14 @@ const CreateGIN = () => {
           ewayDate:    today,
         }));
       } catch (err) {
-        /* Fallback: generate a temporary local code */
+        /* Fallback if sequence API is unreachable */
         console.error("Could not fetch document sequence:", err);
-        const d      = new Date();
-        const dd     = String(d.getDate()).padStart(2, "0");
-        const mm     = String(d.getMonth() + 1).padStart(2, "0");
-        const yyyy   = String(d.getFullYear());
-        const ginNo  = `${dd}${mm}${yyyy}01`;
+        const d    = new Date();
+        const dd   = String(d.getDate()).padStart(2, "0");
+        const mm   = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = String(d.getFullYear());
+        // Default fallback: GIN + date + 01 (only used if API completely fails)
+        const ginNo = `GIN${dd}${mm}${yyyy}01`;
         setForm((p) => ({
           ...p,
           ginNo,

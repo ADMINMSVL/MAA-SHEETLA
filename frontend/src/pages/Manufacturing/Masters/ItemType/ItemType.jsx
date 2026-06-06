@@ -5,7 +5,6 @@ import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-/* Reusable typeahead input */
 const TypeAhead = ({ value, onChange, onSelect, suggestions, show, setShow, placeholder, refProp }) => (
   <div style={{ position: "relative" }} ref={refProp}>
     <input
@@ -33,15 +32,10 @@ const ItemGroup = () => {
   const [filtered, setFiltered] = useState([]);
   const [status,   setStatus]   = useState("");
   const [editId,   setEditId]   = useState(null);
-  const [editData, setEditData] = useState({
-    itemGroup: "", itemTypes: "", description: "", status: "",
-  });
+  const [editData, setEditData] = useState({ itemGroup: "", itemTypes: "", description: "", status: "" });
 
-  /* search inputs */
   const [searchGroup, setSearchGroup] = useState("");
   const [searchTypes, setSearchTypes] = useState("");
-
-  /* suggestions */
   const [groupSug,     setGroupSug]     = useState([]);
   const [typesSug,     setTypesSug]     = useState([]);
   const [showGroupSug, setShowGroupSug] = useState(false);
@@ -60,7 +54,6 @@ const ItemGroup = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  /* close suggestion on outside click */
   useEffect(() => {
     const handler = (e) => {
       if (groupRef.current && !groupRef.current.contains(e.target)) setShowGroupSug(false);
@@ -70,22 +63,13 @@ const ItemGroup = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const makeSuggestions = (field, val) =>
+  const makeSug = (field, val) =>
     val.trim()
       ? [...new Set(data.map((d) => d[field]).filter((n) => n?.toLowerCase().includes(val.toLowerCase())))].sort()
       : [];
 
-  const handleGroupInput = (val) => {
-    setSearchGroup(val);
-    setGroupSug(makeSuggestions("itemGroup", val));
-    setShowGroupSug(true);
-  };
-
-  const handleTypesInput = (val) => {
-    setSearchTypes(val);
-    setTypesSug(makeSuggestions("itemTypes", val));
-    setShowTypesSug(true);
-  };
+  const handleGroupInput = (val) => { setSearchGroup(val); setGroupSug(makeSug("itemGroup", val)); setShowGroupSug(true); };
+  const handleTypesInput = (val) => { setSearchTypes(val); setTypesSug(makeSug("itemTypes", val)); setShowTypesSug(true); };
 
   const handleSearch = () => {
     setShowGroupSug(false); setShowTypesSug(false);
@@ -111,10 +95,7 @@ const ItemGroup = () => {
 
   const handleEdit = (item) => {
     setEditId(item._id);
-    setEditData({
-      itemGroup: item.itemGroup || "", itemTypes: item.itemTypes || "",
-      description: item.description || "", status: item.status,
-    });
+    setEditData({ itemGroup: item.itemGroup || "", itemTypes: item.itemTypes || "", description: item.description || "", status: item.status });
   };
 
   const handleUpdate = async (id) => {
@@ -138,35 +119,20 @@ const ItemGroup = () => {
         <div className="search-title">Search</div>
 
         <div className="search-grid">
-
-          {/* Item Group — typeahead */}
           <div className="form-group">
             <label>Item Group</label>
-            <TypeAhead
-              value={searchGroup}
-              onChange={handleGroupInput}
+            <TypeAhead value={searchGroup} onChange={handleGroupInput}
               onSelect={(s) => { setSearchGroup(s); setShowGroupSug(false); }}
-              suggestions={groupSug}
-              show={showGroupSug}
-              setShow={setShowGroupSug}
-              placeholder="Type to search…"
-              refProp={groupRef}
-            />
+              suggestions={groupSug} show={showGroupSug} setShow={setShowGroupSug}
+              placeholder="Type to search…" refProp={groupRef} />
           </div>
 
-          {/* Item Types — typeahead */}
           <div className="form-group">
             <label>Item Category</label>
-            <TypeAhead
-              value={searchTypes}
-              onChange={handleTypesInput}
+            <TypeAhead value={searchTypes} onChange={handleTypesInput}
               onSelect={(s) => { setSearchTypes(s); setShowTypesSug(false); }}
-              suggestions={typesSug}
-              show={showTypesSug}
-              setShow={setShowTypesSug}
-              placeholder="Type to search…"
-              refProp={typesRef}
-            />
+              suggestions={typesSug} show={showTypesSug} setShow={setShowTypesSug}
+              placeholder="Type to search…" refProp={typesRef} />
           </div>
 
           <div className="form-group">
@@ -177,7 +143,6 @@ const ItemGroup = () => {
               <option>Inactive</option>
             </select>
           </div>
-
         </div>
 
         <div className="button-group">
@@ -186,7 +151,15 @@ const ItemGroup = () => {
         </div>
 
         <div className="table-container">
-          <table>
+          <table style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "50px" }} />
+              <col style={{ width: "22%" }} />
+              <col style={{ width: "22%" }} />
+              <col style={{ width: "30%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "120px" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>S No</th>
@@ -194,7 +167,7 @@ const ItemGroup = () => {
                 <th>Item Group</th>
                 <th>Description</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th className="action-col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -202,19 +175,19 @@ const ItemGroup = () => {
                 filtered.map((item, i) => (
                   <tr key={item._id}>
                     <td>{i + 1}</td>
-                    <td>
+                    <td title={item.itemTypes}>
                       {editId === item._id ? (
                         <input type="text" value={editData.itemTypes}
                           onChange={(e) => setEditData({ ...editData, itemTypes: e.target.value })} />
                       ) : item.itemTypes}
                     </td>
-                    <td>
+                    <td title={item.itemGroup}>
                       {editId === item._id ? (
                         <input type="text" value={editData.itemGroup}
                           onChange={(e) => setEditData({ ...editData, itemGroup: e.target.value })} />
                       ) : item.itemGroup}
                     </td>
-                    <td>
+                    <td title={item.description}>
                       {editId === item._id ? (
                         <input type="text" value={editData.description}
                           onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
@@ -229,7 +202,7 @@ const ItemGroup = () => {
                         </select>
                       ) : item.status}
                     </td>
-                    <td>
+                    <td className="action-col">
                       {editId === item._id ? (
                         <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
                       ) : (

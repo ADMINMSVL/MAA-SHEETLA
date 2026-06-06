@@ -2,6 +2,66 @@ const express = require("express");
 const router  = express.Router();
 const Weighment       = require("../../models/Inventory/Weighment");
 const GoodsInwardNote = require("../../models/Inventory/GoodsInwardNote");
+const DocumentSequence = require("../../models/Master/DocumentSequence");
+
+/* ── shared date builder (same logic as documentSequenceRoutes) ── */
+const buildDatePart = (format) => {
+  const today = new Date();
+  const dd   = String(today.getDate()).padStart(2, "0");
+  const mm   = String(today.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(today.getFullYear());
+
+  if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
+  if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
+  return `${dd}${mm}${yyyy}`;           // default dd/mm/yyyy
+};
+
+/* ══════════════════════════════════════════════
+   GET — Generate next GIN number from DocumentSequence
+   Query params: module, businessEntity, entityPrefix
+   Example: /api/goods-inward-note/next-sequence?module=Goods%20Inward%20Note&businessEntity=GYPMART%20INDIA&entityPrefix=GIN
+══════════════════════════════════════════════ */
+router.get("/goods-inward-note/next-sequence", async (req, res) => {
+  try {
+    const { module, businessEntity, entityPrefix } = req.query;
+    const prefix = (entityPrefix || "").toString().trim().toUpperCase();
+
+    if (!module || !businessEntity || !prefix) {
+      return res.status(400).json({
+        success: false,
+        message: "module, businessEntity and entityPrefix are required",
+      });
+    }
+
+    /* Find latest sequence record for this combination */
+    const lastRecord = await DocumentSequence
+      .findOne({ module, businessEntity, entityPrefix: prefix })
+      .sort({ createdAt: -1 });
+
+    if (!lastRecord) {
+      return res.status(404).json({
+        success: false,
+        message: `No document sequence found for module="${module}", entity="${businessEntity}", prefix="${prefix}". Please create one first.`,
+      });
+    }
+
+    const digits    = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
+    const nextNo    = Number(lastRecord.incrementNo) + 1;
+    const paddedNo  = String(nextNo).padStart(digits, "0");
+    const datePart  = lastRecord.useDateFragment ? buildDatePart(lastRecord.sequenceFormat) : "";
+    const nextCode  = `${prefix}${datePart}${paddedNo}`;
+
+    res.json({
+      success: true,
+      nextCode,
+      nextIncrement: nextNo,
+      sequenceId: lastRecord._id,
+    });
+  } catch (error) {
+    console.error("next-sequence error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 /* ══════════════════════════════════════════════
    POST — Create new GIN
@@ -78,7 +138,6 @@ router.get("/goods-inward-note", async (req, res) => {
         const weighment = await Weighment.findOne({ inwardOutwardNoteNo: gin.ginNo });
         return {
           ...gin.toObject(),
-          /* Weighment fields — empty string when not linked yet */
           weighmentNo:         weighment?.weighmentNo      || "",
           weighmentId:         weighment?._id?.toString()  || "",
           transactionType:     weighment?.transactionType  || "",

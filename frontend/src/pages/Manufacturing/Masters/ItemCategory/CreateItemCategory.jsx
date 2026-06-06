@@ -18,9 +18,7 @@ const CreateItemCategory = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.categoryName.trim()) {
-      return alert("Category Name is required.");
-    }
+    if (!formData.categoryName.trim()) return alert("Category Name is required.");
     try {
       const res = await axios.post(`${API_URL}/api/create-item-category`, formData);
       alert(res.data.message);
@@ -36,9 +34,7 @@ const CreateItemCategory = () => {
       <ModuleNavbar />
 
       <div className="create-header">
-        <button className="back-btn" onClick={() => navigate("/item-category")}>
-          ← Back
-        </button>
+        <button className="back-btn" onClick={() => navigate("/item-category")}>← Back</button>
         <h1>Item Category</h1>
       </div>
 
@@ -79,9 +75,7 @@ const CreateItemCategory = () => {
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
           <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn" onClick={() => navigate("/item-category")}>
-            Cancel
-          </button>
+          <button className="cancel-btn" onClick={() => navigate("/item-category")}>Cancel</button>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "../PartyMaster/CreateParty.css";
+// import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
@@ -9,21 +9,16 @@ const CreatePartyType = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    partyType: "",
+    partyType:   "",
     description: "",
-    status: "Active",
+    status:      "Active",
   });
-
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.partyType.trim()) {
-      return alert("Party Type name is required.");
-    }
-
+    if (!formData.partyType.trim()) return alert("Party Type name is required.");
     try {
       setLoading(true);
       const res = await axios.post(`${API_URL}/api/create-party-type`, formData);
@@ -42,6 +37,7 @@ const CreatePartyType = () => {
       <ModuleNavbar />
 
       <div className="create-header">
+        <button className="back-btn" onClick={() => navigate("/party-type")}>← Back</button>
         <h1>Party Type</h1>
       </div>
 
@@ -49,6 +45,7 @@ const CreatePartyType = () => {
         <div className="create-title">Create Party Type</div>
 
         <div className="create-grid">
+
           <div className="form-group">
             <label>* Party Type</label>
             <input
@@ -73,27 +70,17 @@ const CreatePartyType = () => {
 
           <div className="form-group">
             <label>Status</label>
-            <input
-              type="text"
-              name="status"
-              value={formData.status}
-              readOnly
-            />
+            <input type="text" name="status" value={formData.status} readOnly />
           </div>
+
         </div>
 
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
-          <button
-            className="submit-btn"
-            onClick={handleSubmit}
-            disabled={loading}
-          >
+          <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
             {loading ? "Saving..." : "Submit"}
           </button>
-          <button className="cancel-btn" onClick={() => navigate("/party-type")}>
-            Cancel
-          </button>
+          <button className="cancel-btn" onClick={() => navigate("/party-type")}>Cancel</button>
         </div>
       </div>
     </div>

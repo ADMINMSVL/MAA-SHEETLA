@@ -15,7 +15,6 @@ const ItemCategory = () => {
   const [editId,   setEditId]   = useState(null);
   const [editData, setEditData] = useState({ categoryName: "", description: "", status: "" });
 
-  /* suggestions state */
   const [suggestions, setSuggestions] = useState([]);
   const [showSug,     setShowSug]     = useState(false);
   const sugRef = useRef(null);
@@ -30,7 +29,6 @@ const ItemCategory = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  /* close suggestion box on outside click */
   useEffect(() => {
     const handler = (e) => {
       if (sugRef.current && !sugRef.current.contains(e.target)) setShowSug(false);
@@ -39,14 +37,11 @@ const ItemCategory = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* update suggestions whenever search text changes */
   const handleSearchInput = (val) => {
     setSearch(val);
     if (val.trim()) {
       const lower = val.toLowerCase();
-      const matches = [...new Set(
-        data.map((d) => d.categoryName).filter((n) => n?.toLowerCase().includes(lower))
-      )].sort();
+      const matches = [...new Set(data.map((d) => d.categoryName).filter((n) => n?.toLowerCase().includes(lower)))].sort();
       setSuggestions(matches);
       setShowSug(matches.length > 0);
     } else {
@@ -55,10 +50,7 @@ const ItemCategory = () => {
     }
   };
 
-  const handleSuggestionClick = (name) => {
-    setSearch(name);
-    setShowSug(false);
-  };
+  const handleSuggestionClick = (name) => { setSearch(name); setShowSug(false); };
 
   const handleSearch = () => {
     setShowSug(false);
@@ -98,9 +90,7 @@ const ItemCategory = () => {
 
       <div className="transaction-topbar">
         <h1>Item Category</h1>
-        <button className="create-btn" onClick={() => navigate("/create-item-category")}>
-          Create ▼
-        </button>
+        <button className="create-btn" onClick={() => navigate("/create-item-category")}>Create ▼</button>
       </div>
 
       <div className="search-container">
@@ -108,7 +98,6 @@ const ItemCategory = () => {
 
         <div className="search-grid">
 
-          {/* CATEGORY NAME — live type-ahead */}
           <div className="form-group" style={{ position: "relative" }} ref={sugRef}>
             <label>Category Name</label>
             <input
@@ -122,9 +111,7 @@ const ItemCategory = () => {
             {showSug && (
               <ul className="suggestion-list">
                 {suggestions.map((s) => (
-                  <li key={s} onClick={() => handleSuggestionClick(s)}>
-                    {s}
-                  </li>
+                  <li key={s} onClick={() => handleSuggestionClick(s)}>{s}</li>
                 ))}
               </ul>
             )}
@@ -147,14 +134,21 @@ const ItemCategory = () => {
         </div>
 
         <div className="table-container">
-          <table>
+          <table style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "50px" }} />
+              <col style={{ width: "25%" }} />
+              <col style={{ width: "35%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "120px" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>S No</th>
                 <th>Category Name</th>
                 <th>Description</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th className="action-col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -162,36 +156,28 @@ const ItemCategory = () => {
                 filtered.map((item, i) => (
                   <tr key={item._id}>
                     <td>{i + 1}</td>
-                    <td>
+                    <td title={item.categoryName}>
                       {editId === item._id ? (
-                        <input
-                          type="text"
-                          value={editData.categoryName}
-                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })}
-                        />
+                        <input type="text" value={editData.categoryName}
+                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })} />
                       ) : item.categoryName}
                     </td>
-                    <td>
+                    <td title={item.description}>
                       {editId === item._id ? (
-                        <input
-                          type="text"
-                          value={editData.description}
-                          onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                        />
+                        <input type="text" value={editData.description}
+                          onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
                       ) : item.description}
                     </td>
                     <td>
                       {editId === item._id ? (
-                        <select
-                          value={editData.status}
-                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                        >
+                        <select value={editData.status}
+                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}>
                           <option>Active</option>
                           <option>Inactive</option>
                         </select>
                       ) : item.status}
                     </td>
-                    <td>
+                    <td className="action-col">
                       {editId === item._id ? (
                         <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
                       ) : (

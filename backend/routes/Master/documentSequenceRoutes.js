@@ -35,28 +35,33 @@ router.post("/create-document-sequence", async (req, res) => {
       });
     }
 
-    const digits = Math.max(1, Number(sequenceDigits) || 2);
-
     const lastRecord = await DocumentSequence
       .findOne({ module, businessEntity, entityPrefix: prefix })
       .sort({ createdAt: -1 });
+
+    const digits = lastRecord
+      ? Math.max(1, Number(lastRecord.sequenceDigits) || 2)   // inherit from master
+      : Math.max(1, Number(sequenceDigits) || 2);              // use request only on first creation
+
+    const resolvedFormat   = lastRecord ? lastRecord.sequenceFormat   : (sequenceFormat  || "dd/mm/yyyy");
+    const resolvedUsDate   = lastRecord ? lastRecord.useDateFragment  : (useDateFragment ?? true);
 
     const nextNumber = lastRecord
       ? Number(lastRecord.incrementNo) + 1
       : (Number(incrementNo) || 1);
 
     const paddedNo      = String(nextNumber).padStart(digits, "0");
-    const datePart      = useDateFragment ? buildDatePart(sequenceFormat) : "";
+    const datePart      = resolvedUsDate ? buildDatePart(resolvedFormat) : "";
     const generatedCode = `${prefix}${datePart}${paddedNo}`;
 
     const newData = new DocumentSequence({
       module,
       businessEntity,
-      entityPrefix: prefix,
-      sequenceFormat,
-      useDateFragment,
-      sequenceDigits: digits,
-      incrementNo:    nextNumber,
+      entityPrefix:    prefix,
+      sequenceFormat:  resolvedFormat,
+      useDateFragment: resolvedUsDate,
+      sequenceDigits:  digits,
+      incrementNo:     nextNumber,
       generatedCode,
     });
 

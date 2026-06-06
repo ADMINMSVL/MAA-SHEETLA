@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./CreateDocumentSequence.css";
 import ModuleNavbar from "../../../../../components/ModuleNavbar/ModuleNavbar";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { API_URL } from "../../../../../config";
 import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../../module/moduleBusinessMap";
 
@@ -30,16 +30,25 @@ const buildPreviewCode = ({ entityPrefix, sequenceFormat, useDateFragment, seque
 
 /* ── component ────────────────────────────────────────────────────────── */
 const CreateDocumentSequence = () => {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+
+  /*
+    Support optional pre-fill via router state:
+      navigate("/create-document-sequence", { state: { module: "Purchase Order" } })
+    This lets the PO creation page and GIN creation page jump directly here
+    with the correct module already selected.
+  */
+  const prefillModule = location.state?.module || "";
 
   const [formData, setFormData] = useState({
-    module:          "",
+    module:          prefillModule,
     businessEntity:  "",
     entityPrefix:    "",
     sequenceFormat:  "dd/mm/yyyy",
     useDateFragment: true,
     incrementNo:     1,
-    sequenceDigits:  2,           // NEW — default 2 digits ("01")
+    sequenceDigits:  2,
   });
 
   const [previewCode,    setPreviewCode]    = useState("");
@@ -136,16 +145,30 @@ const CreateDocumentSequence = () => {
   const digitPreviewStr = String(nextIncrement)
     .padStart(Math.max(1, Number(formData.sequenceDigits) || 2), "0");
 
+  /* where to navigate back: if we came from a specific module context, go there */
+  const handleBack = () => {
+    if (prefillModule === "Purchase Order") {
+      navigate("/purchase-order");
+    } else if (prefillModule === "Goods Inward Note" || prefillModule === "Inward Outward Note") {
+      navigate("/inward-outward-note");
+    } else {
+      navigate("/document-sequence");
+    }
+  };
+
   return (
     <div className="cds-page">
       <ModuleNavbar />
 
       <div className="cds-header">
         <div className="cds-left">
-          <button className="back-btn" onClick={() => navigate("/document-sequence")}>
+          <button className="back-btn" onClick={handleBack}>
             ← Back
           </button>
           <h2>Create Document Sequence</h2>
+          {prefillModule && (
+            <span className="cds-module-badge">{prefillModule}</span>
+          )}
         </div>
       </div>
 
@@ -197,7 +220,7 @@ const CreateDocumentSequence = () => {
             />
           </div>
 
-          {/* SEQUENCE DIGITS — NEW */}
+          {/* SEQUENCE DIGITS */}
           <div className="cds-group">
             <label>Sequence Digits</label>
             <input
@@ -298,15 +321,27 @@ const CreateDocumentSequence = () => {
               <p>Transaction Code Generated</p>
               <h2 style={{ color: "#16a34a", letterSpacing: 2 }}>{generatedCode}</h2>
             </div>
-            <button
-              className="popup-btn"
-              onClick={() => {
-                setShowPopup(false);
-                navigate("/document-sequence");
-              }}
-            >
-              OK
-            </button>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                className="popup-btn"
+                onClick={() => {
+                  setShowPopup(false);
+                  handleBack();
+                }}
+              >
+                OK
+              </button>
+              <button
+                className="popup-btn"
+                style={{ background: "#2563eb" }}
+                onClick={() => {
+                  setShowPopup(false);
+                  navigate("/document-sequence");
+                }}
+              >
+                View All Sequences
+              </button>
+            </div>
           </div>
         </div>
       )}
