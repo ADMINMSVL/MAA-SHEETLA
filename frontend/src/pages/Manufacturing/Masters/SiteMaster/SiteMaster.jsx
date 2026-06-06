@@ -4,199 +4,174 @@ import { useNavigate } from "react-router-dom";
 import "../PartyMaster/PartyMaster.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
-import { MODULE_BUSINESS_MAP, MODULES, SOLUTION_MAP } from "../../../../module/moduleBusinessMap";
 
 const INDIAN_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
-  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
-  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu",
-  "Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal",
-  "Delhi","Jammu & Kashmir","Ladakh","Puducherry","Chandigarh",
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Jammu & Kashmir", "Ladakh", "Puducherry", "Chandigarh",
 ];
+
+const initialEditData = {
+  siteCode: "",
+  siteName: "",
+  address: "",
+  city: "",
+  state: "",
+  pinCode: "",
+  contactPerson: "",
+  mobile: "",
+  gstNo: "",
+  status: "",
+};
 
 const SiteMaster = () => {
   const navigate = useNavigate();
 
-  const [data,     setData]     = useState([]);
+  const [data, setData] = useState([]);
   const [filtered, setFiltered] = useState([]);
+  const [filterSiteName, setFilterSiteName] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
-  /* ── SEARCH FIELDS ── */
-  const [filterModule,   setFilterModule]   = useState("");
-  const [filterBusiness, setFilterBusiness] = useState("");
-  const [filterSiteCode, setFilterSiteCode] = useState("");
-  const [filterStatus,   setFilterStatus]   = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState(initialEditData);
 
-  /* ── EDIT STATE ── */
-  const [editId,   setEditId]   = useState(null);
-  const [editData, setEditData] = useState({
-    module: "", businessEntity: "", siteCode: "", siteName: "",
-    address: "", city: "", state: "", pinCode: "",
-    contactPerson: "", mobile: "", gstNo: "", status: "",
-  });
+  const applyFilters = (sites, siteName, status) => {
+    let result = [...sites];
+    const nameSearch = siteName.trim().toLowerCase();
 
-  /* Business entities for search cascade */
-  const searchBusinessEntities = filterModule
-    ? MODULE_BUSINESS_MAP[filterModule] || []
-    : [];
+    if (nameSearch) {
+      result = result.filter((item) =>
+        item.siteName?.toLowerCase().includes(nameSearch)
+      );
+    }
 
-  /* Business entities for inline edit cascade */
-  const editBusinessEntities = editData.module
-    ? MODULE_BUSINESS_MAP[editData.module] || []
-    : [];
+    if (status) {
+      result = result.filter((item) => item.status === status);
+    }
 
-  /* ── FETCH ── */
+    setFiltered(result);
+  };
+
   const fetchData = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/sites`);
       setData(res.data);
-      setFiltered(res.data);
-    } catch (err) { console.log(err); }
+      applyFilters(res.data, filterSiteName, filterStatus);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  /* ── SEARCH ── */
+  const handleSiteNameChange = (value) => {
+    setFilterSiteName(value);
+    applyFilters(data, value, filterStatus);
+  };
+
+  const handleStatusChange = (value) => {
+    setFilterStatus(value);
+    applyFilters(data, filterSiteName, value);
+  };
+
   const handleSearch = () => {
-    let f = [...data];
-    if (filterModule)   f = f.filter((i) => i.module === filterModule);
-    if (filterBusiness) f = f.filter((i) => i.businessEntity === filterBusiness);
-    if (filterSiteCode) f = f.filter((i) =>
-      i.siteCode?.toLowerCase().includes(filterSiteCode.toLowerCase())
-    );
-    if (filterStatus)   f = f.filter((i) => i.status === filterStatus);
-    setFiltered(f);
+    applyFilters(data, filterSiteName, filterStatus);
   };
 
   const handleReset = () => {
-    setFilterModule(""); setFilterBusiness("");
-    setFilterSiteCode(""); setFilterStatus("");
+    setFilterSiteName("");
+    setFilterStatus("");
     setFiltered(data);
   };
 
-  /* ── DELETE ── */
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this site?")) return;
+
     try {
       await axios.delete(`${API_URL}/api/site/${id}`);
       fetchData();
-    } catch (err) { console.log(err); }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  /* ── EDIT ── */
   const handleEdit = (item) => {
     setEditId(item._id);
     setEditData({
-      module: item.module, businessEntity: item.businessEntity,
-      siteCode: item.siteCode, siteName: item.siteName,
-      address: item.address || "", city: item.city || "",
-      state: item.state || "", pinCode: item.pinCode || "",
-      contactPerson: item.contactPerson || "", mobile: item.mobile || "",
-      gstNo: item.gstNo || "", status: item.status,
+      siteCode: item.siteCode || "",
+      siteName: item.siteName || "",
+      address: item.address || "",
+      city: item.city || "",
+      state: item.state || "",
+      pinCode: item.pinCode || "",
+      contactPerson: item.contactPerson || "",
+      mobile: item.mobile || "",
+      gstNo: item.gstNo || "",
+      status: item.status || "Active",
     });
   };
 
-  /* ── UPDATE ── */
   const handleUpdate = async (id) => {
     try {
       await axios.put(`${API_URL}/api/site/${id}`, editData);
       setEditId(null);
       fetchData();
-    } catch (err) { console.log(err); }
+    } catch (err) {
+      console.log(err);
+    }
   };
-
-  /* Reusable grouped module <select> */
-  const ModuleSelect = ({ value, onChange, placeholder = "- All Modules -" }) => (
-    <select value={value} onChange={onChange}>
-      <option value="">{placeholder}</option>
-      {Object.entries(SOLUTION_MAP).map(([solution, mods]) => (
-        <optgroup key={solution} label={`── ${solution} ──`}>
-          {mods.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  );
 
   return (
     <div className="transaction-page">
       <ModuleNavbar />
 
-      {/* TOPBAR */}
       <div className="transaction-topbar">
         <h1>Site Master</h1>
         <button className="create-btn" onClick={() => navigate("/create-site")}>
-          Create ▼
+          Create
         </button>
       </div>
 
-      {/* SEARCH */}
       <div className="search-container">
         <div className="search-title">Search</div>
 
         <div className="search-grid">
-
           <div className="form-group">
-            <label>Module</label>
-            <ModuleSelect
-              value={filterModule}
-              onChange={(e) => { setFilterModule(e.target.value); setFilterBusiness(""); }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Business Entity</label>
-            <select
-              value={filterBusiness}
-              onChange={(e) => setFilterBusiness(e.target.value)}
-              disabled={!filterModule}
-            >
-              <option value="">
-                {filterModule ? "- All Entities -" : "- Select Module first -"}
-              </option>
-              {searchBusinessEntities.map((be) => (
-                <option key={be} value={be}>{be}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Site Code</label>
+            <label>Site Name</label>
             <input
               type="text"
-              value={filterSiteCode}
-              onChange={(e) => setFilterSiteCode(e.target.value)}
-              placeholder="Search..."
+              value={filterSiteName}
+              onChange={(e) => handleSiteNameChange(e.target.value)}
+              placeholder="Type site name..."
             />
           </div>
 
           <div className="form-group">
             <label>Status</label>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <select value={filterStatus} onChange={(e) => handleStatusChange(e.target.value)}>
               <option value="">- All -</option>
               <option>Active</option>
               <option>Inactive</option>
             </select>
           </div>
-
         </div>
 
         <div className="button-group">
           <button className="search-btn" onClick={handleSearch}>Search</button>
-          <button className="reset-btn"  onClick={handleReset}>Reset</button>
+          <button className="reset-btn" onClick={handleReset}>Reset</button>
         </div>
 
-        {/* TABLE */}
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>S No</th>
-                <th>Module</th>
-                <th>Business Entity</th>
                 <th>Site Code</th>
                 <th>Site Name</th>
+                <th>Address</th>
                 <th>City</th>
                 <th>State</th>
                 <th>Pin Code</th>
@@ -213,60 +188,77 @@ const SiteMaster = () => {
                   <tr key={item._id}>
                     <td>{i + 1}</td>
 
-                    {/* MODULE — inline edit */}
                     <td>
                       {editId === item._id ? (
-                        <ModuleSelect
-                          value={editData.module}
-                          placeholder="- Select -"
-                          onChange={(e) =>
-                            setEditData({ ...editData, module: e.target.value, businessEntity: "" })
-                          }
+                        <input
+                          type="text"
+                          value={editData.siteCode}
+                          onChange={(e) => setEditData({ ...editData, siteCode: e.target.value })}
                         />
-                      ) : item.module}
+                      ) : item.siteCode || "-"}
                     </td>
 
-                    {/* BUSINESS ENTITY — cascades in edit */}
+                    <td>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.siteName}
+                          onChange={(e) => setEditData({ ...editData, siteName: e.target.value })}
+                        />
+                      ) : item.siteName || "-"}
+                    </td>
+
+                    <td>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.address}
+                          onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                        />
+                      ) : item.address || "-"}
+                    </td>
+
+                    <td>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.city}
+                          onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                        />
+                      ) : item.city || "-"}
+                    </td>
+
                     <td>
                       {editId === item._id ? (
                         <select
-                          value={editData.businessEntity}
-                          onChange={(e) =>
-                            setEditData({ ...editData, businessEntity: e.target.value })
-                          }
-                          disabled={!editData.module}
+                          value={editData.state}
+                          onChange={(e) => setEditData({ ...editData, state: e.target.value })}
                         >
-                          <option value="">- Select -</option>
-                          {editBusinessEntities.map((be) => (
-                            <option key={be} value={be}>{be}</option>
+                          <option value="">- Select State -</option>
+                          {INDIAN_STATES.map((state) => (
+                            <option key={state} value={state}>{state}</option>
                           ))}
                         </select>
-                      ) : item.businessEntity}
+                      ) : item.state || "-"}
                     </td>
 
-                    {/* SIMPLE TEXT FIELDS */}
-                    {["siteCode","siteName","city","state","pinCode","contactPerson","mobile","gstNo"].map((field) => (
+                    {["pinCode", "contactPerson", "mobile", "gstNo"].map((field) => (
                       <td key={field}>
                         {editId === item._id ? (
                           <input
                             type="text"
                             value={editData[field] ?? ""}
-                            onChange={(e) =>
-                              setEditData({ ...editData, [field]: e.target.value })
-                            }
+                            onChange={(e) => setEditData({ ...editData, [field]: e.target.value })}
                           />
-                        ) : (item[field] || "—")}
+                        ) : item[field] || "-"}
                       </td>
                     ))}
 
-                    {/* STATUS */}
                     <td>
                       {editId === item._id ? (
                         <select
                           value={editData.status}
-                          onChange={(e) =>
-                            setEditData({ ...editData, status: e.target.value })
-                          }
+                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
                         >
                           <option>Active</option>
                           <option>Inactive</option>
@@ -278,7 +270,6 @@ const SiteMaster = () => {
                       )}
                     </td>
 
-                    {/* ACTION */}
                     <td style={{ whiteSpace: "nowrap" }}>
                       {editId === item._id ? (
                         <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
@@ -290,7 +281,7 @@ const SiteMaster = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="13" className="no-data">No Data Found</td></tr>
+                <tr><td colSpan="12" className="no-data">No Data Found</td></tr>
               )}
             </tbody>
           </table>

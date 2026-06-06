@@ -13,7 +13,7 @@ const Masters = () => {
     { icon: "🏷️", title: "Party Type",          subtitle: "Manage Party Types",       code: "PT001", path: "/party-type"            },
     { icon: "📦", title: "Item Master",         subtitle: "Manage Items",             code: "IM001", path: "/item-master"           },
     { icon: "🗂️", title: "Item Category",       subtitle: "Manage Item Categories",   code: "IC001", path: "/item-category"         },
-    { icon: "🔩", title: "Item Type",           subtitle: "Manage Item Types",        code: "IT001", path: "/item-type"             },
+    { icon: "🔩", title: "Item Group",           subtitle: "Manage Item Types",        code: "IT001", path: "/item-type"             },
     { icon: "⚖️", title: "UOM Master",          subtitle: "Units of Measure",         code: "UM001", path: "/uom-master"            },
     { icon: "🧾", title: "Tax Details",         subtitle: "HSN Code & GST",           code: "TD001", path: "/tax-details"           },
     { icon: "⚙️", title: "Production Details",  subtitle: "Grade, Size, Dimensions",  code: "PD001", path: "/production-details"    },

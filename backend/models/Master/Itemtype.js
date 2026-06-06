@@ -2,9 +2,10 @@ const mongoose = require("mongoose");
 
 const itemTypeSchema = new mongoose.Schema(
   {
-    typeName: { type: String, required: true },
+    itemGroup:   { type: String, required: true },
+    itemTypes:   { type: String },
     description: { type: String },
-    status: { type: String, default: "Active" },
+    status:      { type: String, default: "Active" },
   },
   { timestamps: true }
 );

@@ -5,139 +5,244 @@ import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const SIZES = [
-  { key: "size8",  label: "8"  },
-  { key: "size10", label: "10" },
-  { key: "size12", label: "12" },
-  { key: "size16", label: "16" },
-  { key: "size20", label: "20" },
-  { key: "size25", label: "25" },
-];
+const today = new Date().toISOString().split("T")[0];
+const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 
 const SchemeMaster = () => {
   const navigate = useNavigate();
-  const [data, setData]         = useState([]);
+  const [data, setData] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [search, setSearch]     = useState("");
-  const [status, setStatus]     = useState("");
-  const [expanded, setExpanded] = useState(null); // which scheme row is expanded
+  const [itemTypes, setItemTypes] = useState([]);
+  const [filters, setFilters] = useState({
+    schemeName: "",
+    item: "",
+    activeDate: today,
+    cost: "",
+  });
+  const [calcResult, setCalcResult] = useState(null);
 
   const fetchData = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/schemes`);
-      setData(res.data); setFiltered(res.data);
-    } catch (err) { console.log(err); }
+      setData(res.data);
+      setFiltered(res.data);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchItemTypes = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/item-types`);
+      setItemTypes(res.data.filter((item) => item.status === "Active"));
+    } catch (err) {
+      console.log("Error loading item types:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    fetchItemTypes();
+  }, []);
+
+  const isActiveOnDate = (row, date) => {
+    if (!date) return true;
+    const startsBefore = !row.startDate || row.startDate <= date;
+    const endsAfter = !row.endDate || row.endDate >= date;
+    return startsBefore && endsAfter;
+  };
+
+  const applyFilters = (nextFilters) => {
+    let result = [...data];
+
+    if (nextFilters.schemeName) {
+      result = result.filter((row) =>
+        row.schemeName?.toLowerCase().includes(nextFilters.schemeName.toLowerCase())
+      );
+    }
+
+    if (nextFilters.item) {
+      result = result.filter((row) =>
+        row.item?.toLowerCase().includes(nextFilters.item.toLowerCase())
+      );
+    }
+
+    if (nextFilters.activeDate) {
+      result = result.filter((row) => isActiveOnDate(row, nextFilters.activeDate));
+    }
+
+    setFiltered(result);
+    return result;
+  };
+
+  const handleFilterChange = (field, value) => {
+    const nextFilters = { ...filters, [field]: value };
+    setFilters(nextFilters);
+    setCalcResult(null);
+    applyFilters(nextFilters);
+  };
 
   const handleSearch = () => {
-    let f = [...data];
-    if (search) f = f.filter((i) => i.schemeName?.toLowerCase().includes(search.toLowerCase()));
-    if (status) f = f.filter((i) => i.status === status);
-    setFiltered(f);
+    applyFilters(filters);
   };
 
-  const handleReset = () => { setSearch(""); setStatus(""); setFiltered(data); };
+  const handleReset = () => {
+    const resetFilters = { schemeName: "", item: "", activeDate: today, cost: "" };
+    setFilters(resetFilters);
+    setCalcResult(null);
+    setFiltered(data.filter((row) => isActiveOnDate(row, today)));
+  };
 
-  const handleDelete = async (id) => {
-    try { await axios.delete(`${API_URL}/api/scheme/${id}`); fetchData(); }
-    catch (err) { console.log(err); }
+  const handleCalculate = () => {
+    if (!filters.schemeName || !filters.item || !filters.activeDate || !filters.cost) {
+      return alert("Fill Scheme, Item, Date and Cost.");
+    }
+
+    const activePlan = data.find((row) =>
+      row.schemeName?.toLowerCase() === filters.schemeName.toLowerCase() &&
+      row.item?.toLowerCase() === filters.item.toLowerCase() &&
+      row.status === "Active" &&
+      isActiveOnDate(row, filters.activeDate)
+    );
+
+    if (!activePlan) {
+      return alert("No active plan found for this Scheme, Item and Date.");
+    }
+
+    const cost = Number(filters.cost);
+    const logicAmount = Number(activePlan.logicAmount || 0);
+    setCalcResult({
+      schemeName: activePlan.schemeName,
+      description: activePlan.description,
+      item: activePlan.item,
+      cost,
+      logicAmount,
+      finalPrice: cost + logicAmount,
+    });
   };
 
   return (
     <div className="transaction-page">
       <ModuleNavbar />
+
       <div className="transaction-topbar">
         <h1>Scheme Master</h1>
-        <button className="create-btn" onClick={() => navigate("/create-scheme")}>Create ▼</button>
+        <button className="create-btn" onClick={() => navigate("/create-scheme")}>
+          Create
+        </button>
       </div>
 
       <div className="search-container">
-        <div className="search-title">Search</div>
-        <div className="search-grid">
+        <div className="search-title">Active Plan Search</div>
+
+        <div className="search-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
           <div className="form-group">
-            <label>Scheme Name</label>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search scheme..." />
+            <label>Scheme</label>
+            <input
+              type="text"
+              value={filters.schemeName}
+              onChange={(e) => handleFilterChange("schemeName", e.target.value)}
+              placeholder="e.g. Raipur"
+            />
           </div>
+
           <div className="form-group">
-            <label>Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">- Select -</option>
-              <option>Active</option>
-              <option>Inactive</option>
+            <label>Item</label>
+            <select
+              value={filters.item}
+              onChange={(e) => handleFilterChange("item", e.target.value)}
+            >
+              <option value="">- Select Item -</option>
+              {itemTypes.map((itemType) => (
+                <option key={itemType._id} value={itemType.itemTypes}>
+                  {itemType.itemTypes}
+                </option>
+              ))}
             </select>
+          </div>
+
+          <div className="form-group">
+            <label>Date</label>
+            <input
+              type="date"
+              value={filters.activeDate}
+              onChange={(e) => handleFilterChange("activeDate", e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Cost</label>
+            <input
+              type="number"
+              value={filters.cost}
+              onChange={(e) => handleFilterChange("cost", e.target.value)}
+              placeholder="e.g. 5000"
+            />
           </div>
         </div>
 
         <div className="button-group">
           <button className="search-btn" onClick={handleSearch}>Search</button>
+          <button className="search-btn" onClick={handleCalculate}>Calculate</button>
           <button className="reset-btn" onClick={handleReset}>Reset</button>
         </div>
 
-        {/* MAIN LIST TABLE */}
+        {calcResult && (
+          <div className="calc-result-box">
+            <div className="calc-result-row">
+              <span className="calc-label">Active Plan</span>
+              <span className="calc-value">{calcResult.schemeName} / Item {calcResult.item}</span>
+            </div>
+            <div className="calc-result-row">
+              <span className="calc-label">Description</span>
+              <span className="calc-value">{calcResult.description || "-"}</span>
+            </div>
+            <div className="calc-result-row">
+              <span className="calc-label">Cost</span>
+              <span className="calc-value">Rs {fmt(calcResult.cost)}</span>
+            </div>
+            <div className="calc-result-row">
+              <span className="calc-label">Logic</span>
+              <span className="calc-value offset-add">X + {fmt(calcResult.logicAmount)}</span>
+            </div>
+            <div className="calc-result-row total-row">
+              <span className="calc-label">Final Price</span>
+              <span className="calc-value final-price">Rs {fmt(calcResult.finalPrice)}</span>
+            </div>
+          </div>
+        )}
+
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>S No</th>
-                <th>Scheme Name</th>
-                <th>Basic Price (X)</th>
+                <th>Scheme</th>
+                <th>Description</th>
+                <th>Item</th>
+                <th>Logic</th>
+                <th>Start Date</th>
+                <th>End Date</th>
                 <th>Status</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length > 0 ? filtered.map((item, i) => (
-                <React.Fragment key={item._id}>
-                  <tr>
-                    <td>{i + 1}</td>
-                    <td>{item.schemeName}</td>
-                    <td>₹ {item.basicPrice?.toLocaleString("en-IN")}</td>
-                    <td>{item.status}</td>
-                    <td>
-                      <button className="edit-btn"
-                        onClick={() => setExpanded(expanded === item._id ? null : item._id)}>
-                        {expanded === item._id ? "Hide" : "View"} Matrix
-                      </button>
-                      <button className="delete-btn" onClick={() => handleDelete(item._id)}>Delete</button>
-                    </td>
+              {filtered.length > 0 ? (
+                filtered.map((row, index) => (
+                  <tr key={row._id}>
+                    <td>{index + 1}</td>
+                    <td>{row.schemeName}</td>
+                    <td>{row.description || "-"}</td>
+                    <td>{row.item}</td>
+                    <td>X + {fmt(row.logicAmount)}</td>
+                    <td>{row.startDate || "-"}</td>
+                    <td>{row.endDate || "-"}</td>
+                    <td>{isActiveOnDate(row, filters.activeDate) && row.status === "Active" ? "Active Plan" : row.status}</td>
                   </tr>
-
-                  {/* INLINE PRICE MATRIX */}
-                  {expanded === item._id && (
-                    <tr>
-                      <td colSpan="5" style={{ padding: "0 20px 20px", background: "#f9f9f9" }}>
-                        <div style={{ paddingTop: "12px" }}>
-                          <strong style={{ fontSize: "13px", color: "#444" }}>
-                            Price Matrix — BASIC (X) = ₹ {item.basicPrice?.toLocaleString("en-IN")}
-                          </strong>
-                          <table className="scheme-matrix" style={{ marginTop: "10px" }}>
-                            <thead>
-                              <tr>
-                                <th>SCHEME → ITEM</th>
-                                <th>RAIPUR</th>
-                                <th>RAIPUR BASIC</th>
-                                <th>FOR 12MM</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {SIZES.map(({ key, label }) => (
-                                <tr key={key}>
-                                  <td>{label}</td>
-                                  <td>₹ {item.prices?.[key]?.raipur?.toLocaleString("en-IN") ?? "-"}</td>
-                                  <td>₹ {item.prices?.[key]?.raipurBasic?.toLocaleString("en-IN") ?? "-"}</td>
-                                  <td>₹ {item.prices?.[key]?.for12mm?.toLocaleString("en-IN") ?? "-"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              )) : <tr><td colSpan="5" className="no-data">No Data Found</td></tr>}
+                ))
+              ) : (
+                <tr><td colSpan="8" className="no-data">No Active Plan Found</td></tr>
+              )}
             </tbody>
           </table>
         </div>

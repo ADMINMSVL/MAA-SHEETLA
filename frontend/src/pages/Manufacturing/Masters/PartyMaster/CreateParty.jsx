@@ -5,13 +5,7 @@ import "./CreateParty.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-/*
-  Party Master — Create Page
-  ──────────────────────────
-  - "Type" dropdown is NOT hardcoded.
-  - It fetches Active party types from the PartyType collection (saved via Party Type master).
-  - So if user created "Customer", "Supplier" in Party Type → they appear here.
-*/
+
 
 const CreateParty = () => {
   const navigate = useNavigate();
@@ -21,6 +15,9 @@ const CreateParty = () => {
     partyName: "",
     type: "",
     city: "",
+    addressLine1: "",
+    addressLine2: "",
+    pin: "",
     gstNo: "",
     mobile: "",
     payTerms: "",
@@ -51,8 +48,8 @@ const CreateParty = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.partyCode.trim() || !formData.partyName.trim()) {
-      return alert("Party Code and Party Name are required.");
+    if (!formData.partyCode.trim() || !formData.partyName.trim() || !formData.pin.trim()) {
+      return alert("Party Code, Party Name and Pin are required.");
     }
     try {
       setLoading(true);
@@ -60,6 +57,7 @@ const CreateParty = () => {
       alert(res.data.message);
       setFormData({
         partyCode: "", partyName: "", type: "", city: "",
+        addressLine1: "", addressLine2: "", pin: "",
         gstNo: "", mobile: "", payTerms: "", creditDays: "", status: "Active",
       });
     } catch (err) {
@@ -137,6 +135,42 @@ const CreateParty = () => {
               name="city"
               value={formData.city}
               onChange={handleChange}
+            />
+          </div>
+
+          {/* ADDRESS LINE 1 */}
+          <div className="form-group">
+            <label>Address Line 1</label>
+            <input
+              type="text"
+              name="addressLine1"
+              value={formData.addressLine1}
+              onChange={handleChange}
+              placeholder="Street / area"
+            />
+          </div>
+
+          {/* ADDRESS LINE 2 */}
+          <div className="form-group">
+            <label>Address Line 2</label>
+            <input
+              type="text"
+              name="addressLine2"
+              value={formData.addressLine2}
+              onChange={handleChange}
+              placeholder="Landmark / locality"
+            />
+          </div>
+
+          {/* PIN */}
+          <div className="form-group">
+            <label>* Pin</label>
+            <input
+              type="text"
+              name="pin"
+              value={formData.pin}
+              onChange={handleChange}
+              placeholder="PIN code"
             />
           </div>
 

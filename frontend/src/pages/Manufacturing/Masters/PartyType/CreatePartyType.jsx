@@ -5,14 +5,6 @@ import "../PartyMaster/CreateParty.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-/*
-  Party Type Create Page
-  ─────────────────────
-  - User types the party type name manually (free text)
-  - Saved to DB → PartyType collection
-  - Party Master "Type" dropdown reads from this collection
-*/
-
 const CreatePartyType = () => {
   const navigate = useNavigate();
 
@@ -31,12 +23,10 @@ const CreatePartyType = () => {
     if (!formData.partyType.trim()) {
       return alert("Party Type name is required.");
     }
+
     try {
       setLoading(true);
-      const res = await axios.post(
-        `${API_URL}/api/create-party-type`,
-        formData
-      );
+      const res = await axios.post(`${API_URL}/api/create-party-type`, formData);
       alert(res.data.message);
       setFormData({ partyType: "", description: "", status: "Active" });
     } catch (err) {
@@ -59,8 +49,6 @@ const CreatePartyType = () => {
         <div className="create-title">Create Party Type</div>
 
         <div className="create-grid">
-
-          {/* PARTY TYPE — FREE TEXT */}
           <div className="form-group">
             <label>* Party Type</label>
             <input
@@ -70,12 +58,8 @@ const CreatePartyType = () => {
               onChange={handleChange}
               placeholder="e.g. Customer, Supplier, Transporter..."
             />
-            <span style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}>
-              This will appear as an option in Party Master
-            </span>
           </div>
 
-          {/* DESCRIPTION */}
           <div className="form-group">
             <label>Description</label>
             <input
@@ -87,7 +71,6 @@ const CreatePartyType = () => {
             />
           </div>
 
-          {/* STATUS */}
           <div className="form-group">
             <label>Status</label>
             <input
@@ -97,23 +80,6 @@ const CreatePartyType = () => {
               readOnly
             />
           </div>
-
-        </div>
-
-        {/* HINT BOX */}
-        <div style={{
-          margin: "0 18px 18px",
-          padding: "12px 16px",
-          background: "#f0f9ff",
-          border: "1px solid #bae0f5",
-          fontSize: "13px",
-          color: "#0369a1",
-          borderRadius: "4px",
-        }}>
-          <strong>How it works:</strong> Whatever you type here (e.g. "Customer",
-          "Supplier", "Transporter") gets saved to the database. Those saved
-          values will automatically appear as dropdown options in the{" "}
-          <strong>Party Master → Type</strong> field.
         </div>
 
         <div className="action-buttons">

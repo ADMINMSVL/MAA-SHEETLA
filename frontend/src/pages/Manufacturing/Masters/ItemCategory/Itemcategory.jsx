@@ -1,29 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const CATEGORY_OPTIONS = [
-  "Raw Material",
-  "Semi Finished",
-  "Finished Goods",
-  "Consumables",
-  "Packing Material",
-  "Scrap",
-  "Service",
-];
-
 const ItemCategory = () => {
   const navigate = useNavigate();
 
-  const [data, setData]           = useState([]);
-  const [filtered, setFiltered]   = useState([]);
-  const [search, setSearch]       = useState("");
-  const [status, setStatus]       = useState("");
-  const [editId, setEditId]       = useState(null);
-  const [editData, setEditData]   = useState({ categoryName: "", description: "", status: "" });
+  const [data,     setData]     = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [search,   setSearch]   = useState("");
+  const [status,   setStatus]   = useState("");
+  const [editId,   setEditId]   = useState(null);
+  const [editData, setEditData] = useState({ categoryName: "", description: "", status: "" });
+
+  /* suggestions state */
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug,     setShowSug]     = useState(false);
+  const sugRef = useRef(null);
 
   const fetchData = async () => {
     try {
@@ -35,16 +30,51 @@ const ItemCategory = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  /* close suggestion box on outside click */
+  useEffect(() => {
+    const handler = (e) => {
+      if (sugRef.current && !sugRef.current.contains(e.target)) setShowSug(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  /* update suggestions whenever search text changes */
+  const handleSearchInput = (val) => {
+    setSearch(val);
+    if (val.trim()) {
+      const lower = val.toLowerCase();
+      const matches = [...new Set(
+        data.map((d) => d.categoryName).filter((n) => n?.toLowerCase().includes(lower))
+      )].sort();
+      setSuggestions(matches);
+      setShowSug(matches.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSug(false);
+    }
+  };
+
+  const handleSuggestionClick = (name) => {
+    setSearch(name);
+    setShowSug(false);
+  };
+
   const handleSearch = () => {
+    setShowSug(false);
     let f = [...data];
     if (search) f = f.filter((i) => i.categoryName?.toLowerCase().includes(search.toLowerCase()));
     if (status) f = f.filter((i) => i.status === status);
     setFiltered(f);
   };
 
-  const handleReset = () => { setSearch(""); setStatus(""); setFiltered(data); };
+  const handleReset = () => {
+    setSearch(""); setStatus(""); setSuggestions([]); setShowSug(false);
+    setFiltered(data);
+  };
 
   const handleDelete = async (id) => {
+    if (!window.confirm("Delete this category?")) return;
     try { await axios.delete(`${API_URL}/api/item-category/${id}`); fetchData(); }
     catch (err) { console.log(err); }
   };
@@ -77,13 +107,29 @@ const ItemCategory = () => {
         <div className="search-title">Search</div>
 
         <div className="search-grid">
-          <div className="form-group">
+
+          {/* CATEGORY NAME — live type-ahead */}
+          <div className="form-group" style={{ position: "relative" }} ref={sugRef}>
             <label>Category Name</label>
-            <select value={search} onChange={(e) => setSearch(e.target.value)}>
-              <option value="">- Select -</option>
-              {CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => handleSearchInput(e.target.value)}
+              onFocus={() => search && suggestions.length > 0 && setShowSug(true)}
+              placeholder="Type to search…"
+              autoComplete="off"
+            />
+            {showSug && (
+              <ul className="suggestion-list">
+                {suggestions.map((s) => (
+                  <li key={s} onClick={() => handleSuggestionClick(s)}>
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
           <div className="form-group">
             <label>Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -92,11 +138,12 @@ const ItemCategory = () => {
               <option>Inactive</option>
             </select>
           </div>
+
         </div>
 
         <div className="button-group">
           <button className="search-btn" onClick={handleSearch}>Search</button>
-          <button className="reset-btn" onClick={handleReset}>Reset</button>
+          <button className="reset-btn"  onClick={handleReset}>Reset</button>
         </div>
 
         <div className="table-container">
@@ -117,22 +164,28 @@ const ItemCategory = () => {
                     <td>{i + 1}</td>
                     <td>
                       {editId === item._id ? (
-                        <select value={editData.categoryName}
-                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })}>
-                          {CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
-                        </select>
+                        <input
+                          type="text"
+                          value={editData.categoryName}
+                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })}
+                        />
                       ) : item.categoryName}
                     </td>
                     <td>
                       {editId === item._id ? (
-                        <input type="text" value={editData.description}
-                          onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
+                        <input
+                          type="text"
+                          value={editData.description}
+                          onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                        />
                       ) : item.description}
                     </td>
                     <td>
                       {editId === item._id ? (
-                        <select value={editData.status}
-                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}>
+                        <select
+                          value={editData.status}
+                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                        >
                           <option>Active</option>
                           <option>Inactive</option>
                         </select>

@@ -18,6 +18,19 @@ const partySchema = new mongoose.Schema(
       type: String,
     },
 
+    addressLine1: {
+      type: String,
+    },
+
+    addressLine2: {
+      type: String,
+    },
+
+    pin: {
+      type: String,
+      required: true,
+    },
+
     gstNo: {
       type: String,
     },

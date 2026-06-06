@@ -6,53 +6,58 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../../../../config";
 import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../../module/moduleBusinessMap";
 
-/* ─── helper: build date segment (same logic as backend) ─── */
+/* ── helpers ──────────────────────────────────────────────────────────── */
 const buildDatePart = (format) => {
   const today = new Date();
-  const dd    = String(today.getDate()).padStart(2, "0");
-  const mm    = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy  = String(today.getFullYear());
+  const dd   = String(today.getDate()).padStart(2, "0");
+  const mm   = String(today.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(today.getFullYear());
+
   if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
   if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;   // default: dd/mm/yyyy
+  return `${dd}${mm}${yyyy}`;
 };
 
-/* ─── helper: build preview code ─── */
-const buildPreviewCode = (module, businessEntity, sequenceFormat, incrementNo) => {
-  if (!module || !businessEntity) return "";
-  const datePart = buildDatePart(sequenceFormat);
-  const padded   = String(Number(incrementNo) || 1).padStart(2, "0");
-  return `${datePart}${padded}`;
+const buildPreviewCode = ({ entityPrefix, sequenceFormat, useDateFragment, sequenceDigits }, incrementNo) => {
+  const prefix = entityPrefix.trim().toUpperCase();
+  if (!prefix) return "";
+
+  const digits   = Math.max(1, Number(sequenceDigits) || 2);
+  const datePart = useDateFragment ? buildDatePart(sequenceFormat) : "";
+  const padded   = String(Number(incrementNo) || 1).padStart(digits, "0");
+  return `${prefix}${datePart}${padded}`;
 };
 
+/* ── component ────────────────────────────────────────────────────────── */
 const CreateDocumentSequence = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    module:         "",
-    businessEntity: "",
-    sequenceFormat: "dd/mm/yyyy",
-    incrementNo:    1,
+    module:          "",
+    businessEntity:  "",
+    entityPrefix:    "",
+    sequenceFormat:  "dd/mm/yyyy",
+    useDateFragment: true,
+    incrementNo:     1,
+    sequenceDigits:  2,           // NEW — default 2 digits ("01")
   });
 
-  /* Live preview of next generated code */
-  const [previewCode,   setPreviewCode]   = useState("");
-  const [nextIncrement, setNextIncrement] = useState(1);
+  const [previewCode,    setPreviewCode]    = useState("");
+  const [nextIncrement,  setNextIncrement]  = useState(1);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [showPopup,      setShowPopup]      = useState(false);
+  const [generatedCode,  setGeneratedCode]  = useState("");
 
-  /* Success popup */
-  const [showPopup,     setShowPopup]     = useState(false);
-  const [generatedCode, setGeneratedCode] = useState("");
-
-  /* Cascade helpers */
   const businessEntities = formData.module
     ? MODULE_BUSINESS_MAP[formData.module] || []
     : [];
 
-  /* ── Whenever module / businessEntity changes, look up next increment ── */
+  /* fetch next increment whenever module / entity / prefix changes */
   useEffect(() => {
-    const { module, businessEntity, sequenceFormat } = formData;
-    if (!module || !businessEntity) {
+    const { module, businessEntity, entityPrefix } = formData;
+    const prefix = entityPrefix.trim().toUpperCase();
+
+    if (!module || !businessEntity || !prefix) {
       setPreviewCode("");
       setNextIncrement(1);
       return;
@@ -61,23 +66,23 @@ const CreateDocumentSequence = () => {
     const fetchNextIncrement = async () => {
       setLoadingPreview(true);
       try {
-        /* Get existing sequences for this module + businessEntity */
-        const res  = await axios.get(`${API_URL}/api/document-sequence`);
+        const res      = await axios.get(`${API_URL}/api/document-sequence`);
         const matching = res.data.filter(
-          (r) => r.module === module && r.businessEntity === businessEntity
+          (r) =>
+            r.module         === module &&
+            r.businessEntity === businessEntity &&
+            r.entityPrefix   === prefix
         );
         const next = matching.length > 0
           ? Math.max(...matching.map((r) => Number(r.incrementNo))) + 1
           : Number(formData.incrementNo) || 1;
 
         setNextIncrement(next);
-        setPreviewCode(buildPreviewCode(module, businessEntity, sequenceFormat, next));
+        setPreviewCode(buildPreviewCode(formData, next));
       } catch {
-        /* Fall back to incrementNo from form */
-        setNextIncrement(Number(formData.incrementNo) || 1);
-        setPreviewCode(
-          buildPreviewCode(module, businessEntity, sequenceFormat, formData.incrementNo)
-        );
+        const fallback = Number(formData.incrementNo) || 1;
+        setNextIncrement(fallback);
+        setPreviewCode(buildPreviewCode(formData, fallback));
       } finally {
         setLoadingPreview(false);
       }
@@ -85,87 +90,84 @@ const CreateDocumentSequence = () => {
 
     fetchNextIncrement();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.module, formData.businessEntity]);
+  }, [formData.module, formData.businessEntity, formData.entityPrefix]);
 
-  /* ── Update preview whenever sequenceFormat changes ── */
+  /* rebuild preview whenever format / digits / toggle change */
   useEffect(() => {
-    if (formData.module && formData.businessEntity) {
-      setPreviewCode(
-        buildPreviewCode(
-          formData.module,
-          formData.businessEntity,
-          formData.sequenceFormat,
-          nextIncrement
-        )
-      );
-    }
-  }, [formData.sequenceFormat, nextIncrement]);
+    setPreviewCode(buildPreviewCode(formData, nextIncrement));
+  }, [formData.sequenceFormat, formData.useDateFragment, formData.sequenceDigits, nextIncrement]);
 
-  /* ── Field change handler ── */
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+
     if (name === "module") {
       setFormData({ ...formData, module: value, businessEntity: "" });
       setPreviewCode("");
-    } else {
-      setFormData({ ...formData, [name]: value });
+      return;
     }
+
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
-  /* ── Save ── */
   const handleSave = async () => {
-    if (!formData.module || !formData.businessEntity) {
-      return alert("Module and Business Entity are required.");
+    if (!formData.module || !formData.businessEntity || !formData.entityPrefix.trim()) {
+      return alert("Module, Business Entity and Entity Prefix are required.");
     }
+
     try {
-      const res = await axios.post(`${API_URL}/api/create-document-sequence`, formData);
+      const payload = {
+        ...formData,
+        entityPrefix:   formData.entityPrefix.trim().toUpperCase(),
+        sequenceDigits: Number(formData.sequenceDigits) || 2,
+      };
+      const res = await axios.post(`${API_URL}/api/create-document-sequence`, payload);
       setGeneratedCode(res.data.generatedCode);
       setShowPopup(true);
     } catch (err) {
       console.log(err);
-      alert("Error Saving Document Sequence");
+      alert(err.response?.data?.message || "Error Saving Document Sequence");
     }
   };
 
-  /* Grouped module selector */
-  const ModuleSelect = () => (
-    <select name="module" value={formData.module} onChange={handleChange}>
-      <option value="">- Select Module -</option>
-      {Object.entries(SOLUTION_MAP).map(([solution, mods]) => (
-        <optgroup key={solution} label={`── ${solution} ──`}>
-          {mods.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  );
+  /* digit preview string shown next to the input */
+  const digitPreviewStr = String(nextIncrement)
+    .padStart(Math.max(1, Number(formData.sequenceDigits) || 2), "0");
 
   return (
     <div className="cds-page">
       <ModuleNavbar />
 
-      {/* HEADER */}
       <div className="cds-header">
         <div className="cds-left">
           <button className="back-btn" onClick={() => navigate("/document-sequence")}>
-            ←
+            ← Back
           </button>
           <h2>Create Document Sequence</h2>
         </div>
       </div>
 
-      {/* FORM */}
       <div className="cds-card">
         <div className="cds-grid">
 
           {/* MODULE */}
           <div className="cds-group">
             <label>* Module</label>
-            <ModuleSelect />
+            <select name="module" value={formData.module} onChange={handleChange}>
+              <option value="">- Select Module -</option>
+              {Object.entries(SOLUTION_MAP).map(([solution, mods]) => (
+                <optgroup key={solution} label={solution}>
+                  {mods.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
-          {/* BUSINESS ENTITY — cascades from Module */}
+          {/* BUSINESS ENTITY */}
           <div className="cds-group">
             <label>* Business Entity</label>
             <select
@@ -177,29 +179,46 @@ const CreateDocumentSequence = () => {
               <option value="">
                 {formData.module ? "- Select -" : "- Select Module first -"}
               </option>
-              {businessEntities.map((be) => (
-                <option key={be} value={be}>{be}</option>
+              {businessEntities.map((e) => (
+                <option key={e} value={e}>{e}</option>
               ))}
             </select>
           </div>
 
-          {/* SEQUENCE FORMAT */}
+          {/* ENTITY PREFIX */}
           <div className="cds-group">
-            <label>Sequence Format</label>
-            <select
-              name="sequenceFormat"
-              value={formData.sequenceFormat}
+            <label>* Entity Prefix</label>
+            <input
+              type="text"
+              name="entityPrefix"
+              value={formData.entityPrefix}
               onChange={handleChange}
-            >
-              <option value="dd/mm/yyyy">dd/mm/yyyy</option>
-              <option value="mm/dd/yyyy">mm/dd/yyyy</option>
-              <option value="yyyy/mm/dd">yyyy/mm/dd</option>
-            </select>
+              placeholder="e.g. IN, GIN, PO"
+            />
           </div>
 
-          {/* INCREMENT NO */}
+          {/* SEQUENCE DIGITS — NEW */}
           <div className="cds-group">
-            <label>Increment No</label>
+            <label>Sequence Digits</label>
+            <input
+              type="number"
+              name="sequenceDigits"
+              value={formData.sequenceDigits}
+              onChange={handleChange}
+              min={1}
+              max={10}
+              placeholder="e.g. 2 → 01, 4 → 0001"
+            />
+            {formData.sequenceDigits >= 1 && (
+              <small className="cds-preview-hint">
+                Running number will look like: <strong>{digitPreviewStr}</strong>
+              </small>
+            )}
+          </div>
+
+          {/* INCREMENT NO (starting number) */}
+          <div className="cds-group">
+            <label>Starting Sequence No</label>
             <input
               type="number"
               name="incrementNo"
@@ -209,8 +228,32 @@ const CreateDocumentSequence = () => {
             />
           </div>
 
-          {/* ── LIVE PREVIEW: Generated GIN No ── */}
-          {formData.module && formData.businessEntity && (
+          {/* DATE FRAGMENT */}
+          <div className="cds-group">
+            <label>
+              <input
+                type="checkbox"
+                name="useDateFragment"
+                checked={formData.useDateFragment}
+                onChange={handleChange}
+                style={{ marginRight: 8 }}
+              />
+              Use Date Fragment
+            </label>
+            <select
+              name="sequenceFormat"
+              value={formData.sequenceFormat}
+              onChange={handleChange}
+              disabled={!formData.useDateFragment}
+            >
+              <option value="dd/mm/yyyy">dd/mm/yyyy</option>
+              <option value="mm/dd/yyyy">mm/dd/yyyy</option>
+              <option value="yyyy/mm/dd">yyyy/mm/dd</option>
+            </select>
+          </div>
+
+          {/* PREVIEW */}
+          {formData.entityPrefix.trim() && (
             <div className="cds-group cds-preview-group">
               <label>Generated No (Preview)</label>
               <div className="cds-preview-box">
@@ -221,21 +264,25 @@ const CreateDocumentSequence = () => {
                 )}
               </div>
               <small className="cds-preview-hint">
-                Format: {formData.sequenceFormat === "dd/mm/yyyy" ? "DDMMYYYY" :
-                         formData.sequenceFormat === "mm/dd/yyyy" ? "MMDDYYYY" :
-                         "YYYYMMDD"} + increment
+                Format: Prefix
+                {formData.useDateFragment ? " + date" : ""}
+                {" + "}
+                {Math.max(1, Number(formData.sequenceDigits) || 2)}-digit sequence no
               </small>
             </div>
           )}
 
         </div>
 
-        {/* ACTIONS */}
         <div className="cds-actions">
           <button
             className="save-btn"
             onClick={handleSave}
-            disabled={!formData.module || !formData.businessEntity}
+            disabled={
+              !formData.module ||
+              !formData.businessEntity ||
+              !formData.entityPrefix.trim()
+            }
           >
             Save
           </button>
@@ -263,7 +310,6 @@ const CreateDocumentSequence = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

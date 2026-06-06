@@ -1,54 +1,72 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const CATEGORY_OPTIONS = [
-  "Raw Material",
-  "Semi Finished",
-  "Finished Goods",
-  "Consumables",
-  "Packing Material",
-  "Scrap",
-  "Service",
-];
-
 const CreateItemCategory = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     categoryName: "",
-    description: "",
-    status: "Active",
+    description:  "",
+    status:       "Active",
   });
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
+    if (!formData.categoryName.trim()) {
+      return alert("Category Name is required.");
+    }
     try {
       const res = await axios.post(`${API_URL}/api/create-item-category`, formData);
       alert(res.data.message);
-    } catch (err) { console.log(err); alert("Error Saving Item Category"); }
+      setFormData({ categoryName: "", description: "", status: "Active" });
+    } catch (err) {
+      console.log(err);
+      alert("Error Saving Item Category");
+    }
   };
 
   return (
     <div className="create-page">
       <ModuleNavbar />
-      <div className="create-header"><h1>Item Category</h1></div>
+
+      <div className="create-header">
+        <button className="back-btn" onClick={() => navigate("/item-category")}>
+          ← Back
+        </button>
+        <h1>Item Category</h1>
+      </div>
+
       <div className="create-container">
         <div className="create-title">Create Item Category</div>
+
         <div className="create-grid">
 
           <div className="form-group">
             <label>* Category Name</label>
-            <select name="categoryName" value={formData.categoryName} onChange={handleChange}>
-              <option value="">- Select -</option>
-              {CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <input
+              type="text"
+              name="categoryName"
+              value={formData.categoryName}
+              onChange={handleChange}
+              placeholder="e.g. TMT, Iron, Cement"
+            />
           </div>
 
           <div className="form-group">
             <label>Description</label>
-            <input type="text" name="description" value={formData.description} onChange={handleChange} />
+            <input
+              type="text"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Optional description"
+            />
           </div>
 
           <div className="form-group">
@@ -57,10 +75,13 @@ const CreateItemCategory = () => {
           </div>
 
         </div>
+
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
           <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn">Cancel</button>
+          <button className="cancel-btn" onClick={() => navigate("/item-category")}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>

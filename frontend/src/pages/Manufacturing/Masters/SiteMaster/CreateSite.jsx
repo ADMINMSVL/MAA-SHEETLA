@@ -4,87 +4,54 @@ import { useNavigate } from "react-router-dom";
 import "../PartyMaster/CreateParty.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
-import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../module/moduleBusinessMap";
 
 const INDIAN_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
-  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
-  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu",
-  "Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal",
-  "Delhi","Jammu & Kashmir","Ladakh","Puducherry","Chandigarh",
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Jammu & Kashmir", "Ladakh", "Puducherry", "Chandigarh",
 ];
+
+const initialFormData = {
+  siteCode: "",
+  siteName: "",
+  address: "",
+  city: "",
+  state: "",
+  pinCode: "",
+  contactPerson: "",
+  mobile: "",
+  gstNo: "",
+  status: "Active",
+};
 
 const CreateSite = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    module:         "",
-    businessEntity: "",
-    siteCode:       "",
-    siteName:       "",
-    address:        "",
-    city:           "",
-    state:          "",
-    pinCode:        "",
-    contactPerson:  "",
-    mobile:         "",
-    gstNo:          "",
-    status:         "Active",
-  });
-
+  const [formData, setFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(false);
 
-  /* Business entities cascade from selected module */
-  const businessEntities = formData.module
-    ? MODULE_BUSINESS_MAP[formData.module] || []
-    : [];
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "module") {
-      setFormData({ ...formData, module: value, businessEntity: "" });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.module || !formData.businessEntity) {
-      return alert("Module and Business Entity are required.");
-    }
     if (!formData.siteCode.trim() || !formData.siteName.trim()) {
       return alert("Site Code and Site Name are required.");
     }
+
     try {
       setLoading(true);
       const res = await axios.post(`${API_URL}/api/create-site`, formData);
       alert(res.data.message);
-      setFormData({
-        module: "", businessEntity: "", siteCode: "", siteName: "",
-        address: "", city: "", state: "", pinCode: "",
-        contactPerson: "", mobile: "", gstNo: "", status: "Active",
-      });
+      setFormData(initialFormData);
     } catch (err) {
       alert(err.response?.data?.message || "Error Saving Site");
     } finally {
       setLoading(false);
     }
   };
-
-  /* Grouped module selector */
-  const ModuleSelect = () => (
-    <select name="module" value={formData.module} onChange={handleChange}>
-      <option value="">- Select Module -</option>
-      {Object.entries(SOLUTION_MAP).map(([solution, mods]) => (
-        <optgroup key={solution} label={`── ${solution} ──`}>
-          {mods.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  );
 
   return (
     <div className="create-page">
@@ -98,32 +65,6 @@ const CreateSite = () => {
         <div className="create-title">Create Site</div>
 
         <div className="create-grid">
-
-          {/* MODULE */}
-          <div className="form-group">
-            <label>* Module</label>
-            <ModuleSelect />
-          </div>
-
-          {/* BUSINESS ENTITY — cascades from Module */}
-          <div className="form-group">
-            <label>* Business Entity</label>
-            <select
-              name="businessEntity"
-              value={formData.businessEntity}
-              onChange={handleChange}
-              disabled={!formData.module}
-            >
-              <option value="">
-                {formData.module ? "- Select Business Entity -" : "- Select Module first -"}
-              </option>
-              {businessEntities.map((be) => (
-                <option key={be} value={be}>{be}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* SITE CODE */}
           <div className="form-group">
             <label>* Site Code</label>
             <input
@@ -135,7 +76,6 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* SITE NAME */}
           <div className="form-group">
             <label>* Site Name</label>
             <input
@@ -147,7 +87,6 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* CITY */}
           <div className="form-group">
             <label>City</label>
             <input
@@ -159,18 +98,16 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* STATE */}
           <div className="form-group">
             <label>State</label>
             <select name="state" value={formData.state} onChange={handleChange}>
               <option value="">- Select State -</option>
-              {INDIAN_STATES.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {INDIAN_STATES.map((state) => (
+                <option key={state} value={state}>{state}</option>
               ))}
             </select>
           </div>
 
-          {/* PIN CODE */}
           <div className="form-group">
             <label>Pin Code</label>
             <input
@@ -183,7 +120,6 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* GST NO */}
           <div className="form-group">
             <label>GST No</label>
             <input
@@ -196,7 +132,6 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* CONTACT PERSON */}
           <div className="form-group">
             <label>Contact Person</label>
             <input
@@ -207,7 +142,6 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* MOBILE */}
           <div className="form-group">
             <label>Mobile</label>
             <input
@@ -220,13 +154,11 @@ const CreateSite = () => {
             />
           </div>
 
-          {/* STATUS */}
           <div className="form-group">
             <label>Status</label>
             <input type="text" name="status" value={formData.status} readOnly />
           </div>
 
-          {/* ADDRESS — full width */}
           <div className="form-group" style={{ gridColumn: "span 4" }}>
             <label>Address</label>
             <input
@@ -237,7 +169,6 @@ const CreateSite = () => {
               placeholder="Full address"
             />
           </div>
-
         </div>
 
         <div className="action-buttons">

@@ -34,6 +34,9 @@ const DocumentSequence = () => {
     setTransactionCategory] =
     useState("");
 
+  const [entityPrefix, setEntityPrefix] =
+    useState("");
+
   const [transactionCode,
     setTransactionCode] =
     useState("");
@@ -102,6 +105,16 @@ const DocumentSequence = () => {
               transactionCategory.toLowerCase()
             );
 
+        const prefixMatch =
+
+          entityPrefix === "" ||
+
+          item.entityPrefix
+            ?.toLowerCase()
+            .includes(
+              entityPrefix.toLowerCase()
+            );
+
         const codeMatch =
 
           transactionCode === "" ||
@@ -117,6 +130,7 @@ const DocumentSequence = () => {
           moduleMatch &&
           businessMatch &&
           categoryMatch &&
+          prefixMatch &&
           codeMatch
 
         );
@@ -135,6 +149,8 @@ const DocumentSequence = () => {
     setBusinessEntity("");
 
     setTransactionCategory("");
+
+    setEntityPrefix("");
 
     setTransactionCode("");
 
@@ -309,6 +325,26 @@ const DocumentSequence = () => {
           <div className="form-group">
 
             <label>
+              Entity Prefix
+            </label>
+
+            <input
+              type="text"
+              value={entityPrefix}
+              onChange={(e)=>
+                setEntityPrefix(
+                  e.target.value
+                )
+              }
+              placeholder="Enter Prefix"
+            />
+
+          </div>
+
+          {/* TRANSACTION CODE */}
+          <div className="form-group">
+
+            <label>
               Transaction Code
             </label>
 
@@ -370,7 +406,15 @@ const DocumentSequence = () => {
               </th>
 
               <th>
+                Entity Prefix
+              </th>
+
+              <th>
                 Sequence Format
+              </th>
+
+              <th>
+                Date Fragment
               </th>
 
               <th>
@@ -414,7 +458,19 @@ const DocumentSequence = () => {
 
                       <td>
                         {
+                          item.entityPrefix || "-"
+                        }
+                      </td>
+
+                      <td>
+                        {
                           item.sequenceFormat
+                        }
+                      </td>
+
+                      <td>
+                        {
+                          item.useDateFragment === false ? "No" : "Yes"
                         }
                       </td>
 
@@ -440,7 +496,7 @@ const DocumentSequence = () => {
                 <tr>
 
                   <td
-                    colSpan="6"
+                    colSpan="8"
                     className="no-data"
                   >
                     No Data Found

@@ -1,16 +1,39 @@
 const mongoose = require("mongoose");
 
+const uomDetailSchema = new mongoose.Schema({
+  bUom: String,
+  bQty: Number,
+  wUom: String,
+  wQty: Number,
+  isBuom: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const itemSchema = new mongoose.Schema(
   {
-    itemCode: { type: String },
-    itemName: { type: String },
-    category: { type: String },
-    uom: { type: String },
-    hsn: { type: String },
-    gstPercent: { type: Number },
-    grade: { type: String },
-    size: { type: String },
-    status: { type: String, default: "Active" },
+    itemCode: String,
+    itemName: String,
+    itemGroup: String,
+    itemTypes: String,
+    category: String,
+
+    // Header UOM
+    uom: String,
+
+    // UOM Detail Grid
+    uomDetails: [uomDetailSchema],
+
+    hsn: String,
+    gstPercent: Number,
+    grade: String,
+    size: String,
+
+    status: {
+      type: String,
+      default: "Active",
+    },
   },
   { timestamps: true }
 );

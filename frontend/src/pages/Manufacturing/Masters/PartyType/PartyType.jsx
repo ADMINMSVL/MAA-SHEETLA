@@ -5,15 +5,6 @@ import "../PartyMaster/PartyMaster.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const PARTY_TYPES = [
-  "Customer",
-  "Supplier",
-  "Customer + Supplier",
-  "Transporter",
-  "Job Worker",
-  "Service Provider",
-];
-
 const PartyType = () => {
   const navigate = useNavigate();
 
@@ -24,6 +15,14 @@ const PartyType = () => {
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({ partyType: "", description: "", status: "" });
+
+  const partyTypeOptions = Array.from(
+    new Set(
+      partyTypes
+        .map((item) => item.partyType)
+        .filter((value) => value && value.trim())
+    )
+  );
 
   const fetchPartyTypes = async () => {
     try {
@@ -84,7 +83,7 @@ const PartyType = () => {
             <label>Party Type</label>
             <select value={partyType} onChange={(e) => setPartyType(e.target.value)}>
               <option value="">- Select -</option>
-              {PARTY_TYPES.map((t) => <option key={t}>{t}</option>)}
+              {partyTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -125,7 +124,8 @@ const PartyType = () => {
                           value={editData.partyType}
                           onChange={(e) => setEditData({ ...editData, partyType: e.target.value })}
                         >
-                          {PARTY_TYPES.map((t) => <option key={t}>{t}</option>)}
+                          <option value="">- Select -</option>
+                          {partyTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                       ) : item.partyType}
                     </td>

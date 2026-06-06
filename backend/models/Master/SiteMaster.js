@@ -2,18 +2,6 @@ const mongoose = require("mongoose");
 
 const siteMasterSchema = new mongoose.Schema(
   {
-    /* ── CLASSIFICATION ── */
-    module: {
-      type: String,
-      required: true,
-    },
-
-    businessEntity: {
-      type: String,
-      required: true,
-    },
-
-    /* ── IDENTITY ── */
     siteCode: {
       type: String,
       required: true,
@@ -25,7 +13,6 @@ const siteMasterSchema = new mongoose.Schema(
       required: true,
     },
 
-    /* ── ADDRESS ── */
     address: {
       type: String,
     },
@@ -42,7 +29,6 @@ const siteMasterSchema = new mongoose.Schema(
       type: String,
     },
 
-    /* ── CONTACT ── */
     contactPerson: {
       type: String,
     },
@@ -51,12 +37,10 @@ const siteMasterSchema = new mongoose.Schema(
       type: String,
     },
 
-    /* ── TAX ── */
     gstNo: {
       type: String,
     },
 
-    /* ── LIFECYCLE ── */
     status: {
       type: String,
       default: "Active",

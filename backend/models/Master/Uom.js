@@ -2,13 +2,23 @@ const mongoose = require("mongoose");
 
 const uomSchema = new mongoose.Schema(
   {
-    stockUOM: { type: String },
-    purchaseUOM: { type: String },
-    salesUOM: { type: String },
-    conversionFactor: { type: Number },
-    status: { type: String, default: "Active" },
+    uomName: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      uppercase: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 module.exports = mongoose.model("UOM", uomSchema);

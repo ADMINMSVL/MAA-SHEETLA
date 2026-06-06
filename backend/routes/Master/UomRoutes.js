@@ -1,59 +1,77 @@
 const express = require("express");
 const router = express.Router();
+
 const UOM = require("../../models/Master/Uom");
 
 /* CREATE */
 router.post("/create-uom", async (req, res) => {
   try {
     const uom = new UOM(req.body);
+
     await uom.save();
-    res.status(201).json({ success: true, message: "UOM Saved Successfully", data: uom });
+
+    res.status(201).json({
+      success: true,
+      message: "UOM Saved Successfully",
+      data: uom,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 });
 
 /* GET ALL */
 router.get("/uoms", async (req, res) => {
   try {
-    const data = await UOM.find().sort({ createdAt: -1 });
-    res.status(200).json(data);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    const data = await UOM.find()
+      .sort({ createdAt: -1 });
 
-/* SEARCH */
-router.get("/uoms/search", async (req, res) => {
-  try {
-    const { stockUOM, status } = req.query;
-    let query = {};
-    if (stockUOM) query.stockUOM = stockUOM;
-    if (status) query.status = status;
-    const data = await UOM.find(query);
-    res.status(200).json(data);
+    res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 });
 
 /* UPDATE */
 router.put("/uom/:id", async (req, res) => {
   try {
-    const updated = await UOM.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, message: "Updated Successfully", data: updated });
+    const updated =
+      await UOM.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true }
+      );
+
+    res.json({
+      success: true,
+      data: updated,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 });
 
 /* DELETE */
 router.delete("/uom/:id", async (req, res) => {
   try {
-    await UOM.findByIdAndDelete(req.params.id);
-    res.json({ message: "Deleted Successfully" });
+    await UOM.findByIdAndDelete(
+      req.params.id
+    );
+
+    res.json({
+      message: "Deleted Successfully",
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: error.message,
+    });
   }
 });
 

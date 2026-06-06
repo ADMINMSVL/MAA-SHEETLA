@@ -1,70 +1,160 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../PartyMaster/CreateParty.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-/*
-  Item Master — Create Page
-  ─────────────────────────
-  - UOM dropdown is NOT hardcoded.
-  - It fetches saved UOMs from the UOM Master (stockUOM field).
-  - So whatever was entered in UOM Master appears as options here.
-*/
+/* ── Generic Typeahead Input ───────────────────────────────────────── */
+const TypeAhead = ({ value, onChange, onSelect, suggestions, show, setShow, placeholder, inputRef }) => (
+  <div style={{ position: "relative" }} ref={inputRef}>
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => value && suggestions.length > 0 && setShow(true)}
+      placeholder={placeholder}
+      autoComplete="off"
+    />
+    {show && suggestions.length > 0 && (
+      <ul className="suggestion-list">
+        {suggestions.map((s) => (
+          <li key={s} onMouseDown={() => onSelect(s)}>
+            {s}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
 
 const CreateItem = () => {
   const navigate = useNavigate();
 
+  /* ── Master data ──────────────────────────────────────────────────── */
+  const [categoryOptions, setCategoryOptions] = useState([]); // [{categoryName, ...}]
+  const [allGroupOptions, setAllGroupOptions]  = useState([]); // [{itemTypes(=cat), itemGroup, ...}]
+  const [uomOptions,      setUomOptions]       = useState([]);
+  const [uomDetails,      setUomDetails]       = useState([]);
+
+  /* ── Form state ────────────────────────────────────────────────────── */
   const [formData, setFormData] = useState({
-    itemCode: "",
-    itemName: "",
-    category: "",
-    uom: "",
-    hsn: "",
+    itemCode:   "",
+    itemName:   "",
+    itemGroup:  "",
+    itemTypes:  "",   // item type (Raw Material etc.)
+    category:   "",   // selected category name
+    uom:        "",
+    hsn:        "",
     gstPercent: "",
-    grade: "",
-    size: "",
-    status: "Active",
+    grade:      "",
+    size:       "",
+    status:     "Active",
   });
 
-  /* UOMs loaded from DB */
-  const [uomOptions, setUomOptions] = useState([]);
+  /* ── Category typeahead state ─────────────────────────────────────── */
+  const [catInput,   setCatInput]   = useState("");
+  const [catSug,     setCatSug]     = useState([]);
+  const [showCatSug, setShowCatSug] = useState(false);
+  const catRef = useRef(null);
 
+  /* ── Filtered group options (depend on selected category) ─────────── */
+  const [filteredGroups, setFilteredGroups] = useState([]);
+
+  /* ── Fetch all master data on mount ───────────────────────────────── */
   useEffect(() => {
-    const fetchUOMs = async () => {
+    const fetchAll = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/uoms`);
-        /* Show only Active UOMs, use stockUOM as the display + value */
-        const active = res.data.filter((u) => u.status === "Active");
-        setUomOptions(active);
+        const [catRes, groupRes, uomRes] = await Promise.all([
+          axios.get(`${API_URL}/api/item-categories`),
+          axios.get(`${API_URL}/api/item-types`),
+          axios.get(`${API_URL}/api/uoms`),
+        ]);
+        setCategoryOptions(catRes.data.filter((c) => c.status === "Active"));
+        setAllGroupOptions(groupRes.data.filter((g) => g.status === "Active"));
+        setUomOptions(uomRes.data.filter((u) => u.status === "Active"));
       } catch (err) {
-        console.log("Error loading UOMs:", err);
+        console.log("Error loading master data:", err);
       }
     };
-    fetchUOMs();
+    fetchAll();
   }, []);
 
+  /* Close typeahead on outside click */
+  useEffect(() => {
+    const handler = (e) => {
+      if (catRef.current && !catRef.current.contains(e.target)) setShowCatSug(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  /* ── Category typeahead handlers ──────────────────────────────────── */
+  const handleCatInput = (val) => {
+    setCatInput(val);
+
+    /* Reset category and group when user clears / changes */
+    setFormData((prev) => ({ ...prev, category: "", itemGroup: "" }));
+    setFilteredGroups([]);
+
+    if (val.trim()) {
+      const lower = val.toLowerCase();
+      const matches = categoryOptions
+        .map((c) => c.categoryName)
+        .filter((n) => n?.toLowerCase().includes(lower));
+      setCatSug(matches);
+      setShowCatSug(matches.length > 0);
+    } else {
+      setCatSug([]);
+      setShowCatSug(false);
+    }
+  };
+
+  const handleCatSelect = (catName) => {
+    setCatInput(catName);
+    setShowCatSug(false);
+
+    /* Filter groups whose itemTypes (= category name) matches */
+    const groups = allGroupOptions
+      .filter((g) => g.itemTypes?.toLowerCase() === catName.toLowerCase())
+      .map((g) => g.itemGroup)
+      .filter(Boolean);
+
+    const uniqueGroups = [...new Set(groups)].sort();
+    setFilteredGroups(uniqueGroups);
+    setFormData((prev) => ({ ...prev, category: catName, itemGroup: "" }));
+  };
+
+  /* ── Generic change ───────────────────────────────────────────────── */
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  /* ── Submit ───────────────────────────────────────────────────────── */
   const handleSubmit = async () => {
     if (!formData.itemCode.trim() || !formData.itemName.trim()) {
       return alert("Item Code and Item Name are required.");
     }
+    if (!formData.category) return alert("Category is required.");
+    if (!formData.uom)      return alert("UOM is required.");
+
     try {
-      const res = await axios.post(`${API_URL}/api/create-item`, formData);
+      const res = await axios.post(`${API_URL}/api/create-item`, { ...formData, uomDetails });
       alert(res.data.message);
       setFormData({
-        itemCode: "", itemName: "", category: "", uom: "",
-        hsn: "", gstPercent: "", grade: "", size: "", status: "Active",
+        itemCode: "", itemName: "", itemGroup: "", itemTypes: "",
+        category: "", uom: "", hsn: "", gstPercent: "",
+        grade: "", size: "", status: "Active",
       });
+      setCatInput("");
+      setFilteredGroups([]);
+      setUomDetails([]);
     } catch (err) {
       console.log(err);
       alert("Error Saving Item");
     }
   };
 
+  /* ─────────────────────────────────────────────────────────────────── */
   return (
     <div className="create-page">
       <ModuleNavbar />
@@ -102,25 +192,94 @@ const CreateItem = () => {
             />
           </div>
 
-          {/* CATEGORY */}
+          {/* CATEGORY — typeahead from DB ─────────────────────────────── */}
           <div className="form-group">
-            <label>Category</label>
-            <select name="category" value={formData.category} onChange={handleChange}>
+            <label>* Category</label>
+            <TypeAhead
+              value={catInput}
+              onChange={handleCatInput}
+              onSelect={handleCatSelect}
+              suggestions={catSug}
+              show={showCatSug}
+              setShow={setShowCatSug}
+              placeholder="Type category name…"
+              inputRef={catRef}
+            />
+            {formData.category && (
+              <span style={{ fontSize: "11px", color: "#2e7d32", marginTop: "4px" }}>
+                ✓ {formData.category}
+              </span>
+            )}
+          </div>
+
+          {/* ITEM GROUP — filtered by selected category ──────────────── */}
+          <div className="form-group">
+            <label>Item Group</label>
+            <select
+              name="itemGroup"
+              value={formData.itemGroup}
+              onChange={handleChange}
+              disabled={!formData.category}
+            >
+              <option value="">
+                {formData.category
+                  ? filteredGroups.length > 0
+                    ? "- Select Group -"
+                    : "No groups for this category"
+                  : "Select a Category first"}
+              </option>
+              {filteredGroups.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+            {formData.category && filteredGroups.length === 0 && (
+              <span style={{ fontSize: "11px", color: "#e55", marginTop: "4px" }}>
+                No item groups found for "{formData.category}". Add them in Masters → Item Group.
+              </span>
+            )}
+          </div>
+
+          {/* ITEM TYPES */}
+          <div className="form-group">
+            <label>Item Types</label>
+            <select name="itemTypes" value={formData.itemTypes} onChange={handleChange}>
               <option value="">- Select -</option>
-              <option>Raw Material</option>
-              <option>Semi Finished</option>
-              <option>Finished Goods</option>
-              <option>Consumables</option>
-              <option>Packing Material</option>
-              <option>Scrap</option>
-              <option>Service</option>
+              <option value="Raw Material">Raw Material</option>
+              <option value="Semi Finished">Semi Finished</option>
+              <option value="Finished Goods">Finished Goods</option>
+              <option value="Consumables">Consumables</option>
+              <option value="Packing Material">Packing Material</option>
+              <option value="Scrap">Scrap</option>
+              <option value="Service">Service</option>
             </select>
           </div>
 
-          {/* UOM — loaded from UOM Master DB */}
+          {/* HSN */}
           <div className="form-group">
-            <label>UOM</label>
-            <select name="uom" value={formData.uom} onChange={handleChange}>
+            <label>HSN</label>
+            <input
+              type="text"
+              name="hsn"
+              value={formData.hsn}
+              onChange={handleChange}
+              placeholder="e.g. 72141090"
+            />
+          </div>
+
+          {/* UOM */}
+          <div className="form-group">
+            <label>* UOM</label>
+            <select
+              name="uom"
+              value={formData.uom}
+              onChange={(e) => {
+                const selectedUom = e.target.value;
+                setFormData({ ...formData, uom: selectedUom });
+                setUomDetails([
+                  { bUom: selectedUom, bQty: 1, wUom: selectedUom, wQty: 1, isBuom: true },
+                ]);
+              }}
+            >
               <option value="">- Select -</option>
               {uomOptions.length > 0 ? (
                 uomOptions.map((u) => (
@@ -142,29 +301,16 @@ const CreateItem = () => {
             )}
           </div>
 
-          {/* HSN */}
-          <div className="form-group">
-            <label>HSN</label>
-            <input
-              type="text"
-              name="hsn"
-              value={formData.hsn}
-              onChange={handleChange}
-              placeholder="e.g. 72141090"
-            />
-          </div>
-
           {/* GST % */}
           <div className="form-group">
             <label>GST %</label>
-            <select name="gstPercent" value={formData.gstPercent} onChange={handleChange}>
-              <option value="">- Select -</option>
-              <option value="0">0%</option>
-              <option value="5">5%</option>
-              <option value="12">12%</option>
-              <option value="18">18%</option>
-              <option value="28">28%</option>
-            </select>
+            <input
+              type="number"
+              name="gstPercent"
+              value={formData.gstPercent}
+              onChange={handleChange}
+              placeholder="e.g. 18"
+            />
           </div>
 
           {/* GRADE */}
@@ -187,17 +333,121 @@ const CreateItem = () => {
               name="size"
               value={formData.size}
               onChange={handleChange}
-              placeholder="e.g. 8, 10, 12"
+              placeholder="e.g. 12mm"
             />
           </div>
 
-          {/* STATUS */}
-          <div className="form-group">
-            <label>Status</label>
-            <input type="text" name="status" value={formData.status} readOnly />
-          </div>
+        </div>{/* /create-grid */}
+         {/* UOM DETAIL SECTION */}
+        {/* <div style={{ marginTop: "20px" }}>
+          <h3>UOM Detailed Section</h3>
 
-        </div>
+          {/* FIX 6: guard — must select Base UOM before adding rows */}
+          {/* <button
+            type="button"
+            onClick={() => {
+              if (!formData.uom) {
+                alert("Select Base UOM first.");
+                return;
+              }
+              setUomDetails([
+                ...uomDetails,
+                {
+                  bUom: formData.uom,
+                  bQty: 1,
+                  wUom: "",
+                  wQty: "",
+                  isBuom: false,
+                },
+              ]);
+            }}
+          >
+            + Add UOM
+          </button>
+
+          <table
+            border="1"
+            width="100%"
+            style={{ marginTop: "10px", borderCollapse: "collapse" }}
+          >
+            <thead>
+              <tr>
+                <th>SL NO</th>
+                <th>B.UOM</th>
+                <th>QTY</th>
+                <th>W.UOM</th>
+                <th>QTY</th>
+                <th>IS BUOM</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {uomDetails.map((row, index) => (
+                <tr key={index}>
+                  <td>{index + 1}</td>
+                  <td>{row.bUom}</td>
+
+                  <td>
+                    <input
+                      type="number"
+                      value={row.bQty}
+                      onChange={(e) => {
+                        const temp = [...uomDetails];
+                        temp[index] = { ...temp[index], bQty: e.target.value };
+                        setUomDetails(temp);
+                      }}
+                    />
+                  </td>
+
+                  <td>
+                    <select
+                      value={row.wUom}
+                      disabled={row.isBuom}
+                      onChange={(e) => {
+                        const temp = [...uomDetails];
+                        temp[index] = { ...temp[index], wUom: e.target.value };
+                        setUomDetails(temp);
+                      }}
+                    >
+                      <option value="">Select</option>
+                      {uomOptions.map((u) => (
+                        <option key={u._id} value={u.stockUOM}>
+                          {u.stockUOM}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td>
+                    <input
+                      type="number"
+                      value={row.wQty}
+                      onChange={(e) => {
+                        const temp = [...uomDetails];
+                        temp[index] = { ...temp[index], wQty: e.target.value };
+                        setUomDetails(temp);
+                      }}
+                    />
+                  </td>
+
+                  <td>{row.isBuom ? "YES" : "NO"}</td>
+
+                  <td>
+                    {!row.isBuom && (
+                      <button
+                        onClick={() =>
+                          setUomDetails(uomDetails.filter((_, i) => i !== index))
+                        }
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div> */} 
 
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>

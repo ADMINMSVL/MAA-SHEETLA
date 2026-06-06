@@ -33,6 +33,7 @@ import SalesContractForm from "../pages/Manufacturing/Sales/SalesContractForm/Sa
 // MASTERS — batch 1
 import PartyMaster   from "../pages/Manufacturing/Masters/PartyMaster/PartyMaster";
 import CreateParty   from "../pages/Manufacturing/Masters/PartyMaster/CreateParty";
+import PartyDetail   from "../pages/Manufacturing/Masters/PartyMaster/PartyDetail";
 import ItemMaster    from "../pages/Manufacturing/Masters/ItemMaster/ItemMaster";
 import CreateItem    from "../pages/Manufacturing/Masters/ItemMaster/CreateItem";
 import UOMMaster     from "../pages/Manufacturing/Masters/UOMMaster/UOMMaster";
@@ -45,14 +46,17 @@ import CreateSite from "../pages/Manufacturing/Masters/SiteMaster/CreateSite";
 // MASTERS — batch 2
 import ItemCategory        from "../pages/Manufacturing/Masters/ItemCategory/Itemcategory";
 import CreateItemCategory  from "../pages/Manufacturing/Masters/ItemCategory/CreateItemCategory";
-import ItemType            from "../pages/Manufacturing/Masters/ItemType/ItemType";
-import CreateItemType      from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
+// import ItemGroup            from "../pages/Manufacturing/Masters/ItemType/ItemGroup";
+import ItemGroup from "../pages/Manufacturing/Masters/ItemType/ItemType";
+// import CreateItemGroup      from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
+import CreateItemGroup from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
 import TaxDetails          from "../pages/Manufacturing/Masters/TaxDetails/TaxDetails";
 import CreateTaxDetails    from "../pages/Manufacturing/Masters/TaxDetails/CreateTaxDetails";
 import ProductionDetails   from "../pages/Manufacturing/Masters/ProductionDetails/ProductionDetails";
 import CreateProductionDetails from "../pages/Manufacturing/Masters/ProductionDetails/CreateProductionDetails";
 import SchemeMaster        from "../pages/Manufacturing/Masters/SchemeMaster/SchemeMaster";
 import CreateSchemeMaster  from "../pages/Manufacturing/Masters/SchemeMaster/CreateSchemeMaster";
+import ItemDetail from "../pages/Manufacturing/Masters/ItemMaster/ItemDetail";
 
 const AppRoutes = () => {
   return (
@@ -101,6 +105,7 @@ const AppRoutes = () => {
       {/* MASTERS — batch 1 */}
       <Route path="/party-master"      element={<PartyMaster />} />
       <Route path="/create-party"      element={<CreateParty />} />
+      <Route path="/party-detail/:id"  element={<PartyDetail />} />
       <Route path="/item-master"       element={<ItemMaster />} />
       <Route path="/create-item"       element={<CreateItem />} />
       <Route path="/uom-master"        element={<UOMMaster />} />
@@ -111,8 +116,8 @@ const AppRoutes = () => {
       {/* MASTERS — batch 2 */}
       <Route path="/item-category"            element={<ItemCategory />} />
       <Route path="/create-item-category"     element={<CreateItemCategory />} />
-      <Route path="/item-type"                element={<ItemType />} />
-      <Route path="/create-item-type"         element={<CreateItemType />} />
+      <Route path="/item-type"                element={<ItemGroup />} />
+      <Route path="/create-item-type"         element={<CreateItemGroup />} />
       <Route path="/tax-details"              element={<TaxDetails />} />
       <Route path="/create-tax-details"       element={<CreateTaxDetails />} />
       <Route path="/production-details"       element={<ProductionDetails />} />
@@ -121,7 +126,7 @@ const AppRoutes = () => {
       <Route path="/create-scheme"            element={<CreateSchemeMaster />} />
       <Route path="/site-master"               element={<SiteMaster />} />
       <Route path="/create-site"               element={<CreateSite />} />
-
+      <Route path="/item-detail/:id"        element={<ItemDetail />} />
     </Routes>
   );
 };

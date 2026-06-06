@@ -1,154 +1,229 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-/*
-  OFFSET TABLE — mirrors backend exactly
-  SIZE | RAIPUR  | RAIPUR BASIC | FOR 12MM
-   8   | +2000   | +2000        | +3540
-  10   | 0       | 0            | +2360
-  12   | 0       | 0            | 0
-  16   | 0       | 0            | +1180
-  20   | 0       | 0            | +1180
-  25   | 0       | 0            | +1180
-*/
-const OFFSETS = {
-  size8:  { raipur: 2000, raipurBasic: 2000, for12mm: 3540 },
-  size10: { raipur: 0,    raipurBasic: 0,    for12mm: 2360 },
-  size12: { raipur: 0,    raipurBasic: 0,    for12mm: 0    },
-  size16: { raipur: 0,    raipurBasic: 0,    for12mm: 1180 },
-  size20: { raipur: 0,    raipurBasic: 0,    for12mm: 1180 },
-  size25: { raipur: 0,    raipurBasic: 0,    for12mm: 1180 },
-};
+const today = new Date().toISOString().split("T")[0];
 
-const SIZES = [
-  { key: "size8",  label: "8"  },
-  { key: "size10", label: "10" },
-  { key: "size12", label: "12" },
-  { key: "size16", label: "16" },
-  { key: "size20", label: "20" },
-  { key: "size25", label: "25" },
-];
+const makeRow = () => ({
+  item: "",
+  logicAmount: 0,
+  startDate: today,
+  endDate: "",
+  editing: true,
+});
 
-/* Format: if offset = 0 show "X", else show "X + 2000" */
-const formatCell = (basicPrice, offset) => {
-  if (!basicPrice || isNaN(Number(basicPrice))) {
-    return offset === 0 ? "X" : `X + ${offset.toLocaleString("en-IN")}`;
-  }
-  const X = Number(basicPrice);
-  const computed = X + offset;
-  const label = offset === 0 ? `X` : `X + ${offset.toLocaleString("en-IN")}`;
-  return `${label}  =  ₹ ${computed.toLocaleString("en-IN")}`;
-};
+const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 
 const CreateSchemeMaster = () => {
-  const [formData, setFormData] = useState({
+  const [schemeInfo, setSchemeInfo] = useState({
     schemeName: "",
-    basicPrice: "",
-    status: "Active",
+    description: "",
   });
+  const [rows, setRows] = useState([makeRow()]);
+  const [itemTypes, setItemTypes] = useState([]);
+  const [saving, setSaving] = useState(false);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  useEffect(() => {
+    const fetchItemTypes = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/item-types`);
+        setItemTypes(res.data.filter((item) => item.status === "Active"));
+      } catch (err) {
+        console.log("Error loading item types:", err);
+      }
+    };
 
-  const handleSubmit = async () => {
-    if (!formData.schemeName || !formData.basicPrice) {
-      return alert("Scheme Name and Basic Price are required.");
-    }
-    try {
-      const res = await axios.post(`${API_URL}/api/create-scheme`, formData);
-      alert(res.data.message);
-    } catch (err) {
-      console.log(err);
-      alert("Error Saving Scheme");
-    }
+    fetchItemTypes();
+  }, []);
+
+  const handleSchemeChange = (e) => {
+    setSchemeInfo({ ...schemeInfo, [e.target.name]: e.target.value });
   };
 
-  const X = Number(formData.basicPrice);
-  const hasBasic = formData.basicPrice !== "" && !isNaN(X);
+  const updateRow = (idx, field, value) => {
+    setRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const toggleEdit = (idx) => {
+    setRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, editing: !row.editing } : row))
+    );
+  };
+
+  const addRow = () => {
+    setRows((prev) => [...prev, makeRow()]);
+  };
+
+  const deleteRow = (idx) => {
+    setRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async () => {
+    if (!schemeInfo.schemeName.trim()) {
+      return alert("Scheme Name is required.");
+    }
+
+    const invalid = rows.some((row) => !row.item.trim() || !row.startDate);
+    if (invalid) {
+      return alert("Item and Start Date are required in every row.");
+    }
+
+    try {
+      setSaving(true);
+      for (const row of rows) {
+        await axios.post(`${API_URL}/api/create-scheme`, {
+          schemeName: schemeInfo.schemeName,
+          description: schemeInfo.description,
+          item: row.item,
+          logicAmount: row.logicAmount,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          status: "Active",
+        });
+      }
+      alert("Scheme Saved Successfully");
+      setSchemeInfo({ schemeName: "", description: "" });
+      setRows([makeRow()]);
+    } catch (err) {
+      console.log(err);
+      alert(err.response?.data?.message || "Error Saving Scheme");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="create-page">
       <ModuleNavbar />
       <div className="create-header"><h1>Scheme Master</h1></div>
+
       <div className="create-container">
         <div className="create-title">Create Scheme</div>
 
-        {/* BASIC FIELDS */}
-        <div className="basic-info">
-
+        <div className="search-grid" style={{ padding: "18px", gridTemplateColumns: "repeat(2, 1fr)" }}>
           <div className="form-group">
             <label>* Scheme Name</label>
             <input
               type="text"
               name="schemeName"
-              value={formData.schemeName}
-              onChange={handleChange}
-              placeholder="e.g. Raipur Scheme June 2026"
+              value={schemeInfo.schemeName}
+              onChange={handleSchemeChange}
+              placeholder="e.g. Raipur"
             />
           </div>
 
           <div className="form-group">
-            <label>* Basic Price (X) ₹</label>
+            <label>Description</label>
             <input
-              type="number"
-              name="basicPrice"
-              value={formData.basicPrice}
-              onChange={handleChange}
-              placeholder="Enter base price"
+              type="text"
+              name="description"
+              value={schemeInfo.description}
+              onChange={handleSchemeChange}
+              placeholder="Optional description"
             />
-            {hasBasic && (
-              <span className="computed-value">
-                BASIC (X) = ₹ {X.toLocaleString("en-IN")}
-              </span>
-            )}
           </div>
-
-          <div className="form-group">
-            <label>Status</label>
-            <input type="text" name="status" value={formData.status} readOnly />
-          </div>
-
         </div>
 
-        {/* LIVE PRICE MATRIX PREVIEW */}
         <div className="scheme-table-wrap">
-          <div style={{ fontSize: "14px", fontWeight: "600", color: "#444", marginBottom: "10px" }}>
-            Price Matrix Preview
-            {hasBasic && (
-              <span style={{ fontWeight: "400", color: "#43bfe7", marginLeft: "10px" }}>
-                (BASIC X = ₹ {X.toLocaleString("en-IN")})
-              </span>
-            )}
-          </div>
+          <div className="scheme-table-heading">Scheme Item Rows</div>
 
-          <table className="scheme-matrix">
-            <thead>
-              <tr>
-                <th>SCHEME → ITEM</th>
-                <th>RAIPUR</th>
-                <th>RAIPUR BASIC</th>
-                <th>FOR 12MM</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SIZES.map(({ key, label }) => (
-                <tr key={key}>
-                  <td>{label}</td>
-                  <td>{formatCell(formData.basicPrice, OFFSETS[key].raipur)}</td>
-                  <td>{formatCell(formData.basicPrice, OFFSETS[key].raipurBasic)}</td>
-                  <td>{formatCell(formData.basicPrice, OFFSETS[key].for12mm)}</td>
+          <div className="scheme-scroll">
+            <table className="scheme-matrix editable-matrix">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Logic</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => (
+                  <tr key={idx} className={row.editing ? "row-editing" : ""}>
+                    <td>
+                      {row.editing ? (
+                        <select
+                          value={row.item}
+                          onChange={(e) => updateRow(idx, "item", e.target.value)}
+                        >
+                          <option value="">- Select Item -</option>
+                          {itemTypes.map((itemType) => (
+                            <option key={itemType._id} value={itemType.itemTypes}>
+                              {itemType.itemTypes}
+                            </option>
+                          ))}
+                        </select>
+                      ) : row.item}
+                    </td>
+
+                    <td>
+                      {row.editing ? (
+                        <span className="offset-display">
+                          X +
+                          <input
+                            type="number"
+                            className="offset-input"
+                            value={row.logicAmount}
+                            onChange={(e) => updateRow(idx, "logicAmount", e.target.value)}
+                          />
+                        </span>
+                      ) : (
+                        <span className="offset-display">X + {fmt(row.logicAmount)}</span>
+                      )}
+                    </td>
+
+                    <td>
+                      {row.editing ? (
+                        <input
+                          type="date"
+                          value={row.startDate}
+                          onChange={(e) => updateRow(idx, "startDate", e.target.value)}
+                        />
+                      ) : row.startDate}
+                    </td>
+
+                    <td>
+                      {row.editing ? (
+                        <input
+                          type="date"
+                          value={row.endDate}
+                          onChange={(e) => updateRow(idx, "endDate", e.target.value)}
+                        />
+                      ) : row.endDate || "-"}
+                    </td>
+
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button
+                        className={row.editing ? "save-row-btn" : "edit-row-btn"}
+                        onClick={() => toggleEdit(idx)}
+                      >
+                        {row.editing ? "Done" : "Edit"}
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => deleteRow(idx)}
+                        disabled={rows.length === 1}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="action-buttons">
-          <button className="draft-btn">Save as Draft</button>
-          <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn">Cancel</button>
+          <button className="draft-btn" onClick={addRow}>Add Row</button>
+          <button className="submit-btn" onClick={handleSubmit} disabled={saving}>
+            {saving ? "Saving..." : "Submit"}
+          </button>
         </div>
       </div>
     </div>

@@ -2,55 +2,61 @@ const express = require("express");
 const router  = express.Router();
 const DocumentSequence = require("../../models/Master/DocumentSequence");
 
-/* ─── helper: build date segment ─── */
 const buildDatePart = (format) => {
   const today = new Date();
-  const dd    = String(today.getDate()).padStart(2, "0");
-  const mm    = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy  = String(today.getFullYear());
+  const dd   = String(today.getDate()).padStart(2, "0");
+  const mm   = String(today.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(today.getFullYear());
+
   if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
   if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;   // default: dd/mm/yyyy  →  DDMMYYYY`
+  return `${dd}${mm}${yyyy}`;           // default dd/mm/yyyy
 };
 
-/* ══════════════════════════════════════════
-   CREATE
-   Body: { module, businessEntity, sequenceFormat, incrementNo }
-
-   Generated code format: <datePart><paddedIncrement>
-   Example (dd/mm/yyyy, increment 1, date 04-Jun-2026):
-     datePart  = "04062026"
-     paddedNo  = "01"
-     result    = "0406202601"
-══════════════════════════════════════════ */
+/* POST /api/create-document-sequence */
 router.post("/create-document-sequence", async (req, res) => {
   try {
     const {
       module,
       businessEntity,
-      sequenceFormat = "dd/mm/yyyy",
+      entityPrefix    = "",
+      sequenceFormat  = "dd/mm/yyyy",
+      useDateFragment = true,
       incrementNo,
+      sequenceDigits  = 2,              // NEW — how many digits to pad
     } = req.body;
 
-    /* Find last record for this module + businessEntity to determine next number */
+    const prefix = entityPrefix.toString().trim().toUpperCase();
+
+    if (!module || !businessEntity || !prefix) {
+      return res.status(400).json({
+        success: false,
+        message: "Module, Business Entity and Entity Prefix are required.",
+      });
+    }
+
+    const digits = Math.max(1, Number(sequenceDigits) || 2);
+
     const lastRecord = await DocumentSequence
-      .findOne({ module, businessEntity })
+      .findOne({ module, businessEntity, entityPrefix: prefix })
       .sort({ createdAt: -1 });
 
     const nextNumber = lastRecord
       ? Number(lastRecord.incrementNo) + 1
       : (Number(incrementNo) || 1);
 
-    /* 2-digit padding so first entry → "01", tenth → "10", etc. */
-    const paddedNo      = String(nextNumber).padStart(2, "0");
-    const datePart      = buildDatePart(sequenceFormat);
-    const generatedCode = `${datePart}${paddedNo}`;   // e.g. "0406202601"
+    const paddedNo      = String(nextNumber).padStart(digits, "0");
+    const datePart      = useDateFragment ? buildDatePart(sequenceFormat) : "";
+    const generatedCode = `${prefix}${datePart}${paddedNo}`;
 
     const newData = new DocumentSequence({
       module,
       businessEntity,
+      entityPrefix: prefix,
       sequenceFormat,
-      incrementNo: nextNumber,
+      useDateFragment,
+      sequenceDigits: digits,
+      incrementNo:    nextNumber,
       generatedCode,
     });
 
@@ -60,15 +66,14 @@ router.post("/create-document-sequence", async (req, res) => {
       success: true,
       message: "Document Sequence Saved",
       generatedCode,
+      data: newData,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-/* ══════════════════════════════════════════
-   GET ALL
-══════════════════════════════════════════ */
+/* GET /api/document-sequence */
 router.get("/document-sequence", async (req, res) => {
   try {
     const data = await DocumentSequence.find().sort({ createdAt: -1 });
@@ -78,9 +83,7 @@ router.get("/document-sequence", async (req, res) => {
   }
 });
 
-/* ══════════════════════════════════════════
-   DELETE
-══════════════════════════════════════════ */
+/* DELETE /api/document-sequence/:id */
 router.delete("/document-sequence/:id", async (req, res) => {
   try {
     await DocumentSequence.findByIdAndDelete(req.params.id);
