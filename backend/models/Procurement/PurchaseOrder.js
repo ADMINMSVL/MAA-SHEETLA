@@ -1,30 +1,45 @@
 const mongoose = require("mongoose");
 
 const poItemSchema = new mongoose.Schema({
-  sNo:          { type: Number },
-  itemCode:     { type: String },
-  itemCategory: { type: String },
-  itemName:     { type: String },
-  uom:          { type: String },
-  qty:          { type: Number },
-  rate:         { type: Number },
-  basicAmount:  { type: Number },
+  sNo:           { type: Number },
+  itemCode:      { type: String, default: "" },
+  itemCategory:  { type: String, default: "" },
+  itemName:      { type: String, default: "" },
+  uom:           { type: String, default: "" },
+
+  serviceCharge: { type: Number, default: 0 },
+  charges:       { type: Number, default: 0 },
+  discount:      { type: Number, default: 0 },
+
+  qty:           { type: Number, default: 0 },
+  rate:          { type: Number, default: 0 },
+
+  basicAmount:   { type: Number, default: 0 },
+  netAmount:     { type: Number, default: 0 },
 });
 
 const purchaseOrderSchema = new mongoose.Schema(
   {
     poNo:        { type: String },
     poDate:      { type: String },
-    partyName:   { type: String },
-    partyCode:   { type: String },
-    mobileNo:    { type: String },
-    transactionType:   { type: String },
-    paymentMode: { type: String },
-    eta:         { type: String },
-    dueDate:     { type: String },
+
+    poType:      { type: String, default: "" },
+    site:        { type: String, default: "" },
+
+    partyCode:   { type: String, default: "" },
+    partyName:   { type: String, default: "" },
+    mobileNo:    { type: String, default: "" },
+
+    paymentMode: { type: String, default: "" },
+    eta:         { type: String, default: "" },
+    dueDate:     { type: String, default: "" },
+
     status:      { type: String, default: "Ordered" },
-    remarks:     { type: String },
-    basicAmount: { type: Number },
+    remarks:     { type: String, default: "" },
+
+    basicAmount: { type: Number, default: 0 },
+    netAmount:   { type: Number, default: 0 },
+
     items:       [poItemSchema],
   },
   { timestamps: true }

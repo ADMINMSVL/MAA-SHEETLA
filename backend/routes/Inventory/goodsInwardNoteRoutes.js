@@ -104,6 +104,11 @@ router.get("/goods-inward-note", async (req, res) => {
       challanDate,
       ewayDate,
       site,
+      /* ── new filters ── */
+      partyCode,
+      partyName,
+      partyDoc,
+      inOutType,
     } = req.query;
 
     const query = {};
@@ -129,6 +134,10 @@ router.get("/goods-inward-note", async (req, res) => {
     if (challanDate)         query.challanDate         = challanDate;
     if (ewayDate)            query.ewayDate            = ewayDate;
     if (site)                query.site                = { $regex: site,                $options: "i" };
+    if (partyCode)           query.partyCode           = { $regex: partyCode,           $options: "i" };
+    if (partyName)           query.partyName           = { $regex: partyName,           $options: "i" };
+    if (partyDoc)            query.partyDoc            = { $regex: partyDoc,            $options: "i" };
+    if (inOutType)           query.inOutType           = inOutType;
 
     const ginData = await GoodsInwardNote.find(query).sort({ createdAt: -1 });
 

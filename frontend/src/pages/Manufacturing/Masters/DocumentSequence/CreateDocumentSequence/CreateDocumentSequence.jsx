@@ -9,13 +9,13 @@ import { MODULE_BUSINESS_MAP, SOLUTION_MAP } from "../../../../../module/moduleB
 /* ── helpers ──────────────────────────────────────────────────────────── */
 const buildDatePart = (format) => {
   const today = new Date();
-  const dd   = String(today.getDate()).padStart(2, "0");
-  const mm   = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(today.getFullYear());
+  const dd  = String(today.getDate()).padStart(2, "0");
+  const mm  = String(today.getMonth() + 1).padStart(2, "0");
+  const yy  = String(today.getFullYear()).slice(-2);
 
-  if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
-  if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;
+  if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
+  if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  return `${dd}${mm}${yy}`;
 };
 
 const buildPreviewCode = ({ entityPrefix, sequenceFormat, useDateFragment, sequenceDigits }, incrementNo) => {
@@ -30,25 +30,20 @@ const buildPreviewCode = ({ entityPrefix, sequenceFormat, useDateFragment, seque
 
 /* ── component ────────────────────────────────────────────────────────── */
 const CreateDocumentSequence = () => {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  /*
-    Support optional pre-fill via router state:
-      navigate("/create-document-sequence", { state: { module: "Purchase Order" } })
-    This lets the PO creation page and GIN creation page jump directly here
-    with the correct module already selected.
-  */
   const prefillModule = location.state?.module || "";
 
   const [formData, setFormData] = useState({
-    module:          prefillModule,
-    businessEntity:  "",
-    entityPrefix:    "",
-    sequenceFormat:  "dd/mm/yyyy",
-    useDateFragment: true,
-    incrementNo:     1,
-    sequenceDigits:  2,
+    module:              prefillModule,
+    businessEntity:      "",
+    transactionCategory: "",   // NEW
+    entityPrefix:        "",
+    sequenceFormat:      "dd/mm/yy",
+    useDateFragment:     true,
+    incrementNo:         1,
+    sequenceDigits:      2,
   });
 
   const [previewCode,    setPreviewCode]    = useState("");
@@ -57,11 +52,57 @@ const CreateDocumentSequence = () => {
   const [showPopup,      setShowPopup]      = useState(false);
   const [generatedCode,  setGeneratedCode]  = useState("");
 
+  /* Transaction categories fetched from Transaction master */
+  const [transactionCategories, setTransactionCategories] = useState([]);
+
   const businessEntities = formData.module
     ? MODULE_BUSINESS_MAP[formData.module] || []
     : [];
 
-  /* fetch next increment whenever module / entity / prefix changes */
+  /* ── Fetch transaction categories when module + businessEntity are set ── */
+  useEffect(() => {
+    if (!formData.module || !formData.businessEntity) {
+      setTransactionCategories([]);
+      setFormData((prev) => ({ ...prev, transactionCategory: "" }));
+      return;
+    }
+
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/transactions`);
+        const filtered = res.data.filter(
+          (t) =>
+            t.module         === formData.module &&
+            t.businessEntity === formData.businessEntity &&
+            t.status         === "Open"
+        );
+        setTransactionCategories(filtered);
+      } catch (err) {
+        console.error("Failed to fetch transaction categories:", err);
+        setTransactionCategories([]);
+      }
+    };
+
+    fetchCategories();
+  }, [formData.module, formData.businessEntity]);
+
+  /* ── When a transaction category is selected, auto-fill entityPrefix with its code ── */
+  useEffect(() => {
+    if (!formData.transactionCategory) return;
+
+    const matched = transactionCategories.find(
+      (t) => t._id === formData.transactionCategory || t.transactionCategoryCode === formData.transactionCategory
+    );
+    if (matched) {
+      setFormData((prev) => ({
+        ...prev,
+        entityPrefix: matched.transactionCategoryCode,
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.transactionCategory]);
+
+  /* ── Fetch next increment whenever module / entity / prefix changes ── */
   useEffect(() => {
     const { module, businessEntity, entityPrefix } = formData;
     const prefix = entityPrefix.trim().toUpperCase();
@@ -101,7 +142,7 @@ const CreateDocumentSequence = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.module, formData.businessEntity, formData.entityPrefix]);
 
-  /* rebuild preview whenever format / digits / toggle change */
+  /* ── Rebuild preview on format / digits / toggle change ── */
   useEffect(() => {
     setPreviewCode(buildPreviewCode(formData, nextIncrement));
   }, [formData.sequenceFormat, formData.useDateFragment, formData.sequenceDigits, nextIncrement]);
@@ -110,7 +151,24 @@ const CreateDocumentSequence = () => {
     const { name, value, type, checked } = e.target;
 
     if (name === "module") {
-      setFormData({ ...formData, module: value, businessEntity: "" });
+      setFormData({
+        ...formData,
+        module:              value,
+        businessEntity:      "",
+        transactionCategory: "",
+        entityPrefix:        "",
+      });
+      setPreviewCode("");
+      return;
+    }
+
+    if (name === "businessEntity") {
+      setFormData({
+        ...formData,
+        businessEntity:      value,
+        transactionCategory: "",
+        entityPrefix:        "",
+      });
       setPreviewCode("");
       return;
     }
@@ -127,10 +185,17 @@ const CreateDocumentSequence = () => {
     }
 
     try {
+      /* Find the selected transaction category description for storage */
+      const selectedCat = transactionCategories.find(
+        (t) => t._id === formData.transactionCategory ||
+               t.transactionCategoryCode === formData.transactionCategory
+      );
+
       const payload = {
         ...formData,
-        entityPrefix:   formData.entityPrefix.trim().toUpperCase(),
-        sequenceDigits: Number(formData.sequenceDigits) || 2,
+        entityPrefix:        formData.entityPrefix.trim().toUpperCase(),
+        sequenceDigits:      Number(formData.sequenceDigits) || 2,
+        transactionCategory: selectedCat?.categoryDescription || formData.transactionCategory || "",
       };
       const res = await axios.post(`${API_URL}/api/create-document-sequence`, payload);
       setGeneratedCode(res.data.generatedCode);
@@ -141,11 +206,9 @@ const CreateDocumentSequence = () => {
     }
   };
 
-  /* digit preview string shown next to the input */
   const digitPreviewStr = String(nextIncrement)
     .padStart(Math.max(1, Number(formData.sequenceDigits) || 2), "0");
 
-  /* where to navigate back: if we came from a specific module context, go there */
   const handleBack = () => {
     if (prefillModule === "Purchase Order") {
       navigate("/purchase-order");
@@ -208,15 +271,44 @@ const CreateDocumentSequence = () => {
             </select>
           </div>
 
-          {/* ENTITY PREFIX */}
+          {/* TRANSACTION CATEGORY — fetched from Transaction master */}
           <div className="cds-group">
-            <label>* Entity Prefix</label>
+            <label>Transaction Category</label>
+            <select
+              name="transactionCategory"
+              value={formData.transactionCategory}
+              onChange={handleChange}
+              disabled={!formData.businessEntity}
+            >
+              <option value="">
+                {formData.businessEntity
+                  ? transactionCategories.length === 0
+                    ? "- No categories found -"
+                    : "- Select -"
+                  : "- Select Business Entity first -"}
+              </option>
+              {transactionCategories.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.transactionCategoryCode} — {t.categoryDescription}
+                </option>
+              ))}
+            </select>
+            {formData.businessEntity && transactionCategories.length === 0 && (
+              <small className="cds-preview-hint" style={{ color: "#dc2626" }}>
+                No open transaction categories for this module / entity.
+              </small>
+            )}
+          </div>
+
+          {/* ENTITY PREFIX — auto-filled from transaction category code, still editable */}
+          <div className="cds-group">
+            <label>Entity Prefix <small style={{ fontWeight: 400 }}>(auto-filled from category code)</small></label>
             <input
               type="text"
               name="entityPrefix"
               value={formData.entityPrefix}
               onChange={handleChange}
-              placeholder="e.g. IN, GIN, PO"
+              placeholder="e.g. IN, OT, PO"
             />
           </div>
 
@@ -269,9 +361,9 @@ const CreateDocumentSequence = () => {
               onChange={handleChange}
               disabled={!formData.useDateFragment}
             >
-              <option value="dd/mm/yyyy">dd/mm/yyyy</option>
-              <option value="mm/dd/yyyy">mm/dd/yyyy</option>
-              <option value="yyyy/mm/dd">yyyy/mm/dd</option>
+              <option value="dd/mm/yy">dd/mm/yy</option>
+              <option value="mm/dd/yy">mm/dd/yy</option>
+              <option value="yy/mm/dd">yy/mm/dd</option>
             </select>
           </div>
 

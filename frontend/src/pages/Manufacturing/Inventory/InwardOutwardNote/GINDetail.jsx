@@ -13,35 +13,39 @@ const WEIGHMENT_API = `${API_URL}/api/weighment`;
    Opened from GoodsInwardNote by clicking the GIN No hyperlink.
    Shows full GIN information + all linked weighment data.
    Both sections are fully editable inline.
+   Items section now includes Item Group column.
 ───────────────────────────────────────────────────────────── */
 const GINDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [gin,          setGin]          = useState(null);
-  const [weighment,    setWeighment]    = useState(null);
-  const [ginEdit,      setGinEdit]      = useState({});
-  const [wEdit,        setWEdit]        = useState({});
-  const [ginEditing,   setGinEditing]   = useState(false);
-  const [wEditing,     setWEditing]     = useState(false);
-  const [loading,      setLoading]      = useState(true);
-  const [savingGin,    setSavingGin]    = useState(false);
-  const [savingW,      setSavingW]      = useState(false);
-  const [error,        setError]        = useState("");
+  const [gin,        setGin]        = useState(null);
+  const [weighment,  setWeighment]  = useState(null);
+  const [ginEdit,    setGinEdit]    = useState({});
+  const [wEdit,      setWEdit]      = useState({});
+  const [ginEditing, setGinEditing] = useState(false);
+  const [wEditing,   setWEditing]   = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [savingGin,  setSavingGin]  = useState(false);
+  const [savingW,    setSavingW]    = useState(false);
+  const [error,      setError]      = useState("");
+
+  /* item master for code/name lookup */
+  const [itemList, setItemList] = useState([]);
 
   /* ── load GIN ── */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const ginRes = await axios.get(`${GIN_API}/${id}`);
+        const ginRes  = await axios.get(`${GIN_API}/${id}`);
         const ginData = ginRes.data;
         setGin(ginData);
         setGinEdit({ ...ginData });
 
         /* find linked weighment */
         if (ginData?.ginNo) {
-          const wRes = await axios.get(WEIGHMENT_API, {
+          const wRes  = await axios.get(WEIGHMENT_API, {
             params: { inwardOutwardNoteNo: ginData.ginNo }
           });
           const wList = wRes.data?.data || [];
@@ -59,6 +63,15 @@ const GINDetail = () => {
     };
     load();
   }, [id]);
+
+  /* ── load item master for name/code lookups ── */
+  useEffect(() => {
+    axios.get(`${API_URL}/api/items`)
+      .then((res) => {
+        setItemList(res.data.filter((i) => i.status === "Active"));
+      })
+      .catch(console.error);
+  }, []);
 
   /* ── GIN save ── */
   const saveGin = async () => {
@@ -110,7 +123,7 @@ const GINDetail = () => {
     setWEdit(updated);
   };
 
-  /* ── helpers: editable field ── */
+  /* ── helpers: editable text/date field ── */
   const ginF = (field, type = "text", readOnly = false) => (
     ginEditing && !readOnly
       ? <input type={type} className="gd-input" value={ginEdit[field] || ""}
@@ -143,6 +156,29 @@ const GINDetail = () => {
       : <div className="gd-value">{weighment?.[field] || "-"}</div>
   );
 
+  /* ── Item row helper for editing in detail page ── */
+  const updateGinItem = (idx, field, value) => {
+    const items = [...(ginEdit.items || [])];
+    items[idx] = { ...items[idx], [field]: value };
+    /* If code changes, auto-fill name + uom */
+    if (field === "itemCode") {
+      const found = itemList.find((i) => i.itemCode === value);
+      if (found) {
+        items[idx].itemName = found.itemName || "";
+        items[idx].uom      = found.uom      || "";
+      }
+    }
+    /* If name changes, auto-fill code + uom */
+    if (field === "itemName") {
+      const found = itemList.find((i) => i.itemName === value);
+      if (found) {
+        items[idx].itemCode = found.itemCode || "";
+        items[idx].uom      = found.uom      || "";
+      }
+    }
+    setGinEdit((p) => ({ ...p, items }));
+  };
+
   if (loading) return (
     <div className="gd-page"><ModuleNavbar /><div className="gd-loading">Loading...</div></div>
   );
@@ -150,20 +186,19 @@ const GINDetail = () => {
     <div className="gd-page"><ModuleNavbar /><div className="gd-error">{error}</div></div>
   );
 
+  const displayItems = ginEditing ? (ginEdit.items || []) : (gin?.items || []);
+
   return (
     <div className="gd-page">
       <ModuleNavbar />
 
       {/* ── PAGE HEADER ── */}
       <div className="gd-header">
-        <button
-          className="gd-back-btn"
-          onClick={() => navigate("/inward-outward-note")}
-        >
+        <button className="gd-back-btn" onClick={() => navigate("/inward-outward-note")}>
           ← Back
         </button>
         <div className="gd-header-title">
-          <h2>Inward outward Detail</h2>
+          <h2>Inward Outward Detail</h2>
           <span className="gd-gin-no-badge">{gin?.ginNo}</span>
         </div>
         <div className="gd-header-meta">
@@ -212,6 +247,11 @@ const GINDetail = () => {
           </div>
 
           <div className="gd-field">
+            <div className="gd-label">IN/OUT Type</div>
+            {ginS("inOutType", ["Inward", "Outward"])}
+          </div>
+
+          <div className="gd-field">
             <div className="gd-label">Transaction Category</div>
             {ginF("transactionCategory")}
           </div>
@@ -239,6 +279,21 @@ const GINDetail = () => {
           <div className="gd-field">
             <div className="gd-label">Site</div>
             {ginF("site")}
+          </div>
+
+          <div className="gd-field">
+            <div className="gd-label">Party Code</div>
+            {ginF("partyCode")}
+          </div>
+
+          <div className="gd-field">
+            <div className="gd-label">Party Name</div>
+            {ginF("partyName")}
+          </div>
+
+          <div className="gd-field">
+            <div className="gd-label">Party Doc</div>
+            {ginF("partyDoc")}
           </div>
 
           <div className="gd-field">
@@ -313,6 +368,103 @@ const GINDetail = () => {
           }
         </div>
 
+        {/* ── ITEMS SECTION inside GIN card ── */}
+        {displayItems.length > 0 && (
+          <div className="gd-items-section" style={{ marginTop: 24 }}>
+            <div className="gd-items-title">📦 Items</div>
+            <div className="gd-items-wrap">
+              <table className="gd-items-table">
+                <thead>
+                  <tr>
+                    <th>S No</th>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>UOM</th>
+                    <th>Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayItems.map((item, i) => {
+                    const codeOpts = itemList.map((x) => x.itemCode).filter(Boolean);
+                    const nameOpts = itemList.map((x) => x.itemName).filter(Boolean);
+
+                    return (
+                      <tr key={i}>
+                        <td>{item.sNo ?? i + 1}</td>
+
+                        {/* Item Code */}
+                        <td>
+                          {ginEditing ? (
+                            <select
+                              className="gd-item-input"
+                              value={ginEdit.items?.[i]?.itemCode || ""}
+                              onChange={(e) => updateGinItem(i, "itemCode", e.target.value)}
+                            >
+                              <option value="">- Code -</option>
+                              {codeOpts.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            item.itemCode || "-"
+                          )}
+                        </td>
+
+                        {/* Item Name */}
+                        <td>
+                          {ginEditing ? (
+                            <select
+                              className="gd-item-input gd-item-wide"
+                              value={ginEdit.items?.[i]?.itemName || ""}
+                              onChange={(e) => updateGinItem(i, "itemName", e.target.value)}
+                            >
+                              <option value="">- Name -</option>
+                              {nameOpts.map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            item.itemName || "-"
+                          )}
+                        </td>
+
+                        {/* UOM — auto-filled, editable */}
+                        <td>
+                          {ginEditing ? (
+                            <input
+                              type="text"
+                              className="gd-item-input gd-item-sm"
+                              value={ginEdit.items?.[i]?.uom || ""}
+                              onChange={(e) => updateGinItem(i, "uom", e.target.value)}
+                            />
+                          ) : (
+                            item.uom || "-"
+                          )}
+                        </td>
+
+                        {/* Qty */}
+                        <td>
+                          {ginEditing ? (
+                            <input
+                              type="number"
+                              className="gd-item-input gd-item-num"
+                              value={ginEdit.items?.[i]?.qty ?? ""}
+                              onChange={(e) => updateGinItem(i, "qty", e.target.value)}
+                              min="0"
+                            />
+                          ) : (
+                            item.qty ?? "-"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* ════════════════════════════════════════════════
@@ -322,7 +474,20 @@ const GINDetail = () => {
         <div className="gd-card-header">
           <div className="gd-card-title">⚖️ Linked Weighment</div>
           <div className="gd-card-actions">
-            {weighment ? null : (
+            {weighment ? (
+              wEditing ? (
+                <>
+                  <button className="gd-cancel-btn" onClick={() => { setWEditing(false); setWEdit({ ...weighment }); }} disabled={savingW}>
+                    Cancel
+                  </button>
+                  <button className="gd-save-btn" onClick={saveWeighment} disabled={savingW}>
+                    {savingW ? "Saving..." : "Save Weighment"}
+                  </button>
+                </>
+              ) : (
+                <button className="gd-edit-btn" onClick={() => setWEditing(true)}>Edit Weighment</button>
+              )
+            ) : (
               <div className="gd-no-weighment">
                 No weighment linked.
                 <button className="gd-create-w-btn"
@@ -563,6 +728,27 @@ const GINDetail = () => {
         )}
 
       </div>
+
+      {/* Item select styles for detail page */}
+      <style>{`
+        .gd-item-input {
+          width: 100%;
+          padding: 5px 8px;
+          border: 1px solid #e2e8f0;
+          border-radius: 5px;
+          font-size: 13px;
+          color: #1e293b;
+          background: #f8fafc;
+        }
+        .gd-item-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          background: #fff;
+        }
+        .gd-item-wide { min-width: 160px; }
+        .gd-item-sm   { max-width: 80px; }
+        .gd-item-num  { max-width: 80px; }
+      `}</style>
 
     </div>
   );

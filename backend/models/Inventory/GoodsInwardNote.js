@@ -2,58 +2,64 @@ const mongoose = require("mongoose");
 
 /* ── Item sub-schema ── */
 const ginItemSchema = new mongoose.Schema({
-  sNo:           Number,
-  insertBags:    String,
-  itemRate:      String,
-  transactionNo: String,
-  partyName:     String,
-  broker:        String,
-  itemCode:      String,
-  itemName:      String,
-  uom:           String,
-  salesThrough:  String,
+  sNo:       Number,
+  itemCode:  String,
+  itemName:  String,
+  uom:       String,
+  qty:       Number,
 }, { _id: false });
 
 const goodsInwardNoteSchema = new mongoose.Schema({
 
-  /* ── Core ── */
+  /* ── Core / Number ── */
   ginNo:               { type: String, required: true },
+  inOutDescription:    String,   // IN/OUT Description
+  inOutType:           String,   // "Inward" | "Outward"
+
+  /* ── PO Reference ── */
   poCpoNo:             String,
-  status:              { type: String, default: "Open" },
-  site:                String,
+
+  /* ── Date ── */
   ginDate:             String,
 
-  /* ── FIXED: these were missing and being silently dropped ── */
-  ginDescription:      String,
-  ginType:             String,
-  deliveryMode:        String,
-  transactionCategory: String,
+  /* ── Party ── */
+  partyCode:           String,
+  partyName:           String,
+  partyDoc:            String,   // Party document reference
 
-  /* Vendor */
-  vendorCode:          String,
-  vendorName:          String,
-
-  /* Manufacturer */
-  manufacturerCode:    String,
+  /* ── Manufacturer ── */
   manufacturerName:    String,
   manufacturerAddress: String,
 
-  /* Vehicle */
-  vehicleEntry:        String,
-  vehicleNo:           String,
+  /* ── Status ── */
+  status:              { type: String, default: "Open" },  // "Open" | "Closed"
 
-  /* Challan / Bill */
+  /* ── Challan / Vehicle ── */
   challanInvoiceNo:    String,
   challanDate:         String,
+  vehicleNo:           String,
+
+  /* ── Notes ── */
+  remarks:             String,
+
+  /* ── Site ── */
+  site:                String,
+
+  /* ── Legacy / kept for backward compat ── */
+  transactionCategory: String,
+  ginDescription:      String,
+  ginType:             String,
+  deliveryMode:        String,
+  vendorCode:          String,
+  vendorName:          String,
+  manufacturerCode:    String,
+  vehicleEntry:        String,
   billNo:              String,
   billDate:            String,
   ewayDate:            String,
-
-  /* Notes */
-  remarks:             String,
   comments:            String,
 
-  /* Items grid */
+  /* ── Items grid ── */
   items: [ginItemSchema],
 
 }, { timestamps: true });

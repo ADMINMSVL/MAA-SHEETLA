@@ -65,15 +65,23 @@ const PODetail = () => {
     const items = [...(poEdit.items || [])];
     items[index] = { ...items[index], [field]: value };
 
-    /* auto-recalc basicAmount for the row */
+    /* auto-recalc basicAmount and netAmount for the row */
     const row = items[index];
-    const qty  = parseFloat(field === "qty"  ? value : row.qty  || 0) || 0;
-    const rate = parseFloat(field === "rate" ? value : row.rate || 0) || 0;
-    items[index].basicAmount = qty > 0 && rate > 0 ? qty * rate : row.basicAmount;
+    const qty           = parseFloat(field === "qty"           ? value : row.qty           || 0) || 0;
+    const rate          = parseFloat(field === "rate"          ? value : row.rate          || 0) || 0;
+    const serviceCharge = parseFloat(field === "serviceCharge" ? value : row.serviceCharge || 0) || 0;
+    const charges       = parseFloat(field === "charges"       ? value : row.charges       || 0) || 0;
+    const discount      = parseFloat(field === "discount"      ? value : row.discount      || 0) || 0;
 
-    /* recalc total */
-    const total = items.reduce((sum, it) => sum + (parseFloat(it.basicAmount) || 0), 0);
-    setPoEdit((p) => ({ ...p, items, basicAmount: total }));
+    const basicAmt = qty > 0 && rate > 0 ? qty * rate : (parseFloat(row.basicAmount) || 0);
+    const netAmt   = basicAmt + serviceCharge + charges - discount;
+
+    items[index].basicAmount = basicAmt;
+    items[index].netAmount   = netAmt;
+
+    /* recalc grand total */
+    const totalNet = items.reduce((sum, it) => sum + (parseFloat(it.netAmount) || 0), 0);
+    setPoEdit((p) => ({ ...p, items, netAmount: totalNet }));
   };
 
   /* ── field renderer helpers ── */
@@ -199,8 +207,13 @@ const PODetail = () => {
           </div>
 
           <div className="pod-field">
-            <div className="pod-label">Transaction Type</div>
-            {F("transactionType")}
+            <div className="pod-label">PO Type</div>
+            {F("poType")}
+          </div>
+
+          <div className="pod-field">
+            <div className="pod-label">Site</div>
+            {F("site")}
           </div>
 
           <div className="pod-field">
@@ -247,7 +260,7 @@ const PODetail = () => {
         <div className="pod-card-header">
           <div className="pod-card-title">📦 Items</div>
           <div className="pod-basic-total">
-            Total Basic Amount: <strong>₹ {Number(poEdit.basicAmount || po?.basicAmount || 0).toLocaleString("en-IN")}</strong>
+            Total Net Amount: <strong>₹ {Number(poEdit.netAmount || po?.netAmount || 0).toLocaleString("en-IN")}</strong>
           </div>
         </div>
 
@@ -260,9 +273,13 @@ const PODetail = () => {
                 <th>Item Category</th>
                 <th>Item Name</th>
                 <th>UOM</th>
+                <th>Service Charge</th>
+                <th>Charges</th>
+                <th>Discount</th>
                 <th>Qty</th>
                 <th>Rate</th>
                 <th>Basic Amount</th>
+                <th>Net Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -296,6 +313,24 @@ const PODetail = () => {
                     </td>
                     <td>
                       {editing
+                        ? <input type="number" className="pod-item-input" value={item.serviceCharge ?? ""}
+                            onChange={(e) => updateItem(i, "serviceCharge", e.target.value)} />
+                        : item.serviceCharge ?? "-"}
+                    </td>
+                    <td>
+                      {editing
+                        ? <input type="number" className="pod-item-input" value={item.charges ?? ""}
+                            onChange={(e) => updateItem(i, "charges", e.target.value)} />
+                        : item.charges ?? "-"}
+                    </td>
+                    <td>
+                      {editing
+                        ? <input type="number" className="pod-item-input" value={item.discount ?? ""}
+                            onChange={(e) => updateItem(i, "discount", e.target.value)} />
+                        : item.discount ?? "-"}
+                    </td>
+                    <td>
+                      {editing
                         ? <input type="number" className="pod-item-input" value={item.qty ?? ""}
                             onChange={(e) => updateItem(i, "qty", e.target.value)} />
                         : item.qty ?? "-"}
@@ -312,10 +347,16 @@ const PODetail = () => {
                             value={Number(item.basicAmount || 0).toLocaleString("en-IN")} />
                         : Number(item.basicAmount || 0).toLocaleString("en-IN")}
                     </td>
+                    <td className="pod-amt-cell">
+                      {editing
+                        ? <input readOnly className="pod-item-input pod-amt-input"
+                            value={Number(item.netAmount || 0).toLocaleString("en-IN")} />
+                        : Number(item.netAmount || 0).toLocaleString("en-IN")}
+                    </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="8" className="pod-no-items">No items found</td></tr>
+                <tr><td colSpan="12" className="pod-no-items">No items found</td></tr>
               )}
             </tbody>
           </table>

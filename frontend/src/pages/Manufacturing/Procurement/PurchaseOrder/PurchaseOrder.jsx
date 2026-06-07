@@ -50,12 +50,10 @@ const PurchaseOrder = () => {
   const [orders, setOrders]       = useState([]);
   const [filtered, setFiltered]   = useState([]);
   const [parties, setParties]     = useState([]);
-  const [items, setItems]         = useState([]);
 
   /* search state */
   const [srchPoNo,     setSrchPoNo]     = useState("");
   const [srchParty,    setSrchParty]    = useState("");
-  const [srchItem,     setSrchItem]     = useState("");
   const [srchStatus,   setSrchStatus]   = useState("All");
   const [srchDateFrom, setSrchDateFrom] = useState("");
   const [srchDateTo,   setSrchDateTo]   = useState("");
@@ -70,25 +68,19 @@ const PurchaseOrder = () => {
 
   const fetchMasters = async () => {
     try {
-      const [partyRes, itemRes] = await Promise.all([
-        axios.get(`${API_URL}/api/parties`),
-        axios.get(`${API_URL}/api/items`),
-      ]);
+      const partyRes = await axios.get(`${API_URL}/api/parties`);
       setParties(partyRes.data.filter((p) => p.status === "Active"));
-      setItems(itemRes.data.filter((i) => i.status === "Active"));
     } catch (err) { console.log(err); }
   };
 
   useEffect(() => { fetchOrders(); fetchMasters(); }, []);
 
   const partyNames = [...new Set(parties.map((p) => p.partyName).filter(Boolean))].sort();
-  const itemNames  = [...new Set(items.map((i) => i.itemName).filter(Boolean))].sort();
 
   const handleSearch = () => {
     let f = [...orders];
     if (srchPoNo)   f = f.filter((o) => o.poNo?.toLowerCase().includes(srchPoNo.toLowerCase()));
     if (srchParty)  f = f.filter((o) => o.partyName?.toLowerCase().includes(srchParty.toLowerCase()));
-    if (srchItem)   f = f.filter((o) => o.items?.some((i) => i.itemName?.toLowerCase().includes(srchItem.toLowerCase())));
     if (srchStatus && srchStatus !== "All") f = f.filter((o) => o.status === srchStatus);
     if (srchDateFrom) f = f.filter((o) => o.poDate >= srchDateFrom);
     if (srchDateTo)   f = f.filter((o) => o.poDate <= srchDateTo);
@@ -96,7 +88,7 @@ const PurchaseOrder = () => {
   };
 
   const handleReset = () => {
-    setSrchPoNo(""); setSrchParty(""); setSrchItem("");
+    setSrchPoNo(""); setSrchParty("");
     setSrchStatus("All"); setSrchDateFrom(""); setSrchDateTo("");
     setFiltered(orders);
   };
@@ -111,9 +103,9 @@ const PurchaseOrder = () => {
 
   const statusColor = (s) => {
     if (s === "Ordered")            return "#2563eb";
-    if (s === "Partially Received") return "#d97706";
-    if (s === "Completed")          return "#16a34a";
-    if (s === "Cancelled")          return "#dc2626";
+    if (s === "Intransit")          return "#d97706";
+    if (s === "Cancelled")          return "#16a34a";
+    if (s === "Closed")             return "#dc2626";
     return "#64748b";
   };
 
@@ -157,17 +149,6 @@ const PurchaseOrder = () => {
               suggestions={partyNames}
               onSelect={setSrchParty}
               placeholder="Type party name…"
-            />
-          </div>
-
-          <div className="po-field">
-            <label>Item</label>
-            <TypeAhead
-              value={srchItem}
-              onChange={setSrchItem}
-              suggestions={itemNames}
-              onSelect={setSrchItem}
-              placeholder="Type item name…"
             />
           </div>
 
@@ -222,12 +203,16 @@ const PurchaseOrder = () => {
                 <th>PO No</th>
                 <th>Date</th>
                 <th>Party Name</th>
-                <th>Transaction Type</th>
+                <th>PO Type</th><th>Site</th>
                 <th>Item Category</th>
                 <th>Item</th>
                 <th>Qty (MTS)</th>
                 <th>Rate/MTS</th>
                 <th>Basic Amt</th>
+                <th>Service Charge</th>
+                <th>Charges</th>
+                <th>Discount</th>
+                <th>Net Amt</th>
                 <th>Payment Mode</th>
                 <th>ETA</th>
                 <th>Due Date</th>
@@ -255,12 +240,16 @@ const PurchaseOrder = () => {
 
                     <td>{po.poDate ? po.poDate.slice(0, 10) : ""}</td>
                     <td>{po.partyName}</td>
-                    <td>{po.transactionType}</td>
+                    <td>{po.poType}</td><td>{po.site}</td>
                     <td>{po.items?.[0]?.itemCategory || ""}</td>
                     <td>{po.items?.map((it) => it.itemName).join(", ")}</td>
                     <td>{po.items?.reduce((s, it) => s + Number(it.qty || 0), 0)}</td>
                     <td>{po.items?.[0]?.rate || ""}</td>
-                    <td>{po.basicAmount}</td>
+                    <td>{Number(po.basicAmount || 0).toLocaleString("en-IN")}</td>
+                    <td>{po.items?.reduce((s, it) => s + Number(it.serviceCharge || 0), 0).toFixed(2)}</td>
+                    <td>{po.items?.reduce((s, it) => s + Number(it.charges || 0), 0).toFixed(2)}</td>
+                    <td>{po.items?.reduce((s, it) => s + Number(it.discount || 0), 0).toFixed(2)}</td>
+                    <td>{Number(po.netAmount || 0).toLocaleString("en-IN")}</td>
                     <td>{po.paymentMode}</td>
                     <td>{po.eta ? po.eta.slice(0, 10) : ""}</td>
                     <td>{po.dueDate ? po.dueDate.slice(0, 10) : ""}</td>
@@ -294,7 +283,7 @@ const PurchaseOrder = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="16" className="po-no-data">No Purchase Orders found</td>
+                  <td colSpan="19" className="po-no-data">No Purchase Orders found</td>
                 </tr>
               )}
             </tbody>

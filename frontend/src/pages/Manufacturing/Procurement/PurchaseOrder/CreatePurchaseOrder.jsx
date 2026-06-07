@@ -12,18 +12,22 @@ import "./PurchaseOrder.css";
 ────────────────────────────────────────────────────────────────── */
 
 const PAYMENT_MODES  = ["Cash", "Cheque", "NEFT/RTGS", "UPI", "Credit", "LC"];
-const STATUS_OPTIONS = ["Ordered", "Partially Received", "Dispatch", "Cancelled"];
+const STATUS_OPTIONS = ["Ordered", "Intransit", "Cancelled" , "Closed"];
 
 const blankRow = (sNo) => ({
   sNo,
-  itemCode:     "",
+  itemCode: "",
   itemCategory: "",
-  itemName:     "",
-  uom:          "",
-  qty:          "",
-  rate:         "",
-  basicAmount:  "",
-  _checked:     false,
+  itemName: "",
+  uom: "",
+  serviceCharge: "",
+  charges: "",
+  discount: "",
+  qty: "",
+  rate: "",
+  basicAmount: "",
+  netAmount: "",
+  _checked: false,
 });
 
 /* Typeahead helper */
@@ -73,15 +77,16 @@ const CreatePurchaseOrder = () => {
   const [partyTypes, setPartyTypes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [allItems,   setAllItems]   = useState([]);
-
+  const [sites, setSites] = useState([]);
   /* ── Header form ── */
   const [form, setForm] = useState({
     poNo:        "",
     poDate:      new Date().toISOString().split("T")[0],
-    partyName:   "",
+    poType:      "",
+    site:        "",
     partyCode:   "",
+    partyName:   "",
     mobileNo:    "",
-    transactionType:   "",
     paymentMode: "",
     eta:         "",
     dueDate:     "",
@@ -99,52 +104,71 @@ const CreatePurchaseOrder = () => {
 
     const fetchAll = async () => {
       try {
-        const [partyRes, ptRes, catRes, itemRes, seqRes] = await Promise.all([
+        const [partyRes, ptRes, catRes, itemRes, seqRes, siteRes] = await Promise.all([
           axios.get(`${API_URL}/api/parties`),
           axios.get(`${API_URL}/api/party-types`),
           axios.get(`${API_URL}/api/item-categories`),
           axios.get(`${API_URL}/api/items`),
           axios.get(`${API_URL}/api/document-sequence`),
+          axios.get(`${API_URL}/api/sites`)
         ]);
 
         setParties(partyRes.data.filter((p) => p.status === "Active"));
         setPartyTypes(ptRes.data.filter((p) => p.status === "Active"));
         setCategories(catRes.data.filter((c) => c.status === "Active"));
         setAllItems(itemRes.data.filter((i) => i.status === "Active"));
+        setSites(siteRes.data.filter((s) => s.status === "Active"));
 
-        /* Build PO No — fully driven by what's saved in the sequence master */
-        const matching = seqRes.data.filter(
-          (r) => r.module === "Procurement" && r.businessEntity === "Purchase Order"
+        /* ── Build PO No from Document Sequence master ──
+           The user creates a sequence with:
+             Module        = "Purchase Order"  (or whatever they chose)
+             Business Entity = e.g. "REQ.PO"  (or "PO" etc.)
+             Entity Prefix   = e.g. "PO"
+           We find ANY record where module contains "Purchase Order"
+           OR businessEntity contains "PO" — pick the latest one.
+        ── */
+        const allSeq = seqRes.data || [];
+
+        // Find matching sequence records for Purchase Order module
+        const matching = allSeq.filter(
+          (r) =>
+            (r.module && r.module.toLowerCase().includes("purchase order")) ||
+            (r.businessEntity && r.businessEntity.toLowerCase().includes("purchase order")) ||
+            (r.businessEntity && r.businessEntity.toUpperCase() === "REQ.PO")
         );
+
         const lastRecord = matching.sort((a, b) =>
           new Date(b.createdAt) - new Date(a.createdAt)
         )[0];
 
-        // nextIncrement: max of all existing records + 1, or 1 if none
-        const nextIncrement = matching.length > 0
-          ? Math.max(...matching.map((r) => Number(r.incrementNo))) + 1
-          : 1;
+        let poNo = "PO01"; // fallback
 
-        // Read every setting from the saved sequence master record
-        const digits      = Math.max(1, Number(lastRecord?.sequenceDigits) || 2);
-        const seqFormat   = lastRecord?.sequenceFormat   || "dd/mm/yyyy";
-        const useDateFrag = lastRecord?.useDateFragment  ?? false; // default false = no date
-        const prefix      = lastRecord?.entityPrefix     || "PO";
+        if (lastRecord) {
+          // nextIncrement: max of matching records + 1
+          const nextIncrement = matching.length > 0
+            ? Math.max(...matching.map((r) => Number(r.incrementNo))) + 1
+            : 1;
 
-        // Only build a date part when the master explicitly has useDateFragment = true
-        let datePart = "";
-        if (useDateFrag) {
-          const d    = new Date();
-          const dd   = String(d.getDate()).padStart(2, "0");
-          const mm   = String(d.getMonth() + 1).padStart(2, "0");
-          const yyyy = String(d.getFullYear());
-          if (seqFormat === "mm/dd/yyyy")      datePart = `${mm}${dd}${yyyy}`;
-          else if (seqFormat === "yyyy/mm/dd") datePart = `${yyyy}${mm}${dd}`;
-          else                                 datePart = `${dd}${mm}${yyyy}`;
+          const digits      = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
+          const seqFormat   = lastRecord.sequenceFormat  || "dd/mm/yy";
+          const useDateFrag = lastRecord.useDateFragment ?? true;
+          const prefix      = lastRecord.entityPrefix    || "PO";
+
+          // Build date part exactly as CreateDocumentSequence does
+          let datePart = "";
+          if (useDateFrag) {
+            const d    = new Date();
+            const dd   = String(d.getDate()).padStart(2, "0");
+            const mm   = String(d.getMonth() + 1).padStart(2, "0");
+            const yy = String(new Date().getFullYear()).slice(-2); // 2-digit year e.g. '26'
+            if (seqFormat === "mm/dd/yy")      datePart = `${mm}${dd}${yy}`;
+            else if (seqFormat === "yy/mm/dd") datePart = `${yy}${mm}${dd}`;
+            else                               datePart = `${dd}${mm}${yy}`;
+          }
+
+          poNo = `${prefix}${datePart}${String(nextIncrement).padStart(digits, "0")}`;
         }
 
-        // e.g.  useDateFrag=false → "PO01"   useDateFrag=true → "PO0606202601"
-        const poNo = `${prefix}${datePart}${String(nextIncrement).padStart(digits, "0")}`;
         setForm((p) => ({ ...p, poNo, poDate: today, eta: today, dueDate: today }));
       } catch (err) {
         console.error("Masters fetch error:", err);
@@ -163,9 +187,24 @@ const CreatePurchaseOrder = () => {
   }, []);
 
   /* ── Derived lists ── */
-  const partyNames  = [...new Set(parties.map((p) => p.partyName).filter(Boolean))].sort();
-  const categoryNames = [...new Set(categories.map((c) => c.categoryName).filter(Boolean))].sort();
+  /* ── Derived lists ── */
+const partyNames = [
+  ...new Set(
+    parties.map((p) => p.partyName).filter(Boolean)
+  ),
+].sort();
 
+const categoryNames = [
+  ...new Set(
+    categories.map((c) => c.categoryName).filter(Boolean)
+  ),
+].sort();
+
+const siteNames = [
+  ...new Set(
+    sites.map((s) => s.siteName).filter(Boolean)
+  ),
+].sort();
   /* when party name chosen — auto fill code, mobile, type */
   const handlePartySelect = (name) => {
     const p = parties.find((x) => x.partyName === name);
@@ -189,11 +228,64 @@ const CreatePurchaseOrder = () => {
       next[idx] = { ...next[idx], [field]: value };
 
       /* auto-compute basic amount */
-      if (field === "qty" || field === "rate") {
-        const qty  = field === "qty"  ? Number(value) : Number(next[idx].qty);
-        const rate = field === "rate" ? Number(value) : Number(next[idx].rate);
-        next[idx].basicAmount = (qty && rate) ? (qty * rate).toFixed(2) : "";
-      }
+   const amountFields = [
+  "qty",
+  "rate",
+  "serviceCharge",
+  "charges",
+  "discount"
+];
+
+if (amountFields.includes(field)) {
+
+  const qty = Number(
+    field === "qty"
+      ? value
+      : next[idx].qty
+  );
+
+  const rate = Number(
+    field === "rate"
+      ? value
+      : next[idx].rate
+  );
+
+  const serviceCharge = Number(
+    field === "serviceCharge"
+      ? value
+      : next[idx].serviceCharge
+  );
+
+  const charges = Number(
+    field === "charges"
+      ? value
+      : next[idx].charges
+  );
+
+  const discount = Number(
+    field === "discount"
+      ? value
+      : next[idx].discount
+  );
+
+  const basicAmount = qty * rate;
+
+  const netAmount =
+    basicAmount +
+    serviceCharge +
+    charges -
+    discount;
+
+  next[idx].basicAmount =
+    basicAmount
+      ? basicAmount.toFixed(2)
+      : "";
+
+  next[idx].netAmount =
+    netAmount
+      ? netAmount.toFixed(2)
+      : "";
+}
 
       /* when itemName chosen, auto-fill itemCode + uom from master */
       if (field === "itemName") {
@@ -237,22 +329,57 @@ const CreatePurchaseOrder = () => {
     const validRows = rows.filter((r) => r.itemName.trim());
     if (validRows.length === 0) return alert("Add at least one item.");
 
-    const basicAmount = validRows.reduce((s, r) => s + Number(r.basicAmount || 0), 0);
+const basicAmount = validRows.reduce(
+  (s, r) => s + Number(r.basicAmount || 0),
+  0
+);
 
-    const payload = {
-      ...form,
-      items:       validRows.map(({ _checked, ...r }) => r),
-      basicAmount: basicAmount.toFixed(2),
-    };
+const netAmount = validRows.reduce(
+  (s, r) => s + Number(r.netAmount || 0),
+  0
+);
+
+const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+
+const payload = {
+  ...form,
+  items: validRows.map(({ _checked, ...r }) => ({
+    ...r,
+    qty:           toNum(r.qty),
+    rate:          toNum(r.rate),
+    serviceCharge: toNum(r.serviceCharge),
+    charges:       toNum(r.charges),
+    discount:      toNum(r.discount),
+    basicAmount:   toNum(r.basicAmount),
+    netAmount:     toNum(r.netAmount),
+  })),
+  basicAmount: Number(basicAmount.toFixed(2)),
+  netAmount:   Number(netAmount.toFixed(2)),
+};
 
     try {
-      /* Increment the sequence counter in the master (does NOT change format/date settings) */
-      await axios.post(`${API_URL}/api/create-document-sequence`, {
-        module:         "Procurement",
-        businessEntity: "Purchase Order",
-        entityPrefix:   "PO",
-        // No useDateFragment / sequenceFormat here — backend reads last record's settings
-      });
+      /* Increment the sequence counter — match the exact module/entity from the master */
+      try {
+        const seqSnap = await axios.get(`${API_URL}/api/document-sequence`);
+        const allSeq  = seqSnap.data || [];
+        const poSeq   = allSeq
+          .filter(
+            (r) =>
+              (r.module && r.module.toLowerCase().includes("purchase order")) ||
+              (r.businessEntity && r.businessEntity.toLowerCase().includes("purchase order")) ||
+              (r.businessEntity && r.businessEntity.toUpperCase() === "REQ.PO")
+          )
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        if (poSeq) {
+          await axios.post(`${API_URL}/api/create-document-sequence`, {
+            module:         poSeq.module,
+            businessEntity: poSeq.businessEntity,
+            entityPrefix:   poSeq.entityPrefix,
+          });
+        }
+      } catch (seqErr) {
+        console.warn("Sequence increment skipped:", seqErr.message);
+      }
 
       await axios.post(`${API_URL}/api/create-purchase-order`, payload);
       alert("Purchase Order saved successfully!");
@@ -263,15 +390,21 @@ const CreatePurchaseOrder = () => {
     }
   };
 
-  const handleReset = () => {
-    setRows([blankRow(1)]);
-    setForm((f) => ({
-      ...f,
-      partyName: "", partyCode: "", mobileNo: "",
-      partyType: "", paymentMode: "", remarks: "",
-      status: "Ordered",
-    }));
-  };
+const handleReset = () => {
+  setRows([blankRow(1)]);
+
+  setForm((f) => ({
+    ...f,
+    poType: "",
+    site: "",
+    partyCode: "",
+    partyName: "",
+    mobileNo: "",
+    paymentMode: "",
+    remarks: "",
+    status: "Ordered",
+  }));
+};
 
   /* items filtered by category selected in a row */
   const itemsForRow = (rowIdx) => {
@@ -282,7 +415,11 @@ const CreatePurchaseOrder = () => {
     return [...new Set(list.map((i) => i.itemName).filter(Boolean))].sort();
   };
 
-  const totalBasic = rows.reduce((s, r) => s + Number(r.basicAmount || 0), 0);
+  // const totalBasic = rows.reduce((s, r) => s + Number(r.basicAmount || 0), 0);
+  const totalNet = rows.reduce(
+  (s, r) => s + Number(r.netAmount || 0),
+  0
+);
 
   return (
     <div className="cpo-page">
@@ -314,6 +451,41 @@ const CreatePurchaseOrder = () => {
             <label>* PO Date</label>
             <input type="date" name="poDate" value={form.poDate} onChange={handleChange} />
           </div>
+       {/* PO Type*/}
+          <div className="cgin-field">
+          <label>PO Type</label>
+          <select
+            name="poType"
+            value={form.poType}
+            onChange={handleChange}
+          >
+            <option value="">- Select -</option>
+            <option value="T">T</option>
+            <option value="UT">UT</option>
+          </select>
+        </div>
+            <div className="cgin-field">
+          <label>Site</label>
+            <select
+              name="site"
+              value={form.site}
+              onChange={handleChange}
+            >
+              <option value="">- Select Site -</option>
+
+              {sites.map((s) => (
+                <option key={s._id} value={s.siteCode}>
+                  {s.siteCode} - {s.siteName}
+                </option>
+              ))}
+            </select>
+        </div>
+
+            {/* Party Code — auto filled */}
+          <div className="cgin-field">
+            <label>Party Code</label>
+            <input type="text" value={form.partyCode} readOnly style={{ background: "#f1f5f9" }} />
+          </div>
 
           {/* Party Name — typeahead from Party master */}
           <div className="cgin-field" style={{ position: "relative" }}>
@@ -328,11 +500,7 @@ const CreatePurchaseOrder = () => {
             />
           </div>
 
-          {/* Party Code — auto filled */}
-          <div className="cgin-field">
-            <label>Party Code</label>
-            <input type="text" value={form.partyCode} readOnly style={{ background: "#f1f5f9" }} />
-          </div>
+        
 
           {/* Mobile No — auto filled from Party */}
           <div className="cgin-field">
@@ -341,20 +509,8 @@ const CreatePurchaseOrder = () => {
               onChange={handleChange} placeholder="Mobile No" />
           </div>
 
-          {/* Party Type — auto filled, can override */}
-       <div className="cgin-field">
-        <label>Transaction Type</label>
-        <select
-          name="transactionType"
-          value={form.transactionType}
-          onChange={handleChange}
-        >
-          <option value="">- Select -</option>
-          <option value="Purchase">T</option>
-          <option value="Import Purchase">UT</option>
-        </select>
-      </div>
-
+         
+        
           {/* Payment Mode */}
           <div className="cgin-field">
             <label>Payment Mode</label>
@@ -423,9 +579,13 @@ const CreatePurchaseOrder = () => {
                   <th>Item Name</th>
                   <th>Item Code</th>
                   <th>UOM</th>
+                  <th>Service Charge</th>
+                  <th>Charges</th>
+                  <th>Discount</th>
                   <th>Qty (MTS)</th>
                   <th>Rate / MTS</th>
                   <th>Basic Amount</th>
+                  <th>Net Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,6 +640,50 @@ const CreatePurchaseOrder = () => {
                       <input className="cgin-item-input cgin-item-sm" value={row.uom} readOnly
                         style={{ background: "#f8fafc" }} />
                     </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="cgin-item-input"
+                        value={row.serviceCharge}
+                        onChange={(e) =>
+                          handleRowChange(
+                            idx,
+                            "serviceCharge",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="number"
+                        className="cgin-item-input"
+                        value={row.charges}
+                        onChange={(e) =>
+                          handleRowChange(
+                            idx,
+                            "charges",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="number"
+                        className="cgin-item-input"
+                        value={row.discount}
+                        onChange={(e) =>
+                          handleRowChange(
+                            idx,
+                            "discount",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
 
                     {/* Qty */}
                     <td>
@@ -505,6 +709,18 @@ const CreatePurchaseOrder = () => {
                         readOnly style={{ background: "#f8fafc", fontWeight: 600 }} />
                     </td>
 
+                    <td>
+                      <input
+                        className="cgin-item-input"
+                        value={row.netAmount}
+                        readOnly
+                        style={{
+                          background: "#f8fafc",
+                          fontWeight: 600
+                        }}
+                      />
+                    </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -512,11 +728,26 @@ const CreatePurchaseOrder = () => {
               {/* TOTAL ROW */}
               <tfoot>
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "right", fontWeight: 700, padding: "8px 10px", background: "#eef1f7" }}>
-                    Total Basic Amount:
+                  <td
+                    colSpan="12"
+                    style={{
+                      textAlign: "right",
+                      fontWeight: 700,
+                      padding: "8px 10px",
+                      background: "#eef1f7"
+                    }}
+                  >
+                    Total Net Amount :
                   </td>
-                  <td style={{ fontWeight: 700, padding: "8px 10px", background: "#eef1f7" }}>
-                    {totalBasic.toFixed(2)}
+
+                  <td
+                    style={{
+                      fontWeight: 700,
+                      padding: "8px 10px",
+                      background: "#eef1f7"
+                    }}
+                  >
+                    {totalNet.toFixed(2)}
                   </td>
                 </tr>
               </tfoot>
