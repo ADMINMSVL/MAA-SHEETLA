@@ -39,7 +39,9 @@ const TaxDetailsRoutes      = require("./routes/Master/TaxDetailsRoutes");
 const ProductionDetailsRoutes      = require("./routes/Master/ProductiondetailsRoutes");
 const SchemeMasterRoutes      = require("./routes/Master/SchememasterRoutes");
 const SiteMasterRoutes       = require("./routes/Master/SiteMasterRoutes");
-const PurchaseOrderRoutes    =require("./routes/Procurement/PurchaseOrderRoutes")
+const PurchaseOrderRoutes    =require("./routes/Procurement/PurchaseOrderRoutes");
+const itemConversionRoutes = require("./routes/Inventory/itemConversionRoutes");
+
 // Specific prefixes BEFORE generic /api to avoid route conflicts
 app.use("/api/auth",        authRoutes);
 app.use("/api/weighment",   weighmentRoutes);
@@ -50,6 +52,7 @@ app.use("/api/sales",       Salesroutes);   // ← NEW
 app.use("/api", transactionRoutes);
 app.use("/api", documentSequenceRoutes);
 app.use("/api", goodsInwardNoteRoutes);
+app.use("/api", itemConversionRoutes);
 app.use("/api", PartyRoutes);
 app.use("/api", ItemRoutes);
 app.use("/api", UomRoutes);

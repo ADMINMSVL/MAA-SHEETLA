@@ -32,6 +32,7 @@ const blankItem = (sNo) => ({
   itemName: "",
   uom:      "",
   qty:      "",
+  rate:     "",
   _checked: false,
 });
 
@@ -176,6 +177,7 @@ const CreateGIN = () => {
             itemName:  it.itemName     || "",
             uom:       it.uom          || "",
             qty:       it.qty          || "",
+            rate:      it.rate         ?? it.netAmount ?? "",
             _checked:  false,
           }))
         );
@@ -236,10 +238,11 @@ const CreateGIN = () => {
       setItems(
         po.items.map((it, idx) => ({
           sNo:       idx + 1,
-          itemCode:  it.itemCode     || "",
-          itemName:  it.itemName     || "",
-          uom:       it.uom          || "",
-          qty:       it.qty          || "",
+          itemCode:  it.itemCode  || "",
+          itemName:  it.itemName  || "",
+          uom:       it.uom       || "",
+          qty:       it.qty       || "",
+          rate:      it.rate      ?? it.netAmount ?? "",
           _checked:  false,
         }))
       );
@@ -335,7 +338,7 @@ const CreateGIN = () => {
           const { sNo, _checked, ...rest } = r;
           return Object.values(rest).some((v) => String(v).trim() !== "");
         })
-        .map(({ _checked, ...r }) => ({ ...r, qty: Number(r.qty) || 0 }));
+        .map(({ _checked, ...r }) => ({ ...r, qty: Number(r.qty) || 0, rate: Number(r.rate) || 0 }));
 
       /* 3. Save note */
       const payload = {
@@ -599,6 +602,7 @@ const CreateGIN = () => {
                   <th style={{ minWidth: 200 }}>Item Name</th>
                   <th style={{ width: 90 }}>UOM</th>
                   <th style={{ width: 100 }}>Qty</th>
+                  <th style={{ width: 110 }}>Rate (₹)</th>
                 </tr>
               </thead>
               <tbody>
@@ -657,6 +661,19 @@ const CreateGIN = () => {
                         onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
                         placeholder="0"
                         min="0"
+                      />
+                    </td>
+
+                    {/* Rate — pre-filled from PO, editable */}
+                    <td>
+                      <input
+                        type="number"
+                        className="cgin-item-input cgin-item-num"
+                        value={row.rate}
+                        onChange={(e) => handleItemChange(idx, "rate", e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="0.01"
                       />
                     </td>
                   </tr>

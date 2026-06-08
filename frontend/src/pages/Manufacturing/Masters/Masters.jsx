@@ -19,6 +19,7 @@ const Masters = () => {
     { icon: "⚙️", title: "Production Details",  subtitle: "Grade, Size, Dimensions",  code: "PD001", path: "/production-details"    },
     { icon: "📊", title: "Scheme Master",       subtitle: "Pricing Schemes",          code: "SM001", path: "/scheme-master"         },
     { icon: "📍", title: "Site Master",         subtitle: "Manage Sites / Locations", code: "ST001", path: "/site-master"           },
+    { icon: "📍", title: "Item Conversion",      subtitle: "Manage Item conversion", code: "IC001", path: "/item-conversion-master" },
   ];
 
   return (

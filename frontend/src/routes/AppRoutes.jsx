@@ -25,7 +25,9 @@ import WeighmentDetail       from "../pages/Manufacturing/Inventory/Weighment/We
 import CreateWeighment       from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/CreateWeighment";
 import CreateInwardWeighment  from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createinwardweighment";
 import CreateOutwardWeighment from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createoutwardweighment";
-
+import ItemConversion         from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversion";
+import CreateItemConversion from "../pages/Manufacturing/Inventory/ItemConversion/CreateItemConversion";
+import ItemConversionDetail from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversionDetail";
 // SALES MODULE
 import SalesSearch       from "../pages/Manufacturing/Sales/SalesSearch/Salessearch";
 import SalesContractForm from "../pages/Manufacturing/Sales/SalesContractForm/SalesContractForm";
@@ -46,9 +48,7 @@ import CreateSite from "../pages/Manufacturing/Masters/SiteMaster/CreateSite";
 // MASTERS — batch 2
 import ItemCategory        from "../pages/Manufacturing/Masters/ItemCategory/Itemcategory";
 import CreateItemCategory  from "../pages/Manufacturing/Masters/ItemCategory/CreateItemCategory";
-// import ItemGroup            from "../pages/Manufacturing/Masters/ItemType/ItemGroup";
 import ItemGroup from "../pages/Manufacturing/Masters/ItemType/ItemType";
-// import CreateItemGroup      from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
 import CreateItemGroup from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
 import TaxDetails          from "../pages/Manufacturing/Masters/TaxDetails/TaxDetails";
 import CreateTaxDetails    from "../pages/Manufacturing/Masters/TaxDetails/CreateTaxDetails";
@@ -60,6 +60,8 @@ import ItemDetail from "../pages/Manufacturing/Masters/ItemMaster/ItemDetail";
 import CreatePurchaseOrder from "../pages/Manufacturing/Procurement/PurchaseOrder/CreatePurchaseOrder";
 import PurchaseOrder from "../pages/Manufacturing/Procurement/PurchaseOrder/PurchaseOrder";
 import PODetail from "../pages/Manufacturing/Procurement/PurchaseOrder/PODetails";
+import CreateItemConversionMaster from "../pages/Manufacturing/Masters/ItemConversion/CreateItemConversionMaster";
+import ItemConversionMasterPage from "../pages/Manufacturing/Masters/ItemConversion/ItemConversionMasterPage";
 
 const AppRoutes = () => {
   return (
@@ -91,7 +93,9 @@ const AppRoutes = () => {
       <Route path="/goods-receipt-note"       element={<GoodsReceiptNote />} />
       <Route path="/direct-grn"               element={<DirectGRN />} />
       <Route path="/item-inventory"           element={<ItemInventory />} />
-
+      <Route path="/item-Conversion"           element={<ItemConversion />} />
+      <Route path="/create-item-conversion"           element={<CreateItemConversion />} />
+      <Route path="/item-conversion-detail/:id" element={<ItemConversionDetail />} />
       {/* PO */}
       <Route path="/create-purchase-order"           element={<CreatePurchaseOrder />} />
       <Route path="/purchase-order"           element={<PurchaseOrder />} />
@@ -121,6 +125,8 @@ const AppRoutes = () => {
       <Route path="/create-uom"        element={<CreateUOM />} />
       <Route path="/party-type"        element={<PartyType />} />
       <Route path="/create-party-type" element={<CreatePartyType />} />
+      <Route path="/item-conversion-master" element={<ItemConversionMasterPage />} />
+      <Route path="/create-item-conversion-master" element={<CreateItemConversionMaster />} />
 
       {/* MASTERS — batch 2 */}
       <Route path="/item-category"            element={<ItemCategory />} />

@@ -7,6 +7,7 @@ const ginItemSchema = new mongoose.Schema({
   itemName:  String,
   uom:       String,
   qty:       Number,
+  rate:      { type: Number, default: 0 },   // rate fetched from PO item
 }, { _id: false });
 
 const goodsInwardNoteSchema = new mongoose.Schema({

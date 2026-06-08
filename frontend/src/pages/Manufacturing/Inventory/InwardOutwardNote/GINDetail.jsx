@@ -381,6 +381,7 @@ const GINDetail = () => {
                     <th>Item Name</th>
                     <th>UOM</th>
                     <th>Qty</th>
+                    <th>Rate (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -454,6 +455,24 @@ const GINDetail = () => {
                             />
                           ) : (
                             item.qty ?? "-"
+                          )}
+                        </td>
+
+                        {/* Rate */}
+                        <td>
+                          {ginEditing ? (
+                            <input
+                              type="number"
+                              className="gd-item-input gd-item-num"
+                              value={ginEdit.items?.[i]?.rate ?? ""}
+                              onChange={(e) => updateGinItem(i, "rate", e.target.value)}
+                              min="0"
+                              step="0.01"
+                            />
+                          ) : (
+                            item.rate != null && item.rate !== ""
+                              ? `₹ ${Number(item.rate).toLocaleString("en-IN")}`
+                              : "-"
                           )}
                         </td>
                       </tr>

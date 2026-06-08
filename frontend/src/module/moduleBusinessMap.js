@@ -11,6 +11,7 @@ export const MODULE_BUSINESS_MAP = {
     "Weighment",
     "GRN",
     "Quality",
+    "Item Conversion"
   ],
 
   "Production": [
