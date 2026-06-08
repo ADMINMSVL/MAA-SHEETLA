@@ -22,12 +22,20 @@ const navigate = useNavigate();
     theme: "blue",
     path: "/weighment-search",
   },
+  // {
+  //   shortName: "GR",
+  //   title: "Goods Receipt Note",
+  //   code: "M03GRN",
+  //   theme: "purple",
+  //   path: "/goods-receipt-note",
+  // },
+
   {
-    shortName: "GR",
-    title: "Goods Receipt Note",
-    code: "M03GRN",
-    theme: "purple",
-    path: "/goods-receipt-note",
+    shortName: "IC",
+    title: "Item Conversion",
+    code: "M03IC",
+    theme: "blue",
+    path: "/item-Conversion",
   },
   {
     shortName: "DG",
@@ -36,14 +44,6 @@ const navigate = useNavigate();
     theme: "blue",
     path: "/direct-grn",
   },
-  {
-    shortName: "IC",
-    title: "Item Conversion",
-    code: "M03IC",
-    theme: "blue",
-    path: "/item-Conversion",
-  },
-
    {
     shortName: "II",
     title: "Item inventory",
