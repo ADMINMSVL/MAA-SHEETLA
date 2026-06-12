@@ -2,21 +2,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 
-/*
-  useSiteOptions(module, businessEntity)
-  ───────────────────────────────────────
-  Reusable hook. Any page calls this to get the list of
-  Active sites saved under a specific Module + Business Entity.
-
-  Usage example in InwardOutwardNote.jsx:
-    const { sites, loading } = useSiteOptions("Inventory", "Inward/Outward Note");
-
-    <select name="site">
-      {sites.map((s) => (
-        <option key={s._id} value={s.siteCode}>{s.siteCode} — {s.siteName}</option>
-      ))}
-    </select>
-*/
 
 const useSiteOptions = (module, businessEntity) => {
   const [sites, setSites]     = useState([]);

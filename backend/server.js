@@ -41,12 +41,23 @@ const SchemeMasterRoutes      = require("./routes/Master/SchememasterRoutes");
 const SiteMasterRoutes       = require("./routes/Master/SiteMasterRoutes");
 const PurchaseOrderRoutes    =require("./routes/Procurement/PurchaseOrderRoutes");
 const itemConversionRoutes = require("./routes/Inventory/itemConversionRoutes");
+const CCMProductionRoutes = require("./routes/Production/CCMProductionRoutes");
+const RollingProductionRoutes = require("./routes/Production/RollingProductionRoutes");
+const BundlingProductionRoutes = require("./routes/Production/BundlingProductionRoutes");
+const ProductionAnalyticsRoutes = require("./routes/Production/ProductionAnalyticsRoutes");
+const PurchaseRequisitionRoutes    =require("./routes/Procurement/PurchaseRequisitionRoutes");
+
+
 
 // Specific prefixes BEFORE generic /api to avoid route conflicts
 app.use("/api/auth",        authRoutes);
 app.use("/api/weighment",   weighmentRoutes);
 app.use("/api/direct-grn",  Directgrnroutes);
 app.use("/api/sales",       Salesroutes);   // ← NEW
+app.use("/api",       CCMProductionRoutes);
+app.use("/api",       RollingProductionRoutes);
+app.use("/api",       BundlingProductionRoutes);
+app.use("/api",       ProductionAnalyticsRoutes);
 
 // Generic /api routes last
 app.use("/api", transactionRoutes);
@@ -64,6 +75,7 @@ app.use("/api", ProductionDetailsRoutes);
 app.use("/api", SchemeMasterRoutes);
 app.use("/api", SiteMasterRoutes);
 app.use("/api", PurchaseOrderRoutes);
+app.use("/api", PurchaseRequisitionRoutes);
 
 /* TEST */
 app.get("/", (req, res) => {
