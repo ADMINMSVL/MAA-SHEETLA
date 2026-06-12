@@ -47,7 +47,7 @@ function Header() {
       <span className="logo-icon">
           <img src={logo } alt="logo" width="120" />
         </span>
-    <h2>Maa Sheetla Ventures Limited</h2>
+    <h2>MSVL-TESTING ENVIRONMENT</h2>
   </div>
 
       {/* Right side: user chip + logout OR login/signup */}
