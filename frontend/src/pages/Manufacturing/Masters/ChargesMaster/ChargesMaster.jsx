@@ -5,25 +5,25 @@ import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const TAX_TYPE_OPTIONS = ["GST", "IGST", "CGST", "SGST", "Cess", "TDS", "TCS"];
+const TYPE_OPTIONS = ["Charges", "Discount"];
 
-const TaxDetails = () => {
+const ChargesMaster = () => {
   const navigate = useNavigate();
 
   const [data, setData]         = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [searchCode, setSearchCode]   = useState("");
-  const [searchType, setSearchType]   = useState("");
+  const [searchCode, setSearchCode]     = useState("");
+  const [searchType, setSearchType]     = useState("");
   const [searchStatus, setSearchStatus] = useState("");
 
   const [editId, setEditId]     = useState(null);
   const [editData, setEditData] = useState({
-    entityDate: "", taxType: "", taxCode: "", taxName: "", percentage: "", addOrSubtract: "", status: "",
+    entityDate: "", type: "", code: "", details: "", addOrSubtract: "", status: "",
   });
 
   const fetchData = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/tax-details`);
+      const res = await axios.get(`${API_URL}/api/charges-master`);
       setData(res.data);
       setFiltered(res.data);
     } catch (err) { console.error(err); }
@@ -33,8 +33,8 @@ const TaxDetails = () => {
 
   const handleSearch = () => {
     let f = [...data];
-    if (searchCode)   f = f.filter((i) => i.taxCode?.toLowerCase().includes(searchCode.toLowerCase()));
-    if (searchType)   f = f.filter((i) => i.taxType === searchType);
+    if (searchCode)   f = f.filter((i) => i.code?.toLowerCase().includes(searchCode.toLowerCase()));
+    if (searchType)   f = f.filter((i) => i.type === searchType);
     if (searchStatus) f = f.filter((i) => i.status === searchStatus);
     setFiltered(f);
   };
@@ -45,10 +45,9 @@ const TaxDetails = () => {
     setEditId(item._id);
     setEditData({
       entityDate:    item.entityDate ? item.entityDate.split("T")[0] : "",
-      taxType:       item.taxType,
-      taxCode:       item.taxCode,
-      taxName:       item.taxName,
-      percentage:    item.percentage,
+      type:          item.type,
+      code:          item.code,
+      details:       item.details,
       addOrSubtract: item.addOrSubtract,
       status:        item.status,
     });
@@ -56,7 +55,7 @@ const TaxDetails = () => {
 
   const handleUpdate = async (id) => {
     try {
-      await axios.put(`${API_URL}/api/tax-details/${id}`, editData);
+      await axios.put(`${API_URL}/api/charges-master/${id}`, editData);
       setEditId(null);
       fetchData();
     } catch (err) { console.error(err); alert("Error updating record"); }
@@ -65,7 +64,7 @@ const TaxDetails = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this record?")) return;
     try {
-      await axios.delete(`${API_URL}/api/tax-details/${id}`);
+      await axios.delete(`${API_URL}/api/charges-master/${id}`);
       fetchData();
     } catch (err) { console.error(err); }
   };
@@ -77,8 +76,8 @@ const TaxDetails = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Tax Details</h1>
-        <button className="create-btn" onClick={() => navigate("/create-tax-details")}>Create ▼</button>
+        <h1>Charges / Discount Master</h1>
+        <button className="create-btn" onClick={() => navigate("/create-charges-master")}>Create ▼</button>
       </div>
 
       {/* SEARCH */}
@@ -86,14 +85,14 @@ const TaxDetails = () => {
         <div className="search-title">Search</div>
         <div className="search-grid">
           <div className="form-group">
-            <label>Tax Code</label>
-            <input type="text" value={searchCode} onChange={(e) => setSearchCode(e.target.value)} placeholder="Search tax code..." />
+            <label>Code</label>
+            <input type="text" value={searchCode} onChange={(e) => setSearchCode(e.target.value)} placeholder="Search code..." />
           </div>
           <div className="form-group">
-            <label>Tax Type</label>
+            <label>Type</label>
             <select value={searchType} onChange={(e) => setSearchType(e.target.value)}>
               <option value="">- Select -</option>
-              {TAX_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+              {TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -117,11 +116,10 @@ const TaxDetails = () => {
               <tr>
                 <th>S No</th>
                 <th>Entity Date</th>
-                <th>Tax Type</th>
-                <th>Tax Code</th>
-                <th>Tax Name</th>
-                <th>Percentage (%)</th>
-                <th>Add / Subtract</th>
+                <th>Type</th>
+                <th>Code</th>
+                <th>Details</th>
+                <th>Addition / Subtraction</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -140,35 +138,31 @@ const TaxDetails = () => {
                   <td>
                     {editId === item._id
                       ? (
-                        <select value={editData.taxType} onChange={set("taxType")}>
-                          {TAX_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+                        <select value={editData.type} onChange={set("type")}>
+                          <option value="">- Select -</option>
+                          {TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
                         </select>
                       )
-                      : item.taxType}
+                      : item.type}
                   </td>
 
                   <td>
                     {editId === item._id
-                      ? <input type="text" value={editData.taxCode} onChange={set("taxCode")} />
-                      : item.taxCode}
+                      ? <input type="text" value={editData.code} onChange={set("code")} />
+                      : item.code}
                   </td>
 
                   <td>
                     {editId === item._id
-                      ? <input type="text" value={editData.taxName} onChange={set("taxName")} />
-                      : item.taxName}
-                  </td>
-
-                  <td>
-                    {editId === item._id
-                      ? <input type="number" min="0" max="100" value={editData.percentage} onChange={set("percentage")} />
-                      : `${item.percentage}%`}
+                      ? <input type="text" value={editData.details} onChange={set("details")} />
+                      : item.details || "-"}
                   </td>
 
                   <td>
                     {editId === item._id
                       ? (
                         <select value={editData.addOrSubtract} onChange={set("addOrSubtract")}>
+                          <option value="">- Select -</option>
                           <option value="Addition">Addition</option>
                           <option value="Subtraction">Subtraction</option>
                         </select>
@@ -196,7 +190,7 @@ const TaxDetails = () => {
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan="9" className="no-data">No Data Found</td></tr>
+                <tr><td colSpan="8" className="no-data">No Data Found</td></tr>
               )}
             </tbody>
           </table>
@@ -206,4 +200,4 @@ const TaxDetails = () => {
   );
 };
 
-export default TaxDetails;
+export default ChargesMaster;

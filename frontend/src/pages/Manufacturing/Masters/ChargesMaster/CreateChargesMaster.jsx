@@ -4,18 +4,17 @@ import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const TAX_TYPE_OPTIONS = ["GST", "IGST", "CGST", "SGST", "Cess", "TDS", "TCS"];
+const TYPE_OPTIONS = ["Charges", "Discount"];
 
-const CreateTaxDetails = () => {
+const CreateChargesMaster = () => {
   const today = new Date().toISOString().split("T")[0];
 
   const [formData, setFormData] = useState({
     entityDate:    today,
-    taxType:       "",
-    taxCode:       "",
-    taxName:       "",
-    percentage:    "",
-    addOrSubtract: "Addition",
+    type:          "",
+    code:          "",
+    details:       "",
+    addOrSubtract: "",
     status:        "Active",
   });
 
@@ -23,32 +22,32 @@ const CreateTaxDetails = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.taxType || !formData.taxCode || !formData.taxName || formData.percentage === "") {
-      alert("Tax Type, Tax Code, Tax Name and Percentage are required.");
+    if (!formData.type || !formData.code || !formData.addOrSubtract) {
+      alert("Type, Code and Addition/Subtraction are required.");
       return;
     }
     try {
-      const res = await axios.post(`${API_URL}/api/create-tax-details`, formData);
+      const res = await axios.post(`${API_URL}/api/create-charges-master`, formData);
       alert(res.data.message);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Error Saving Tax Details");
+      alert(err.response?.data?.message || "Error Saving Charges/Discount Master");
     }
   };
 
   const handleClear = () =>
-    setFormData({ entityDate: today, taxType: "", taxCode: "", taxName: "", percentage: "", addOrSubtract: "Addition", status: "Active" });
+    setFormData({ entityDate: today, type: "", code: "", details: "", addOrSubtract: "", status: "Active" });
 
   return (
     <div className="create-page">
       <ModuleNavbar />
 
       <div className="create-header">
-        <h1>Tax Details</h1>
+        <h1>Charges / Discount Master</h1>
       </div>
 
       <div className="create-container">
-        <div className="create-title">Create Tax Details</div>
+        <div className="create-title">Create Charges / Discount Master</div>
 
         <div className="create-grid">
 
@@ -58,42 +57,32 @@ const CreateTaxDetails = () => {
             <input type="date" name="entityDate" value={formData.entityDate} onChange={handleChange} />
           </div>
 
-          {/* Tax Type */}
+          {/* Type */}
           <div className="form-group">
-            <label>* Tax Type</label>
-            <select name="taxType" value={formData.taxType} onChange={handleChange}>
+            <label>* Type</label>
+            <select name="type" value={formData.type} onChange={handleChange}>
               <option value="">- Select -</option>
-              {TAX_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
-          {/* Tax Code */}
+          {/* Code */}
           <div className="form-group">
-            <label>* Tax Code</label>
+            <label>* Code</label>
             <input
-              type="text" name="taxCode"
-              value={formData.taxCode} onChange={handleChange}
-              placeholder="e.g. TAX-GST-18"
+              type="text" name="code"
+              value={formData.code} onChange={handleChange}
+              placeholder="e.g. CHG-001"
             />
           </div>
 
-          {/* Tax Name */}
+          {/* Details */}
           <div className="form-group">
-            <label>* Tax Name</label>
+            <label>Details</label>
             <input
-              type="text" name="taxName"
-              value={formData.taxName} onChange={handleChange}
-              placeholder="e.g. GST 18%"
-            />
-          </div>
-
-          {/* Percentage */}
-          <div className="form-group">
-            <label>* Percentage (%)</label>
-            <input
-              type="number" name="percentage" min="0" max="100"
-              value={formData.percentage} onChange={handleChange}
-              placeholder="e.g. 18"
+              type="text" name="details"
+              value={formData.details} onChange={handleChange}
+              placeholder="Brief description"
             />
           </div>
 
@@ -101,6 +90,7 @@ const CreateTaxDetails = () => {
           <div className="form-group">
             <label>* Addition / Subtraction</label>
             <select name="addOrSubtract" value={formData.addOrSubtract} onChange={handleChange}>
+              <option value="">- Select -</option>
               <option value="Addition">Addition</option>
               <option value="Subtraction">Subtraction</option>
             </select>
@@ -124,4 +114,4 @@ const CreateTaxDetails = () => {
   );
 };
 
-export default CreateTaxDetails;
+export default CreateChargesMaster;

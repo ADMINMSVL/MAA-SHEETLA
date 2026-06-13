@@ -1,22 +1,22 @@
 const express = require("express");
 const router  = express.Router();
-const TaxDetails = require("../../models/Master/TaxDetails");
+const ServiceMaster = require("../../models/Master/ServiceMaster");
 
 /* CREATE */
-router.post("/create-tax-details", async (req, res) => {
+router.post("/create-service-master", async (req, res) => {
   try {
-    const doc = new TaxDetails(req.body);
+    const doc = new ServiceMaster(req.body);
     await doc.save();
-    res.status(201).json({ success: true, message: "Tax Details Saved Successfully", data: doc });
+    res.status(201).json({ success: true, message: "Service Master Saved Successfully", data: doc });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 /* READ ALL */
-router.get("/tax-details", async (req, res) => {
+router.get("/service-master", async (req, res) => {
   try {
-    const data = await TaxDetails.find().sort({ createdAt: -1 });
+    const data = await ServiceMaster.find().sort({ createdAt: -1 });
     res.status(200).json(data);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -24,9 +24,9 @@ router.get("/tax-details", async (req, res) => {
 });
 
 /* UPDATE */
-router.put("/tax-details/:id", async (req, res) => {
+router.put("/service-master/:id", async (req, res) => {
   try {
-    const updated = await TaxDetails.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ServiceMaster.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -34,9 +34,9 @@ router.put("/tax-details/:id", async (req, res) => {
 });
 
 /* DELETE */
-router.delete("/tax-details/:id", async (req, res) => {
+router.delete("/service-master/:id", async (req, res) => {
   try {
-    await TaxDetails.findByIdAndDelete(req.params.id);
+    await ServiceMaster.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: "Deleted Successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

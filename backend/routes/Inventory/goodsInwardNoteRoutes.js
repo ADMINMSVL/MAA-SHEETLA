@@ -4,7 +4,7 @@ const Weighment       = require("../../models/Inventory/Weighment");
 const GoodsInwardNote = require("../../models/Inventory/GoodsInwardNote");
 const DocumentSequence = require("../../models/Master/DocumentSequence");
 
-/* ── shared date builder (same logic as documentSequenceRoutes) ── */
+/* ── shared date builder ── */
 const buildDatePart = (format) => {
   const today = new Date();
   const dd   = String(today.getDate()).padStart(2, "0");
@@ -13,13 +13,11 @@ const buildDatePart = (format) => {
 
   if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
   if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;           // default dd/mm/yyyy
+  return `${dd}${mm}${yyyy}`;
 };
 
 /* ══════════════════════════════════════════════
-   GET — Generate next GIN number from DocumentSequence
-   Query params: module, businessEntity, entityPrefix
-   Example: /api/goods-inward-note/next-sequence?module=Goods%20Inward%20Note&businessEntity=GYPMART%20INDIA&entityPrefix=GIN
+   GET — Generate next GIN number
 ══════════════════════════════════════════════ */
 router.get("/goods-inward-note/next-sequence", async (req, res) => {
   try {
@@ -33,7 +31,6 @@ router.get("/goods-inward-note/next-sequence", async (req, res) => {
       });
     }
 
-    /* Find latest sequence record for this combination */
     const lastRecord = await DocumentSequence
       .findOne({ module, businessEntity, entityPrefix: prefix })
       .sort({ createdAt: -1 });
@@ -45,11 +42,11 @@ router.get("/goods-inward-note/next-sequence", async (req, res) => {
       });
     }
 
-    const digits    = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
-    const nextNo    = Number(lastRecord.incrementNo) + 1;
-    const paddedNo  = String(nextNo).padStart(digits, "0");
-    const datePart  = lastRecord.useDateFragment ? buildDatePart(lastRecord.sequenceFormat) : "";
-    const nextCode  = `${prefix}${datePart}${paddedNo}`;
+    const digits   = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
+    const nextNo   = Number(lastRecord.incrementNo) + 1;
+    const paddedNo = String(nextNo).padStart(digits, "0");
+    const datePart = lastRecord.useDateFragment ? buildDatePart(lastRecord.sequenceFormat) : "";
+    const nextCode = `${prefix}${datePart}${paddedNo}`;
 
     res.json({
       success: true,
@@ -82,8 +79,11 @@ router.post("/goods-inward-note", async (req, res) => {
 });
 
 /* ══════════════════════════════════════════════
-   GET — List / Search GINs with filters
-   Also merges linked weighment data per record
+   GET — List / Search GINs
+   Supports:
+     - status (single value, e.g. "Closed")
+     - statusIn (multi-value for default active-only load)
+       e.g. ?statusIn=Open&statusIn=Weighted&statusIn=OutPending
 ══════════════════════════════════════════════ */
 router.get("/goods-inward-note", async (req, res) => {
   try {
@@ -104,16 +104,20 @@ router.get("/goods-inward-note", async (req, res) => {
       challanDate,
       ewayDate,
       site,
-      /* ── new filters ── */
       partyCode,
       partyName,
       partyDoc,
       inOutType,
     } = req.query;
 
+    /* statusIn — array of statuses for default "active only" filter */
+    const statusIn = req.query.statusIn
+      ? (Array.isArray(req.query.statusIn) ? req.query.statusIn : [req.query.statusIn])
+      : null;
+
     const query = {};
 
-    /* Date range on ginDate */
+    /* Date range */
     if (fromDate || toDate) {
       query.ginDate = {};
       if (fromDate) query.ginDate.$gte = fromDate;
@@ -121,7 +125,6 @@ router.get("/goods-inward-note", async (req, res) => {
     }
 
     if (ginNumber)           query.ginNo               = { $regex: ginNumber,           $options: "i" };
-    if (status)              query.status              = status;
     if (vendorCode)          query.vendorCode          = { $regex: vendorCode,          $options: "i" };
     if (vendorName)          query.vendorName          = { $regex: vendorName,          $options: "i" };
     if (poCpoNo)             query.poCpoNo             = { $regex: poCpoNo,             $options: "i" };
@@ -139,9 +142,21 @@ router.get("/goods-inward-note", async (req, res) => {
     if (partyDoc)            query.partyDoc            = { $regex: partyDoc,            $options: "i" };
     if (inOutType)           query.inOutType           = inOutType;
 
+    /*
+      STATUS FILTER LOGIC:
+        - If "status" is explicitly provided (e.g. user selects "Closed"), filter by that.
+        - Else if "statusIn" array is provided (default load from frontend), use $in.
+        - Else: no status filter (fetch all — only when user has intentionally cleared everything).
+    */
+    if (status) {
+      query.status = status;
+    } else if (statusIn && statusIn.length > 0) {
+      query.status = { $in: statusIn };
+    }
+
     const ginData = await GoodsInwardNote.find(query).sort({ createdAt: -1 });
 
-    /* Merge linked weighment data so the list page shows weight fields */
+    /* Merge linked weighment data */
     const mergedData = await Promise.all(
       ginData.map(async (gin) => {
         const weighment = await Weighment.findOne({ inwardOutwardNoteNo: gin.ginNo });

@@ -5,32 +5,43 @@ import "./PODetails.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const PO_API = `${API_URL}/api/purchase-order`;
+const PO_API        = `${API_URL}/api/purchase-order`;
+const STATUS_OPTIONS = ["Ordered", "Intransit", "Closed", "Cancelled"];
 
-/* ─────────────────────────────────────────────────────────
-   PODetail
-   Opened from PurchaseOrder list by clicking the PO No link.
-   Shows all PO fields + items table, fully editable inline.
-───────────────────────────────────────────────────────── */
+const statusColor = (s) => {
+  if (s === "Ordered")   return { bg: "#dbeafe", fg: "#1d4ed8" };
+  if (s === "Intransit") return { bg: "#fef3c7", fg: "#d97706" };
+  if (s === "Closed")    return { bg: "#dcfce7", fg: "#16a34a" };
+  if (s === "Cancelled") return { bg: "#fee2e2", fg: "#dc2626" };
+  return { bg: "#f1f5f9", fg: "#64748b" };
+};
+
+/* Read-only display field */
+const ReadField = ({ label, value }) => (
+  <div className="pod-field">
+    <div className="pod-label">{label}</div>
+    <div className="pod-value">{value || "-"}</div>
+  </div>
+);
+
 const PODetail = () => {
   const { id }   = useParams();
   const navigate = useNavigate();
 
-  const [po,       setPo]       = useState(null);
-  const [poEdit,   setPoEdit]   = useState({});
-  const [editing,  setEditing]  = useState(false);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState("");
+  const [po,      setPo]      = useState(null);
+  const [status,  setStatus]  = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState("");
 
-  /* ── load PO ── */
+  /* ── Load ── */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const res = await axios.get(`${PO_API}/${id}`);
         setPo(res.data);
-        setPoEdit({ ...res.data });
+        setStatus(res.data.status || "Ordered");
       } catch (err) {
         console.error(err);
         setError("Failed to load Purchase Order");
@@ -41,16 +52,16 @@ const PODetail = () => {
     load();
   }, [id]);
 
-  /* ── save PO ── */
-  const savePo = async () => {
+  /* ── Save status only ── */
+  const saveStatus = async () => {
+    if (!po) return;
     setSaving(true);
     try {
-      const res = await axios.put(`${PO_API}/${id}`, poEdit);
+      const res = await axios.put(`${PO_API}/${id}`, { ...po, status });
       if (res.data.success) {
         setPo(res.data.data);
-        setPoEdit({ ...res.data.data });
-        setEditing(false);
-        alert("Purchase Order Updated Successfully");
+        setStatus(res.data.data.status);
+        alert("Status Updated Successfully");
       }
     } catch (err) {
       console.error(err);
@@ -60,65 +71,7 @@ const PODetail = () => {
     }
   };
 
-  /* ── item row helpers ── */
-  const updateItem = (index, field, value) => {
-    const items = [...(poEdit.items || [])];
-    items[index] = { ...items[index], [field]: value };
-
-    /* auto-recalc basicAmount and netAmount for the row */
-    const row = items[index];
-    const qty           = parseFloat(field === "qty"           ? value : row.qty           || 0) || 0;
-    const rate          = parseFloat(field === "rate"          ? value : row.rate          || 0) || 0;
-    const serviceCharge = parseFloat(field === "serviceCharge" ? value : row.serviceCharge || 0) || 0;
-    const charges       = parseFloat(field === "charges"       ? value : row.charges       || 0) || 0;
-    const discount      = parseFloat(field === "discount"      ? value : row.discount      || 0) || 0;
-
-    const basicAmt = qty > 0 && rate > 0 ? qty * rate : (parseFloat(row.basicAmount) || 0);
-    const netAmt   = basicAmt + serviceCharge + charges - discount;
-
-    items[index].basicAmount = basicAmt;
-    items[index].netAmount   = netAmt;
-
-    /* recalc grand total */
-    const totalNet = items.reduce((sum, it) => sum + (parseFloat(it.netAmount) || 0), 0);
-    setPoEdit((p) => ({ ...p, items, netAmount: totalNet }));
-  };
-
-  /* ── field renderer helpers ── */
-  const F = (field, type = "text", readOnly = false) =>
-    editing && !readOnly ? (
-      <input
-        type={type}
-        className="pod-input"
-        value={poEdit[field] ?? ""}
-        onChange={(e) => setPoEdit((p) => ({ ...p, [field]: e.target.value }))}
-      />
-    ) : (
-      <div className="pod-value">{po?.[field] || "-"}</div>
-    );
-
-  const S = (field, opts) =>
-    editing ? (
-      <select
-        className="pod-input"
-        value={poEdit[field] ?? ""}
-        onChange={(e) => setPoEdit((p) => ({ ...p, [field]: e.target.value }))}
-      >
-        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    ) : (
-      <div className="pod-value">{po?.[field] || "-"}</div>
-    );
-
-  const statusColor = (s) => {
-    if (s === "Ordered")            return { bg: "#dbeafe", fg: "#1d4ed8" };
-    if (s === "Partially Received") return { bg: "#fef3c7", fg: "#d97706" };
-    if (s === "Completed")          return { bg: "#dcfce7", fg: "#16a34a" };
-    if (s === "Cancelled")          return { bg: "#fee2e2", fg: "#dc2626" };
-    return { bg: "#f1f5f9", fg: "#64748b" };
-  };
-
-  /* ── guards ── */
+  /* ── Guards ── */
   if (loading) return (
     <div className="pod-page"><ModuleNavbar /><div className="pod-loading">Loading…</div></div>
   );
@@ -126,141 +79,99 @@ const PODetail = () => {
     <div className="pod-page"><ModuleNavbar /><div className="pod-error">{error}</div></div>
   );
 
-  const sc = statusColor(po?.status);
+  const sc = statusColor(status);
 
   return (
     <div className="pod-page">
       <ModuleNavbar />
 
-      {/* ── PAGE HEADER ── */}
+      {/* PAGE HEADER */}
       <div className="pod-header">
-        <button className="pod-back-btn" onClick={() => navigate("/purchase-order")}>
-          ← Back
-        </button>
+        <button className="pod-back-btn" onClick={() => navigate("/purchase-order")}>← Back</button>
         <div className="pod-header-title">
           <h2>Purchase Order Detail</h2>
           <span className="pod-pono-badge">{po?.poNo}</span>
         </div>
         <div className="pod-header-meta">
-          <span
-            className="pod-status-pill"
-            style={{ background: sc.bg, color: sc.fg }}
-          >
-            {po?.status || "-"}
+          <span className="pod-status-pill" style={{ background: sc.bg, color: sc.fg }}>
+            {status || "-"}
           </span>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          SECTION 1 — PO INFORMATION
-      ══════════════════════════════════════════ */}
+      {/* ══════════ ORDER DETAILS CARD ══════════ */}
       <div className="pod-card">
         <div className="pod-card-header">
-          <div className="pod-card-title">📋 Purchase Order Information</div>
+          <div className="pod-card-title">📋 Order Details</div>
           <div className="pod-card-actions">
-            {editing ? (
-              <>
-                <button
-                  className="pod-cancel-btn"
-                  onClick={() => { setEditing(false); setPoEdit({ ...po }); }}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button className="pod-save-btn" onClick={savePo} disabled={saving}>
-                  {saving ? "Saving…" : "Save PO"}
-                </button>
-              </>
-            ) : (
-              <button className="pod-edit-btn" onClick={() => setEditing(true)}>
-                Edit Details
-              </button>
-            )}
+            {/* Only status is editable — save button */}
+            <button className="pod-save-btn" onClick={saveStatus} disabled={saving}>
+              {saving ? "Saving…" : "Update Status"}
+            </button>
           </div>
         </div>
 
         <div className="pod-grid">
 
+          {/* 1. PO No */}
           <div className="pod-field">
             <div className="pod-label">PO No</div>
             <div className="pod-value pod-mono">{po?.poNo || "-"}</div>
           </div>
 
-          <div className="pod-field">
-            <div className="pod-label">PO Date</div>
-            {F("poDate", "date")}
-          </div>
+          {/* 2. PO Date */}
+          <ReadField label="PO Date" value={po?.poDate ? po.poDate.slice(0, 10) : ""} />
 
-          <div className="pod-field">
-            <div className="pod-label">Party Name</div>
-            {F("partyName")}
-          </div>
+          {/* 3. PO Type */}
+          <ReadField label="PO Type" value={po?.poType} />
 
-          <div className="pod-field">
-            <div className="pod-label">Party Code</div>
-            {F("partyCode")}
-          </div>
+          {/* 4. Party Code */}
+          <ReadField label="Party Code" value={po?.partyCode} />
 
-          <div className="pod-field">
-            <div className="pod-label">Mobile No</div>
-            {F("mobileNo")}
-          </div>
+          {/* 5. Party Name */}
+          <ReadField label="Party Name" value={po?.partyName} />
 
-          <div className="pod-field">
-            <div className="pod-label">PO Type</div>
-            {F("poType")}
-          </div>
+          {/* 6. Site */}
+          <ReadField label="Site" value={po?.site} />
 
-          <div className="pod-field">
-            <div className="pod-label">Site</div>
-            {F("site")}
-          </div>
+          {/* 7. Payment Mode */}
+          <ReadField label="Payment Mode" value={po?.paymentMode} />
 
-          <div className="pod-field">
-            <div className="pod-label">Payment Mode</div>
-            {S("paymentMode", ["", "Cash", "Cheque", "Online", "Credit"])}
-          </div>
+          {/* 8. ETA */}
+          <ReadField label="ETA" value={po?.eta ? po.eta.slice(0, 10) : ""} />
 
-          <div className="pod-field">
-            <div className="pod-label">ETA</div>
-            {F("eta", "date")}
-          </div>
+          {/* 9. Due Date */}
+          <ReadField label="Due Date" value={po?.dueDate ? po.dueDate.slice(0, 10) : ""} />
 
-          <div className="pod-field">
-            <div className="pod-label">Due Date</div>
-            {F("dueDate", "date")}
-          </div>
-
+          {/* 10. Status — EDITABLE (only this field) */}
           <div className="pod-field">
             <div className="pod-label">Status</div>
-            {S("status", ["Ordered", "Partially Received", "Completed", "Cancelled"])}
+            <select
+              className="pod-input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
 
+          {/* 11. Remarks */}
           <div className="pod-field pod-field-full">
             <div className="pod-label">Remarks</div>
-            {editing ? (
-              <textarea
-                className="pod-textarea"
-                value={poEdit.remarks ?? ""}
-                onChange={(e) => setPoEdit((p) => ({ ...p, remarks: e.target.value }))}
-                rows={3}
-              />
-            ) : (
-              <div className="pod-value">{po?.remarks || "-"}</div>
-            )}
+            <div className="pod-value">{po?.remarks || "-"}</div>
           </div>
 
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          SECTION 2 — ITEMS
-      ══════════════════════════════════════════ */}
+      {/* ══════════ ITEMS CARD ══════════ */}
       <div className="pod-card">
         <div className="pod-card-header">
           <div className="pod-card-title">📦 Items</div>
           <div className="pod-basic-total">
-            Total Net Amount: <strong>₹ {Number(poEdit.netAmount || po?.netAmount || 0).toLocaleString("en-IN")}</strong>
+            Item Basic Total: <strong>₹ {Number(po?.basicAmount || 0).toLocaleString("en-IN")}</strong>
           </div>
         </div>
 
@@ -269,97 +180,144 @@ const PODetail = () => {
             <thead>
               <tr>
                 <th>S No</th>
-                <th>Item Code</th>
                 <th>Item Category</th>
+                <th>Item Code</th>
                 <th>Item Name</th>
                 <th>UOM</th>
-                <th>Service Charge</th>
-                <th>Charges</th>
-                <th>Discount</th>
                 <th>Qty</th>
                 <th>Rate</th>
                 <th>Basic Amount</th>
-                <th>Net Amount</th>
               </tr>
             </thead>
             <tbody>
-              {(editing ? poEdit.items : po?.items)?.length > 0 ? (
-                (editing ? poEdit.items : po?.items).map((item, i) => (
+              {po?.items?.length > 0 ? (
+                po.items.map((item, i) => (
                   <tr key={i}>
                     <td>{item.sNo ?? i + 1}</td>
-                    <td>
-                      {editing
-                        ? <input className="pod-item-input" value={item.itemCode || ""}
-                            onChange={(e) => updateItem(i, "itemCode", e.target.value)} />
-                        : item.itemCode || "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input className="pod-item-input" value={item.itemCategory || ""}
-                            onChange={(e) => updateItem(i, "itemCategory", e.target.value)} />
-                        : item.itemCategory || "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input className="pod-item-input" value={item.itemName || ""}
-                            onChange={(e) => updateItem(i, "itemName", e.target.value)} />
-                        : item.itemName || "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input className="pod-item-input" value={item.uom || ""}
-                            onChange={(e) => updateItem(i, "uom", e.target.value)} />
-                        : item.uom || "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input type="number" className="pod-item-input" value={item.serviceCharge ?? ""}
-                            onChange={(e) => updateItem(i, "serviceCharge", e.target.value)} />
-                        : item.serviceCharge ?? "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input type="number" className="pod-item-input" value={item.charges ?? ""}
-                            onChange={(e) => updateItem(i, "charges", e.target.value)} />
-                        : item.charges ?? "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input type="number" className="pod-item-input" value={item.discount ?? ""}
-                            onChange={(e) => updateItem(i, "discount", e.target.value)} />
-                        : item.discount ?? "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input type="number" className="pod-item-input" value={item.qty ?? ""}
-                            onChange={(e) => updateItem(i, "qty", e.target.value)} />
-                        : item.qty ?? "-"}
-                    </td>
-                    <td>
-                      {editing
-                        ? <input type="number" className="pod-item-input" value={item.rate ?? ""}
-                            onChange={(e) => updateItem(i, "rate", e.target.value)} />
-                        : item.rate ?? "-"}
-                    </td>
+                    <td>{item.itemCategory || "-"}</td>
+                    <td>{item.itemCode || "-"}</td>
+                    <td>{item.itemName || "-"}</td>
+                    <td>{item.uom || "-"}</td>
+                    <td>{item.qty ?? "-"}</td>
+                    <td>{item.rate ?? "-"}</td>
                     <td className="pod-amt-cell">
-                      {editing
-                        ? <input readOnly className="pod-item-input pod-amt-input"
-                            value={Number(item.basicAmount || 0).toLocaleString("en-IN")} />
-                        : Number(item.basicAmount || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="pod-amt-cell">
-                      {editing
-                        ? <input readOnly className="pod-item-input pod-amt-input"
-                            value={Number(item.netAmount || 0).toLocaleString("en-IN")} />
-                        : Number(item.netAmount || 0).toLocaleString("en-IN")}
+                      {Number(item.basicAmount || 0).toLocaleString("en-IN")}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="12" className="pod-no-items">No items found</td></tr>
+                <tr><td colSpan="8" className="pod-no-items">No items found</td></tr>
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ══════════ SERVICE (if present) ══════════ */}
+      {po?.serviceRows?.length > 0 && (
+        <div className="pod-card">
+          <div className="pod-card-header">
+            <div className="pod-card-title">🔧 Service</div>
+          </div>
+          <div className="pod-items-wrap">
+            <table className="pod-items-table">
+              <thead>
+                <tr>
+                  <th>S No</th>
+                  <th>Service Code</th>
+                  <th>Service Name</th>
+                  <th>Qty</th>
+                  <th>Rate</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {po.serviceRows.map((row, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{row.serviceCode || "-"}</td>
+                    <td>{row.serviceName || "-"}</td>
+                    <td>{row.qty ?? "-"}</td>
+                    <td>{row.rate ?? "-"}</td>
+                    <td className="pod-amt-cell">{Number(row.amount || 0).toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ CHARGES/DISCOUNT (if present) ══════════ */}
+      {po?.chargeRows?.length > 0 && (
+        <div className="pod-card">
+          <div className="pod-card-header">
+            <div className="pod-card-title">💰 Charges / Discount</div>
+          </div>
+          <div className="pod-items-wrap">
+            <table className="pod-items-table">
+              <thead>
+                <tr>
+                  <th>S No</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {po.chargeRows.map((row, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{row.code || "-"}</td>
+                    <td>{row.description || "-"}</td>
+                    <td className="pod-amt-cell">{Number(row.amount || 0).toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ TAX DETAILS (if present) ══════════ */}
+      {po?.taxRows?.length > 0 && (
+        <div className="pod-card">
+          <div className="pod-card-header">
+            <div className="pod-card-title">🧾 Tax Details</div>
+          </div>
+          <div className="pod-items-wrap">
+            <table className="pod-items-table">
+              <thead>
+                <tr>
+                  <th>S No</th>
+                  <th>Tax Type</th>
+                  <th>Tax Code</th>
+                  <th>Tax Name</th>
+                  <th>Total Tax %</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {po.taxRows.map((row, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{row.taxType || "-"}</td>
+                    <td>{row.taxCode || "-"}</td>
+                    <td>{row.taxName || "-"}</td>
+                    <td>{row.totalTax || "-"}</td>
+                    <td className="pod-amt-cell">{Number(row.amount || 0).toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ GRAND TOTAL ══════════ */}
+      <div className="pod-card">
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "16px 24px", fontSize: 16, fontWeight: 700, color: "#1d4ed8" }}>
+          Grand Total Amount: &nbsp; ₹ {Number(po?.netAmount || 0).toLocaleString("en-IN")}
         </div>
       </div>
 

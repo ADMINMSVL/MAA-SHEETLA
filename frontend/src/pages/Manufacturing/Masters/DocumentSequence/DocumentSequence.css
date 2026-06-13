@@ -206,3 +206,62 @@ th{
   background:#f4f8ff;
 
 }
+
+/* ── DocumentSequence.css additions for edit-row support ── */
+
+/* Append these rules to your existing DocumentSequence.css */
+
+.editing-row {
+  background-color: #fffbea;
+}
+
+.editing-row td {
+  vertical-align: middle;
+  padding: 6px 4px;
+}
+
+.seq-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.seq-input--sm  { width: 80px; }
+.seq-input--xs  { width: 60px; }
+
+.seq-select {
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.preview-code {
+  font-weight: 600;
+  color: #1a5276;
+  background-color: #eaf4ff;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+.action-cell {
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cancel-edit-btn {
+  padding: 4px 8px;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cancel-edit-btn:hover { background: #c0392b; }

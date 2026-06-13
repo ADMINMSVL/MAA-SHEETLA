@@ -12,39 +12,67 @@ const toNum = (v) => {
 /* ── sanitize a full PO body before save/update ── */
 const sanitizePO = (body) => {
   const items = (body.items || []).map((it, idx) => ({
-    sNo:           it.sNo ?? idx + 1,
-    itemCode:      it.itemCode      || "",
-    itemCategory:  it.itemCategory  || "",
-    itemName:      it.itemName      || "",
-    uom:           it.uom           || "",
+    sNo: it.sNo ?? idx + 1,
+    itemCode: it.itemCode || "",
+    itemCategory: it.itemCategory || "",
+    itemName: it.itemName || "",
+    uom: it.uom || "",
     serviceCharge: toNum(it.serviceCharge),
-    charges:       toNum(it.charges),
-    discount:      toNum(it.discount),
-    qty:           toNum(it.qty),
-    rate:          toNum(it.rate),
-    basicAmount:   toNum(it.basicAmount),
-    netAmount:     toNum(it.netAmount),
+    charges: toNum(it.charges),
+    discount: toNum(it.discount),
+    qty: toNum(it.qty),
+    rate: toNum(it.rate),
+    basicAmount: toNum(it.basicAmount),
+    netAmount: toNum(it.netAmount),
+  }));
+
+  const serviceRows = (body.serviceRows || []).map((row, idx) => ({
+    sNo: row.sNo ?? idx + 1,
+    serviceCode: row.serviceCode || "",
+    serviceName: row.serviceName || "",
+    qty: toNum(row.qty),
+    rate: toNum(row.rate),
+    amount: toNum(row.amount),
+  }));
+
+  const chargeRows = (body.chargeRows || []).map((row, idx) => ({
+    sNo: row.sNo ?? idx + 1,
+    code: row.code || "",
+    description: row.description || "",
+    amount: toNum(row.amount),
+  }));
+
+  const taxRows = (body.taxRows || []).map((row, idx) => ({
+    sNo: row.sNo ?? idx + 1,
+    taxType: row.taxType || "",
+    taxCode: row.taxCode || "",
+    taxName: row.taxName || "",
+    totalTax: row.totalTax || "",
+    amount: toNum(row.amount),
   }));
 
   return {
-    poNo:        body.poNo        || "",
-    poDate:      body.poDate      || "",
-    poType:      body.poType      || "",
-    site:        body.site        || "",
-    partyCode:   body.partyCode   || "",
-    partyName:   body.partyName   || "",
-    mobileNo:    body.mobileNo    || "",
+    poNo: body.poNo || "",
+    poDate: body.poDate || "",
+    poType: body.poType || "",
+    site: body.site || "",
+    partyCode: body.partyCode || "",
+    partyName: body.partyName || "",
+    mobileNo: body.mobileNo || "",
     paymentMode: body.paymentMode || "",
-    eta:         body.eta         || "",
-    dueDate:     body.dueDate     || "",
-    status:      body.status      || "Ordered",
-    remarks:     body.remarks     || "",
+    eta: body.eta || "",
+    dueDate: body.dueDate || "",
+    status: body.status || "Ordered",
+    remarks: body.remarks || "",
     basicAmount: toNum(body.basicAmount),
-    netAmount:   toNum(body.netAmount),
+    netAmount: toNum(body.netAmount),
+
     items,
+    serviceRows,
+    chargeRows,
+    taxRows,
   };
 };
-
 /* ════════════════════════════════════════
    GET — next PO sequence number
    /api/purchase-order/next-sequence

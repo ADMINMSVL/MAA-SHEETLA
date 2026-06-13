@@ -7,19 +7,21 @@ const Masters = () => {
   const navigate = useNavigate();
 
   const masterModules = [
-    { icon: "🔄", title: "Transaction Module",  subtitle: "Manage Transactions",      code: "TR001", path: "/transaction-module"    },
-    { icon: "📄", title: "Document Sequence",   subtitle: "Manage Document Numbers",  code: "DS002", path: "/document-sequence"     },
-    { icon: "🏢", title: "Party Master",        subtitle: "Manage Parties",           code: "PM001", path: "/party-master"          },
-    { icon: "🏷️", title: "Party Type",          subtitle: "Manage Party Types",       code: "PT001", path: "/party-type"            },
-    { icon: "📦", title: "Item Master",         subtitle: "Manage Items",             code: "IM001", path: "/item-master"           },
-    { icon: "🗂️", title: "Item Category",       subtitle: "Manage Item Categories",   code: "IC001", path: "/item-category"         },
-    { icon: "🔩", title: "Item Group",           subtitle: "Manage Item Types",        code: "IT001", path: "/item-type"             },
-    { icon: "⚖️", title: "UOM Master",          subtitle: "Units of Measure",         code: "UM001", path: "/uom-master"            },
-    { icon: "🧾", title: "Tax Details",         subtitle: "HSN Code & GST",           code: "TD001", path: "/tax-details"           },
-    { icon: "⚙️", title: "Production Details",  subtitle: "Grade, Size, Dimensions",  code: "PD001", path: "/production-details"    },
-    { icon: "📊", title: "Scheme Master",       subtitle: "Pricing Schemes",          code: "SM001", path: "/scheme-master"         },
-    { icon: "📍", title: "Site Master",         subtitle: "Manage Sites / Locations", code: "ST001", path: "/site-master"           },
-    { icon: "📍", title: "Item Conversion",      subtitle: "Manage Item conversion", code: "IC001", path: "/item-conversion-master" },
+    { icon: "🔄", title: "Transaction Module",       subtitle: "Manage Transactions",        code: "TR001", path: "/transaction-module"       },
+    { icon: "📄", title: "Document Sequence",        subtitle: "Manage Document Numbers",    code: "DS002", path: "/document-sequence"        },
+    { icon: "🏢", title: "Party Master",             subtitle: "Manage Parties",             code: "PM001", path: "/party-master"             },
+    { icon: "🏷️", title: "Party Type",               subtitle: "Manage Party Types",         code: "PT001", path: "/party-type"               },
+    { icon: "📦", title: "Item Master",              subtitle: "Manage Items",               code: "IM001", path: "/item-master"              },
+    { icon: "🗂️", title: "Item Category",            subtitle: "Manage Item Categories",     code: "IC001", path: "/item-category"            },
+    { icon: "🔩", title: "Item Group",               subtitle: "Manage Item Types",          code: "IT001", path: "/item-type"                },
+    { icon: "⚖️", title: "UOM Master",               subtitle: "Units of Measure",           code: "UM001", path: "/uom-master"               },
+    { icon: "🧾", title: "Tax Details",              subtitle: "Tax Type, Code & Rate",      code: "TD001", path: "/tax-details"              },
+    { icon: "🛠️", title: "Service Master",           subtitle: "SAC Code & Tax Class",       code: "SV001", path: "/service-master"           },
+    { icon: "💰", title: "Charges / Discount Master",subtitle: "Charges & Discount Setup",   code: "CD001", path: "/charges-master"           },
+    { icon: "⚙️", title: "Production Details",       subtitle: "Grade, Size, Dimensions",    code: "PD001", path: "/production-details"       },
+    { icon: "📊", title: "Scheme Master",            subtitle: "Pricing Schemes",            code: "SM001", path: "/scheme-master"            },
+    { icon: "📍", title: "Site Master",              subtitle: "Manage Sites / Locations",   code: "ST001", path: "/site-master"              },
+    { icon: "🔁", title: "Item Conversion",          subtitle: "Manage Item Conversion",     code: "IC002", path: "/item-conversion-master"   },
   ];
 
   return (

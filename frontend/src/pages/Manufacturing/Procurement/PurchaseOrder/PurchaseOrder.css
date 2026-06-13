@@ -1,201 +1,186 @@
-/* ── shared resets ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ── page wrapper ── */
 .po-page, .cpo-page {
   min-height: 100vh;
   background: #f4f6f9;
-  padding: 15px;
+  padding: 12px;
   font-family: Arial, sans-serif;
 }
 
 /* ── top bar ── */
 .po-topbar {
   width: 100%;
-  height: 60px;
+  height: 52px;
   background: #fff;
-  border-radius: 10px;
-  padding: 0 20px;
+  border-radius: 8px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
 }
-
-.po-topbar-left { display: flex; align-items: center; gap: 12px; }
-
-.po-title { font-size: 22px; color: #1e293b; }
+.po-topbar-left { display: flex; align-items: center; gap: 10px; }
+.po-title { font-size: 20px; color: #1e293b; }
 
 .po-back-btn {
-  width: 35px; height: 35px;
+  width: 32px; height: 32px;
   border: none; border-radius: 50%;
   background: #2563eb; color: white;
-  font-size: 18px; cursor: pointer; transition: 0.3s;
+  font-size: 16px; cursor: pointer; transition: 0.2s;
 }
 .po-back-btn:hover { background: #1d4ed8; }
 
 .po-create-btn {
   background: #16a34a; color: white;
-  border: none; padding: 9px 20px;
+  border: none; padding: 8px 18px;
   border-radius: 6px; cursor: pointer;
-  font-size: 14px; font-weight: 600; transition: 0.3s;
+  font-size: 13px; font-weight: 600; transition: 0.2s;
 }
 .po-create-btn:hover { background: #15803d; }
 
-/* ── create page header extras ── */
+/* ── create page header ── */
+.cgin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+}
+.cgin-header-left { display: flex; align-items: center; gap: 10px; }
+.cgin-header-left h2 { font-size: 18px; color: #1e293b; }
+.back-btn {
+  width: 32px; height: 32px;
+  border: none; border-radius: 50%;
+  background: #2563eb; color: white;
+  font-size: 16px; cursor: pointer;
+}
+.back-btn:hover { background: #1d4ed8; }
+
 .cpo-pono-badge {
   background: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
   border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 14px;
+  padding: 5px 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.5px;
 }
 
 /* ── search card ── */
 .po-search-card {
   background: #fff;
-  border-radius: 10px;
-  padding: 18px 20px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
 }
-
 .po-search-title {
-  font-size: 15px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   color: #1e293b;
-  margin-bottom: 14px;
-  padding-bottom: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #e2e8f0;
 }
-
 .po-search-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
 }
-
-.po-field {
-  display: flex; flex-direction: column;
-}
-
+.po-field { display: flex; flex-direction: column; }
 .po-field label {
-  font-size: 12px; font-weight: 600;
-  color: #475569; margin-bottom: 4px;
+  font-size: 11px; font-weight: 600;
+  color: #475569; margin-bottom: 3px;
 }
-
 .po-search-input {
-  height: 38px; width: 100%;
+  height: 34px; width: 100%;
   border: 1px solid #cbd5e1;
-  border-radius: 6px; padding: 0 10px;
-  font-size: 13px; outline: none; background: #fff;
+  border-radius: 6px; padding: 0 8px;
+  font-size: 12px; outline: none; background: #fff;
 }
 .po-search-input:focus { border-color: #2563eb; }
-
 .po-search-btns {
-  margin-top: 14px; display: flex; gap: 10px;
+  margin-top: 10px; display: flex; gap: 8px;
 }
-
 .po-btn-search {
   background: #2563eb; color: white;
-  border: none; padding: 8px 22px;
+  border: none; padding: 7px 18px;
   border-radius: 6px; cursor: pointer;
-  font-size: 13px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
 }
 .po-btn-search:hover { background: #1d4ed8; }
-
 .po-btn-reset {
   background: #dc2626; color: white;
-  border: none; padding: 8px 22px;
+  border: none; padding: 7px 18px;
   border-radius: 6px; cursor: pointer;
-  font-size: 13px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
 }
 .po-btn-reset:hover { background: #b91c1c; }
 
 /* ── table card ── */
 .po-table-card {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
   overflow: hidden;
 }
-
 .po-table-wrap { overflow-x: auto; }
-
 .po-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1300px;
+  min-width: 900px;
 }
-
 .po-table thead th {
   background: #eef1f7;
   border: 1px solid #d5d8de;
-  padding: 9px 10px;
-  font-size: 12px; font-weight: 700;
+  padding: 8px 8px;
+  font-size: 11px; font-weight: 700;
   color: #334155; white-space: nowrap;
 }
-
 .po-table tbody td {
   border: 1px solid #e4e6eb;
-  padding: 7px 10px;
-  font-size: 13px; color: #374151;
+  padding: 6px 8px;
+  font-size: 12px; color: #374151;
   vertical-align: middle;
 }
-
 .po-table tbody tr:nth-child(even) { background: #fafbfd; }
 .po-table tbody tr:hover           { background: #f0f4ff; }
-
-.po-mono { font-family: monospace; font-weight: 700; color: #1e40af; }
-
 .po-no-data {
-  text-align: center; padding: 30px;
+  text-align: center; padding: 24px;
   color: #94a3b8; font-style: italic;
 }
-
-/* ── PO No hyperlink button (mirrors gin-no-link) ── */
 .po-no-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: monospace;
-  font-weight: 700;
-  font-size: 13px;
-  color: #1d4ed8;
-  cursor: pointer;
-  text-decoration: underline;
+  background: none; border: none; padding: 0;
+  font-family: monospace; font-weight: 700;
+  font-size: 12px; color: #1d4ed8;
+  cursor: pointer; text-decoration: underline;
   text-underline-offset: 2px;
-  transition: color 0.2s;
 }
 .po-no-link:hover { color: #1e40af; }
-
-/* status badge */
 .po-status-badge {
-  padding: 3px 10px; border-radius: 99px;
-  font-size: 12px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 700;
 }
-
-/* action buttons */
 .po-act-btn {
-  border: none; padding: 4px 10px;
+  border: none; padding: 3px 8px;
   border-radius: 4px; cursor: pointer;
-  font-size: 12px; font-weight: 600;
-  margin-right: 4px;
+  font-size: 11px; font-weight: 600;
+  margin-right: 3px;
 }
 .po-view { background: #dbeafe; color: #1d4ed8; }
 .po-view:hover { background: #bfdbfe; }
 .po-del  { background: #fee2e2; color: #dc2626; }
 .po-del:hover  { background: #fecaca; }
 
-/* ── suggestion list (shared) ── */
+/* ── suggestion list ── */
 .po-suggestion-list {
   position: absolute;
   top: 100%; left: 0;
-  width: 100%; max-height: 200px;
+  width: 100%; max-height: 180px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid #cbd5e1;
@@ -204,46 +189,231 @@
   z-index: 99;
   box-shadow: 0 4px 10px rgba(0,0,0,0.12);
 }
-
 .po-suggestion-list li {
-  padding: 8px 12px;
-  font-size: 13px; cursor: pointer;
+  padding: 6px 10px;
+  font-size: 12px; cursor: pointer;
   border-bottom: 1px solid #f1f5f9;
 }
 .po-suggestion-list li:hover { background: #eff6ff; }
 
-/* ── create form grid ── */
-.cpo-page .cgin-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+/* ═══════════════════════════════════════════
+   CREATE PAGE — CARDS & GRID
+═══════════════════════════════════════════ */
+.cgin-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+}
+.cgin-card-title {
+  font-size: 13px; font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.cpo-field {
-  display: flex; flex-direction: column;
+/* header fields grid — 5 cols so all 11 fields fit in 3 rows */
+.cgin-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
 }
-.cpo-field label {
-  font-size: 12px; font-weight: 600;
-  color: #334155; margin-bottom: 4px;
+.cgin-field { display: flex; flex-direction: column; }
+.cgin-field label {
+  font-size: 11px; font-weight: 600;
+  color: #334155; margin-bottom: 3px;
 }
-.cpo-field input, .cpo-field select {
-  height: 38px; width: 100%;
+.cgin-field input,
+.cgin-field select {
+  height: 34px; width: 100%;
   border: 1px solid #cbd5e1;
-  border-radius: 6px; padding: 0 10px;
-  font-size: 13px; outline: none; background: #fff;
+  border-radius: 6px; padding: 0 8px;
+  font-size: 12px; outline: none; background: #fff;
 }
-.cpo-field input:focus, .cpo-field select:focus { border-color: #2563eb; }
+.cgin-field input:focus,
+.cgin-field select:focus { border-color: #2563eb; }
+
+/* ── Items section ── */
+.cgin-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cgin-items-title {
+  font-size: 13px; font-weight: 700; color: #1e293b;
+}
+.cgin-del-rows-btn {
+  background: #fee2e2; color: #dc2626;
+  border: none; padding: 5px 12px;
+  border-radius: 5px; cursor: pointer;
+  font-size: 11px; font-weight: 600;
+}
+.cgin-del-rows-btn:hover { background: #fecaca; }
+
+.cgin-items-table-wrap { overflow-x: auto; }
+.cgin-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+.cgin-items-table thead th {
+  background: #eef1f7;
+  border: 1px solid #d5d8de;
+  padding: 6px 7px;
+  font-size: 11px; font-weight: 700;
+  color: #334155; white-space: nowrap;
+}
+.cgin-items-table tbody td {
+  border: 1px solid #e4e6eb;
+  padding: 3px 4px;
+  font-size: 12px; color: #374151;
+  vertical-align: middle;
+}
+.cgin-items-table tbody tr:nth-child(even) { background: #fafbfd; }
+.cgin-items-table tbody tr:hover           { background: #f0f4ff; }
+.cgin-row-checked { background: #fef9c3 !important; }
+.cgin-check-cell { width: 32px; text-align: center; }
+.cgin-sno-cell   { width: 36px; text-align: center; font-weight: 600; font-size: 12px; }
+
+.cgin-item-input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 12px;
+  outline: none;
+  background: #fff;
+}
+.cgin-item-input:focus { border-color: #2563eb; }
+.cgin-item-wide { min-width: 110px; }
+.cgin-item-sm   { max-width: 60px; }
+.cgin-item-num  { max-width: 80px; text-align: right; }
+
+/* ── insert row bar ── */
+.cgin-insert-row-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 0;
+}
+.cgin-insert-count {
+  width: 52px; height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px; padding: 0 6px;
+  font-size: 12px; outline: none;
+}
+.cgin-insert-row-btn {
+  background: #eff6ff; color: #1d4ed8;
+  border: 1px solid #bfdbfe; padding: 4px 12px;
+  border-radius: 5px; cursor: pointer;
+  font-size: 12px; font-weight: 600;
+}
+.cgin-insert-row-btn:hover { background: #dbeafe; }
+
+/* ── action buttons ── */
+.cgin-actions {
+  display: flex; justify-content: flex-end;
+  gap: 10px; margin-top: 8px;
+}
+.btn-reset {
+  background: #f1f5f9; color: #475569;
+  border: 1px solid #cbd5e1; padding: 8px 22px;
+  border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+}
+.btn-reset:hover { background: #e2e8f0; }
+.btn-save {
+  background: #16a34a; color: white;
+  border: none; padding: 8px 26px;
+  border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+}
+.btn-save:hover { background: #15803d; }
+
+/* ═══════════════════════════════════════════
+   SUB-SECTION TOGGLES & TABLES
+   (Service / Charges / Tax — inside Items card)
+═══════════════════════════════════════════ */
+.cpo-sub-toggle-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 2px 0;
+  flex-wrap: wrap;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 8px;
+}
+.cpo-sub-toggle-btn {
+  padding: 4px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cpo-sub-toggle-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+.cpo-sub-toggle-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+/* compact sub-section — no extra card, just tight band */
+.cpo-sub-section {
+  margin-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 6px;
+}
+.cpo-sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  padding: 0 2px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* sub-section tables use same cgin-items-table styles — but even tighter rows */
+.cpo-sub-section .cgin-items-table tbody td { padding: 2px 4px; }
+.cpo-sub-section .cgin-items-table thead th { padding: 4px 6px; }
+
+/* ── grand total bar ── */
+.cpo-grand-total-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #eff6ff;
+  border-top: 2px solid #bfdbfe;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-top: 8px;
+  border-radius: 0 0 6px 6px;
+}
+.cpo-grand-total-bar strong { font-size: 16px; }
 
 /* ── responsive ── */
-@media (max-width: 1200px) {
-  .po-search-grid      { grid-template-columns: repeat(3,1fr); }
-  .cpo-page .cgin-grid { grid-template-columns: repeat(3,1fr); }
+@media (max-width: 1300px) {
+  .cgin-grid            { grid-template-columns: repeat(4, 1fr); }
+  .po-search-grid       { grid-template-columns: repeat(4, 1fr); }
 }
-@media (max-width: 900px) {
-  .po-search-grid      { grid-template-columns: repeat(2,1fr); }
-  .cpo-page .cgin-grid { grid-template-columns: repeat(2,1fr); }
+@media (max-width: 1000px) {
+  .cgin-grid            { grid-template-columns: repeat(3, 1fr); }
+  .po-search-grid       { grid-template-columns: repeat(3, 1fr); }
 }
-@media (max-width: 600px) {
-  .po-search-grid      { grid-template-columns: 1fr; }
-  .cpo-page .cgin-grid { grid-template-columns: 1fr; }
+@media (max-width: 700px) {
+  .cgin-grid            { grid-template-columns: repeat(2, 1fr); }
+  .po-search-grid       { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .cgin-grid            { grid-template-columns: 1fr; }
+  .po-search-grid       { grid-template-columns: 1fr; }
 }

@@ -513,6 +513,8 @@ const CreateGIN = () => {
             <label>Status</label>
             <select name="status" value={form.status} onChange={handleChange}>
               <option value="Open">Open</option>
+              <option value="Weighted">Weighted</option>
+              <option value="OutPending">OutPending</option>
               <option value="Closed">Closed</option>
             </select>
           </div>
