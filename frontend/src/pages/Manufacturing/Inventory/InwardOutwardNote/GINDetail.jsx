@@ -5,8 +5,7 @@ import "./Gindetail.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const GIN_API       = `${API_URL}/api/goods-inward-note`;
-const WEIGHMENT_API = `${API_URL}/api/weighment`;
+const GIN_API = `${API_URL}/api/goods-inward-note`;
 
 /* ─────────────────────────────────────────────────────────────
    GINDetail
@@ -20,14 +19,10 @@ const GINDetail = () => {
   const navigate = useNavigate();
 
   const [gin,        setGin]        = useState(null);
-  const [weighment,  setWeighment]  = useState(null);
   const [ginEdit,    setGinEdit]    = useState({});
-  const [wEdit,      setWEdit]      = useState({});
   const [ginEditing, setGinEditing] = useState(false);
-  const [wEditing,   setWEditing]   = useState(false);
   const [loading,    setLoading]    = useState(true);
   const [savingGin,  setSavingGin]  = useState(false);
-  const [savingW,    setSavingW]    = useState(false);
   const [error,      setError]      = useState("");
 
   /* item master for code/name lookup */
@@ -42,18 +37,6 @@ const GINDetail = () => {
         const ginData = ginRes.data;
         setGin(ginData);
         setGinEdit({ ...ginData });
-
-        /* find linked weighment */
-        if (ginData?.ginNo) {
-          const wRes  = await axios.get(WEIGHMENT_API, {
-            params: { inwardOutwardNoteNo: ginData.ginNo }
-          });
-          const wList = wRes.data?.data || [];
-          if (wList.length > 0) {
-            setWeighment(wList[0]);
-            setWEdit({ ...wList[0] });
-          }
-        }
       } catch (err) {
         console.error(err);
         setError("Failed to load record");
@@ -92,38 +75,7 @@ const GINDetail = () => {
     }
   };
 
-  /* ── Weighment save ── */
-  const saveWeighment = async () => {
-    setSavingW(true);
-    try {
-      const res = await axios.put(`${WEIGHMENT_API}/${weighment._id}`, wEdit);
-      if (res.data.success) {
-        setWeighment(res.data.data);
-        setWEdit({ ...res.data.data });
-        setWEditing(false);
-        alert("Weighment Updated Successfully");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Weighment update failed");
-    } finally {
-      setSavingW(false);
-    }
-  };
-
-  /* net weight auto-calc for weighment edit */
-  const handleWChange = (e) => {
-    const { name, value } = e.target;
-    const updated = { ...wEdit, [name]: value };
-    if (name === "firstWeight" || name === "secondWeight") {
-      const f = parseFloat(name === "firstWeight"  ? value : wEdit.firstWeight  || 0) || 0;
-      const s = parseFloat(name === "secondWeight" ? value : wEdit.secondWeight || 0) || 0;
-      updated.netWeight = f > 0 && s > 0 ? String(Math.abs(f - s)) : "";
-    }
-    setWEdit(updated);
-  };
-
-  /* ── helpers: editable text/date field ── */
+  /* ── Item row helper for editing in detail page ── */
   const ginF = (field, type = "text", readOnly = false) => (
     ginEditing && !readOnly
       ? <input type={type} className="gd-input" value={ginEdit[field] || ""}
@@ -138,22 +90,6 @@ const GINDetail = () => {
           {opts.map((o) => <option key={o}>{o}</option>)}
         </select>
       : <div className="gd-value">{gin?.[field] || "-"}</div>
-  );
-
-  const wF = (field, type = "text", readOnly = false) => (
-    wEditing && !readOnly
-      ? <input type={type} className="gd-input" value={wEdit[field] || ""}
-          onChange={handleWChange} name={field} />
-      : <div className="gd-value">{weighment?.[field] || "-"}</div>
-  );
-
-  const wS = (field, opts) => (
-    wEditing
-      ? <select className="gd-input" value={wEdit[field] || ""}
-          onChange={(e) => setWEdit((p) => ({ ...p, [field]: e.target.value }))} name={field}>
-          {opts.map((o) => <option key={o} value={o}>{o || "Select"}</option>)}
-        </select>
-      : <div className="gd-value">{weighment?.[field] || "-"}</div>
   );
 
   /* ── Item row helper for editing in detail page ── */
@@ -273,7 +209,7 @@ const GINDetail = () => {
 
           <div className="gd-field">
             <div className="gd-label">Status</div>
-            {ginS("status", ["Open", "Closed"])}
+            {ginS("status", ["Open", "Weighted", "OutPending", "Closed"])}
           </div>
 
           <div className="gd-field">
@@ -487,266 +423,9 @@ const GINDetail = () => {
       </div>
 
       {/* ════════════════════════════════════════════════
-          SECTION 2 — LINKED WEIGHMENT
+          SECTION 2 — WEIGHMENT (removed per requirement)
+          Weighment is managed separately via Create Weighment page.
       ════════════════════════════════════════════════ */}
-      <div className="gd-card">
-        <div className="gd-card-header">
-          <div className="gd-card-title">⚖️ Linked Weighment</div>
-          <div className="gd-card-actions">
-            {weighment ? (
-              wEditing ? (
-                <>
-                  <button className="gd-cancel-btn" onClick={() => { setWEditing(false); setWEdit({ ...weighment }); }} disabled={savingW}>
-                    Cancel
-                  </button>
-                  <button className="gd-save-btn" onClick={saveWeighment} disabled={savingW}>
-                    {savingW ? "Saving..." : "Save Weighment"}
-                  </button>
-                </>
-              ) : (
-                <button className="gd-edit-btn" onClick={() => setWEditing(true)}>Edit Weighment</button>
-              )
-            ) : (
-              <div className="gd-no-weighment">
-                No weighment linked.
-                <button className="gd-create-w-btn"
-                  onClick={() => navigate(
-                    gin?.vehicleEntry === "Outward"
-                      ? "/create-outward-weighment"
-                      : "/create-inward-weighment"
-                  )}>
-                  + Create Weighment
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {weighment ? (
-          <>
-            <div className="gd-grid">
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment No</div>
-                {wF("weighmentNo")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Transaction Category</div>
-                {wS("transactionCategory", ["", "Purchase", "Sales"])}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Transaction Type</div>
-                {wS("transactionType", ["", "Inward", "Outward"])}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Status</div>
-                {wS("status", ["Open", "Closed"])}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Inward/Outward Note No</div>
-                {wF("inwardOutwardNoteNo")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Vehicle No</div>
-                {wF("vehicleNo")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Party Name</div>
-                {wF("partyName")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Transporter Name</div>
-                {wF("transporterName")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Site</div>
-                {wF("site")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment Date</div>
-                {wF("weighmentDate", "date")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment In Date</div>
-                {wF("weighmentInDate", "date")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment In Time</div>
-                {wF("weighmentInTime", "time")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment Out Date</div>
-                {wF("weighmentOutDate", "date")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Weighment Out Time</div>
-                {wF("weighmentOutTime", "time")}
-              </div>
-
-              <div className="gd-field gd-weight-field">
-                <div className="gd-label">First Weight (MT)</div>
-                {wEditing
-                  ? <input type="number" step="0.001" name="firstWeight"
-                      className="gd-input gd-weight-input" value={wEdit.firstWeight || ""}
-                      onChange={handleWChange} />
-                  : <div className="gd-value gd-weight-val">{weighment?.firstWeight || "-"}</div>
-                }
-              </div>
-
-              <div className="gd-field gd-weight-field">
-                <div className="gd-label">Second Weight (MT)</div>
-                {wEditing
-                  ? <input type="number" step="0.001" name="secondWeight"
-                      className="gd-input gd-weight-input" value={wEdit.secondWeight || ""}
-                      onChange={handleWChange} />
-                  : <div className="gd-value gd-weight-val">{weighment?.secondWeight || "-"}</div>
-                }
-              </div>
-
-              <div className="gd-field gd-weight-field">
-                <div className="gd-label">Net Weight (MT)</div>
-                {wEditing
-                  ? <input readOnly className="gd-input gd-net-weight" value={wEdit.netWeight || ""} />
-                  : <div className="gd-value gd-net-val">{weighment?.netWeight || "-"}</div>
-                }
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Supplier Invoice No</div>
-                {wF("supplierInvoiceNo")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Supplier Invoice Date</div>
-                {wF("supplierInvoiceDate", "date")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Bill No</div>
-                {wF("billNo")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Bill Date</div>
-                {wF("billDate", "date")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Total Dispatch Weight</div>
-                {wF("totalDispatchWeight")}
-              </div>
-
-              <div className="gd-field">
-                <div className="gd-label">Transit Date</div>
-                {wF("transitDate", "date")}
-              </div>
-
-            </div>
-
-            {/* Items grid */}
-            {weighment?.items?.length > 0 && (
-              <div className="gd-items-section">
-                <div className="gd-items-title">⚖️ Weighment Items</div>
-                <div className="gd-items-wrap">
-                  <table className="gd-items-table">
-                    <thead>
-                      <tr>
-                        <th>S No</th>
-                        <th>First Weight (MT)</th>
-                        <th>Second Weight (MT)</th>
-                        <th>Net Weight (MT)</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {weighment.items.map((item, i) => (
-                        <tr key={i}>
-                          <td>{item.sNo ?? i + 1}</td>
-                          <td>
-                            {wEditing
-                              ? <input type="number" step="0.001" className="gd-item-input"
-                                  value={wEdit.items?.[i]?.firstWeight || ""}
-                                  onChange={(e) => {
-                                    const items = [...(wEdit.items || [])];
-                                    const row = { ...items[i], firstWeight: e.target.value };
-                                    const f = parseFloat(e.target.value) || 0;
-                                    const s = parseFloat(row.secondWeight || 0) || 0;
-                                    row.netWeight = f > 0 && s > 0 ? String(Math.abs(f - s)) : "";
-                                    items[i] = row;
-                                    setWEdit((p) => ({ ...p, items }));
-                                  }} />
-                              : item.firstWeight || "-"}
-                          </td>
-                          <td>
-                            {wEditing
-                              ? <input type="number" step="0.001" className="gd-item-input"
-                                  value={wEdit.items?.[i]?.secondWeight || ""}
-                                  onChange={(e) => {
-                                    const items = [...(wEdit.items || [])];
-                                    const row = { ...items[i], secondWeight: e.target.value };
-                                    const f = parseFloat(row.firstWeight || 0) || 0;
-                                    const s = parseFloat(e.target.value) || 0;
-                                    row.netWeight = f > 0 && s > 0 ? String(Math.abs(f - s)) : "";
-                                    items[i] = row;
-                                    setWEdit((p) => ({ ...p, items }));
-                                  }} />
-                              : item.secondWeight || "-"}
-                          </td>
-                          <td>
-                            <div className={`gd-net-val${wEditing ? " editing" : ""}`}>
-                              {wEditing ? wEdit.items?.[i]?.netWeight || "-" : item.netWeight || "-"}
-                            </div>
-                          </td>
-                          <td>
-                            {wEditing
-                              ? <input type="text" className="gd-item-input"
-                                  value={wEdit.items?.[i]?.remarks || ""}
-                                  onChange={(e) => {
-                                    const items = [...(wEdit.items || [])];
-                                    items[i] = { ...items[i], remarks: e.target.value };
-                                    setWEdit((p) => ({ ...p, items }));
-                                  }} />
-                              : item.remarks || "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Remarks */}
-            <div className="gd-fullrow" style={{ marginTop: 16 }}>
-              <div className="gd-label">Remarks</div>
-              {wEditing
-                ? <textarea className="gd-textarea" name="remarks" value={wEdit.remarks || ""}
-                    onChange={(e) => setWEdit((p) => ({ ...p, remarks: e.target.value }))} rows={3} />
-                : <div className="gd-value">{weighment?.remarks || "-"}</div>
-              }
-            </div>
-
-          </>
-        ) : (
-          <div className="gd-no-weighment-body">
-            No weighment record linked to this GIN yet.
-          </div>
-        )}
-
-      </div>
 
       {/* Item select styles for detail page */}
       <style>{`

@@ -235,10 +235,6 @@ const handleReset = () => {
                         onClick={() => navigate(`/purchase-order-detail/${po._id}`)}>
                         View
                       </button>
-                      <button className="po-act-btn po-del"
-                        onClick={() => handleDelete(po._id)}>
-                        Delete
-                      </button>
                     </td>
                   </tr>
                 ))

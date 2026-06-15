@@ -422,6 +422,7 @@ const CreateGIN = () => {
             <select name="inOutType" value={form.inOutType} onChange={handleChange}>
               <option value="Inward">Inward</option>
               <option value="Outward">Outward</option>
+              <option value="General">General</option>
             </select>
           </div>
 

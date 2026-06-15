@@ -21,10 +21,17 @@ import CreateTransaction     from "../pages/Manufacturing/Masters/Transaction/Cr
 import DocumentSequence      from "../pages/Manufacturing/Masters/DocumentSequence/DocumentSequence";
 import CreateDocumentSequence from "../pages/Manufacturing/Masters/DocumentSequence/CreateDocumentSequence/CreateDocumentSequence";
 import WeighmentSearch       from "../pages/Manufacturing/Inventory/Weighment/WeighmentSearch";
-import WeighmentDetail       from "../pages/Manufacturing/Inventory/Weighment/WeighmentDetail/WeighmentDetail";
-import CreateWeighment       from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/CreateWeighment";
-import CreateInwardWeighment  from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createinwardweighment";
-import CreateOutwardWeighment from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createoutwardweighment";
+// import WeighmentDetail       from "../pages/Manufacturing/Inventory/Weighment/WeighmentDetail/WeighmentDetail";
+// import CreateWeighment       from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/CreateWeighment";
+// import CreateInwardWeighment  from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createinwardweighment";
+// import CreateOutwardWeighment from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createoutwardweighment";
+import {
+  CreateWeighment,
+  CreateInwardWeighment,
+  CreateOutwardWeighment,
+  CreateGeneralWeighment,
+  WeighmentDetail
+} from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/WeighmentPages";
 import ItemConversion         from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversion";
 import CreateItemConversion   from "../pages/Manufacturing/Inventory/ItemConversion/CreateItemConversion";
 import ItemConversionDetail   from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversionDetail";
@@ -147,10 +154,18 @@ const AppRoutes = () => {
 
       {/* WEIGHMENT */}
       <Route path="/weighment-search"         element={<WeighmentSearch />} />
-      <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} />
-      <Route path="/create-weighment"         element={<CreateWeighment />} />
+      {/* <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} /> */}
+      {/* <Route path="/create-weighment"         element={<CreateWeighment />} />
       <Route path="/create-inward-weighment"  element={<CreateInwardWeighment />} />
-      <Route path="/create-outward-weighment" element={<CreateOutwardWeighment />} />
+      <Route path="/create-outward-weighment" element={<CreateOutwardWeighment />} /> */}
+      {/* <Route path="/weighment/create"         element={<CreateWeighment />} /> */}
+      <Route path="/weighment/create/inward"  element={<CreateInwardWeighment />} />
+      <Route path="/weighment/create/outward" element={<CreateOutwardWeighment />} />
+      <Route
+          path="/weighment/create/general"
+          element={<CreateGeneralWeighment />}
+      />
+      <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} />
 
       {/* MASTERS — existing */}
       <Route path="/document-sequence"        element={<DocumentSequence />} />

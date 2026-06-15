@@ -9,28 +9,14 @@ const PO_API    = `${API_URL}/api/purchase-orders`;
 const PARTY_API = `${API_URL}/api/parties`;
 const SITE_API  = `${API_URL}/api/sites`;
 
-/*
-  STATUS VALUES:
-    "Open"        – vehicle arrived, entry open
-    "Weighted"    – weighment done, waiting for outward
-    "OutPending"  – vehicle out pending approval
-    "Closed"      – vehicle has exited / transaction complete
-
-  DEFAULT VIEW (on load / reset):
-    Shows only Open, Weighted, OutPending.
-    Closed records are hidden unless the user explicitly searches for them.
-*/
-
 const STATUS_OPTIONS = ["Open", "Weighted", "OutPending", "Closed"];
-
-// Statuses considered "active" (shown by default without explicit search)
 const ACTIVE_STATUSES = ["Open", "Weighted", "OutPending"];
 
 const blankFilters = {
   fromDate: "",
   toDate: "",
   inOutType: "",
-  status: "",          // "" = default (shows ACTIVE_STATUSES only)
+  status: "",
   ginNumber: "",
   poCpoNo: "",
   transactionCategory: "",
@@ -110,22 +96,15 @@ const IntransitPOModal = ({ pos, onSelect, onClose }) => (
           <table className="gin-modal-table">
             <thead>
               <tr>
-                <th>PO No</th>
-                <th>PO Date</th>
-                <th>Party Name</th>
-                <th>Site</th>
-                <th>Items</th>
-                <th>Net Amt</th>
-                <th>Action</th>
+                <th>PO No</th><th>PO Date</th><th>Party Name</th>
+                <th>Site</th><th>Items</th><th>Net Amt</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
               {pos.map((po) => (
                 <tr key={po._id}>
                   <td>
-                    <button className="gin-modal-po-link" onClick={() => onSelect(po)}>
-                      {po.poNo}
-                    </button>
+                    <button className="gin-modal-po-link" onClick={() => onSelect(po)}>{po.poNo}</button>
                   </td>
                   <td>{po.poDate ? po.poDate.slice(0, 10) : "-"}</td>
                   <td>{po.partyName || "-"}</td>
@@ -133,9 +112,7 @@ const IntransitPOModal = ({ pos, onSelect, onClose }) => (
                   <td>{po.items?.map((it) => it.itemName).join(", ") || "-"}</td>
                   <td>₹ {Number(po.netAmount || 0).toLocaleString("en-IN")}</td>
                   <td>
-                    <button className="gin-modal-select-btn" onClick={() => onSelect(po)}>
-                      Select
-                    </button>
+                    <button className="gin-modal-select-btn" onClick={() => onSelect(po)}>Select</button>
                   </td>
                 </tr>
               ))}
@@ -147,16 +124,10 @@ const IntransitPOModal = ({ pos, onSelect, onClose }) => (
   </div>
 );
 
-/* ─────────────────────────────────────────────
-   STATUS BADGE helper
-───────────────────────────────────────────── */
 const statusClass = (s) => {
-  if (!s) return "";
   const map = {
-    open:        "badge-open",
-    weighted:    "badge-weighted",
-    outpending:  "badge-outpending",
-    closed:      "badge-closed",
+    open: "badge-open", weighted: "badge-weighted",
+    outpending: "badge-outpending", closed: "badge-closed",
   };
   return map[(s || "").toLowerCase()] || "";
 };
@@ -176,26 +147,17 @@ const InwardOutwardNote = () => {
   const [intransitPOs, setIntransitPOs] = useState([]);
   const [loadingPOs,   setLoadingPOs]   = useState(false);
 
-  /* master data */
   const [parties, setParties] = useState([]);
   const [sites,   setSites]   = useState([]);
 
-  /* "Vehicle Out All" checkbox state */
-  const [vehicleOutAll, setVehicleOutAll] = useState(false);
-  const [closingAll,    setClosingAll]    = useState(false);
-
-  /* ── Fetch master data on mount ── */
   useEffect(() => {
     fetchMasters();
-    fetchData(blankFilters);   // default load: active vehicles only
+    fetchData(blankFilters);
   }, []);
 
   const fetchMasters = async () => {
     try {
-      const [partyRes, siteRes] = await Promise.all([
-        fetch(PARTY_API),
-        fetch(SITE_API),
-      ]);
+      const [partyRes, siteRes] = await Promise.all([fetch(PARTY_API), fetch(SITE_API)]);
       const partyData = await partyRes.json();
       const siteData  = await siteRes.json();
       setParties(Array.isArray(partyData) ? partyData.filter((p) => p.status === "Active") : []);
@@ -210,21 +172,14 @@ const InwardOutwardNote = () => {
     ].filter(Boolean))
   ].sort();
 
-  /* ── fetchData
-       If status filter is blank, we restrict to ACTIVE_STATUSES by default
-       (i.e. hide Closed unless the user explicitly selects "Closed").
-  ── */
   const fetchData = async (f) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       Object.entries(f).forEach(([k, v]) => { if (v) params.append(k, v); });
-
-      // If no explicit status filter, only show active statuses on the search page
       if (!f.status) {
         ACTIVE_STATUSES.forEach((s) => params.append("statusIn", s));
       }
-
       const res  = await fetch(`${GIN_API}?${params.toString()}`);
       const data = await res.json();
       setResults(Array.isArray(data) ? data : []);
@@ -235,11 +190,6 @@ const InwardOutwardNote = () => {
       setLoading(false);
     }
   };
-
-  /* NOTE: The backend GET /goods-inward-note needs to support
-     "statusIn" as a multi-value query param for the default load.
-     See backend change note at the bottom of this file.
-  */
 
   const fetchIntransitPOs = async () => {
     setLoadingPOs(true);
@@ -263,15 +213,7 @@ const InwardOutwardNote = () => {
 
   const handleChange = (e) => setFilters((p) => ({ ...p, [e.target.name]: e.target.value }));
   const handleApply  = () => fetchData(filters);
-  const handleReset  = () => { setFilters(blankFilters); fetchData(blankFilters); setVehicleOutAll(false); };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this record?")) return;
-    try {
-      await fetch(`${GIN_API}/${id}`, { method: "DELETE" });
-      setResults((p) => p.filter((r) => r._id !== id));
-    } catch { alert("Delete Failed"); }
-  };
+  const handleReset  = () => { setFilters(blankFilters); fetchData(blankFilters); };
 
   const handleUpdate = async () => {
     try {
@@ -287,9 +229,7 @@ const InwardOutwardNote = () => {
     } catch { alert("Update Failed"); }
   };
 
-  /* ── Vehicle Out (single row) ──
-     Sets status to "Closed" for one record.
-  ── */
+  /* ── Vehicle Out (single row only) ── */
   const handleVehicleOut = async (row) => {
     if (!window.confirm(`Mark vehicle ${row.vehicleNo || row.ginNo} as OUT (Closed)?`)) return;
     try {
@@ -300,51 +240,8 @@ const InwardOutwardNote = () => {
       });
       const data = await res.json();
       if (!res.ok) { alert(data.message); return; }
-      // Remove from list because default view hides Closed
       setResults((p) => p.filter((r) => r._id !== row._id));
     } catch { alert("Vehicle Out failed"); }
-  };
-
-  /* ── Vehicle Out ALL (checkbox) ──
-     Closes ALL records currently shown that are Open, Weighted, or OutPending.
-  ── */
-  const handleVehicleOutAll = async (checked) => {
-    setVehicleOutAll(checked);
-    if (!checked) return;
-
-    const toClose = results.filter((r) =>
-      ACTIVE_STATUSES.map((s) => s.toLowerCase()).includes((r.status || "").toLowerCase())
-    );
-
-    if (toClose.length === 0) {
-      alert("No active vehicles to close.");
-      setVehicleOutAll(false);
-      return;
-    }
-
-    if (!window.confirm(`Close ALL ${toClose.length} active vehicle(s)? This cannot be undone.`)) {
-      setVehicleOutAll(false);
-      return;
-    }
-
-    setClosingAll(true);
-    try {
-      await Promise.all(
-        toClose.map((row) =>
-          fetch(`${GIN_API}/${row._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...row, status: "Closed" }),
-          })
-        )
-      );
-      // Remove all closed from current view
-      const closedIds = new Set(toClose.map((r) => r._id));
-      setResults((p) => p.filter((r) => !closedIds.has(r._id)));
-      setVehicleOutAll(false);
-      alert(`${toClose.length} vehicle(s) marked as Closed.`);
-    } catch { alert("Bulk close failed"); }
-    finally { setClosingAll(false); }
   };
 
   /* ── Inline edit helpers ── */
@@ -366,7 +263,6 @@ const InwardOutwardNote = () => {
     </select>
   );
 
-  /* ── Table columns (slimmed per requirements) ── */
   const COLS = [
     "#", "IN/OUT No", "Date", "PO No", "Type",
     "Party Code", "Party Name", "Vehicle No", "Site", "Status", "Actions",
@@ -378,7 +274,6 @@ const InwardOutwardNote = () => {
       <tr key={row._id || index} className={isEdit ? "gin-editing-row" : ""}>
         <td>{index + 1}</td>
 
-        {/* IN/OUT No — hyperlink */}
         <td>
           {isEdit ? (
             <strong>{row.ginNo || "-"}</strong>
@@ -396,7 +291,6 @@ const InwardOutwardNote = () => {
         <td>{isEdit ? ed("ginDate", "date") : row.ginDate || "-"}</td>
         <td>{isEdit ? ed("poCpoNo")         : row.poCpoNo || "-"}</td>
 
-        {/* Type */}
         <td>
           {isEdit
             ? edSel("inOutType", ["Inward", "Outward"])
@@ -412,7 +306,6 @@ const InwardOutwardNote = () => {
         <td>{isEdit ? ed("vehicleNo") : row.vehicleNo || "-"}</td>
         <td>{isEdit ? ed("site")      : row.site || "-"}</td>
 
-        {/* Status */}
         <td>
           {isEdit ? (
             edSel("status", STATUS_OPTIONS)
@@ -423,7 +316,7 @@ const InwardOutwardNote = () => {
           )}
         </td>
 
-        {/* Actions */}
+        {/* Actions — NO Delete button; keep single Vehicle Out */}
         <td className="gin-action-cell">
           {isEdit ? (
             <>
@@ -438,7 +331,6 @@ const InwardOutwardNote = () => {
               >
                 Edit
               </button>
-              {/* Vehicle Out — only shown for active records */}
               {ACTIVE_STATUSES.includes(row.status) && (
                 <button
                   className="vehicle-out-btn"
@@ -448,15 +340,13 @@ const InwardOutwardNote = () => {
                   🚛 Out
                 </button>
               )}
-              <button className="delete-btn" onClick={() => handleDelete(row._id)}>Delete</button>
+              {/* Delete button intentionally removed */}
             </>
           )}
         </td>
       </tr>
     );
   };
-
-  /* ────────────────────────────────────────────────────────── */
 
   return (
     <div className="gin-search-page">
@@ -491,30 +381,18 @@ const InwardOutwardNote = () => {
             </div>
 
             <div className="filter-group">
-              <label>Out Date (To)</label>
+              <label>To Date</label>
               <input type="date" name="toDate" value={filters.toDate} onChange={handleChange} />
             </div>
 
             <div className="filter-group">
               <label>IN/OUT No</label>
-              <input
-                type="text"
-                name="ginNumber"
-                value={filters.ginNumber}
-                onChange={handleChange}
-                placeholder="Search IN/OUT No…"
-              />
+              <input type="text" name="ginNumber" value={filters.ginNumber} onChange={handleChange} placeholder="Search IN/OUT No…" />
             </div>
 
             <div className="filter-group">
               <label>SO / PO No</label>
-              <input
-                type="text"
-                name="poCpoNo"
-                value={filters.poCpoNo}
-                onChange={handleChange}
-                placeholder="Search PO/SO No…"
-              />
+              <input type="text" name="poCpoNo" value={filters.poCpoNo} onChange={handleChange} placeholder="Search PO/SO No…" />
             </div>
 
             <div className="filter-group">
@@ -523,35 +401,17 @@ const InwardOutwardNote = () => {
                 <option value="">All</option>
                 <option>Inward</option>
                 <option>Outward</option>
+                <option>General</option>
               </select>
             </div>
 
-            {/* TRANSACTION CATEGORY (TC) — commented out, uncomment to enable
             <div className="filter-group">
-              <label>Transaction Category (TC)</label>
-              <input
-                type="text"
-                name="transactionCategory"
-                value={filters.transactionCategory}
-                onChange={handleChange}
-                placeholder="Transaction category…"
-              />
-            </div>
-            */}
-
-            <div className="filter-group">
-              <label>Party Code (PC)</label>
-              <input
-                type="text"
-                name="partyCode"
-                value={filters.partyCode}
-                onChange={handleChange}
-                placeholder="Search party code…"
-              />
+              <label>Party Code</label>
+              <input type="text" name="partyCode" value={filters.partyCode} onChange={handleChange} placeholder="Search party code…" />
             </div>
 
             <div className="filter-group">
-              <label>Party Name (PN)</label>
+              <label>Party Name</label>
               <TypeAhead
                 name="partyName"
                 value={filters.partyName}
@@ -563,25 +423,13 @@ const InwardOutwardNote = () => {
             </div>
 
             <div className="filter-group">
-              <label>Party Doc (DOC)</label>
-              <input
-                type="text"
-                name="partyDoc"
-                value={filters.partyDoc}
-                onChange={handleChange}
-                placeholder="Search party doc…"
-              />
+              <label>Party Doc</label>
+              <input type="text" name="partyDoc" value={filters.partyDoc} onChange={handleChange} placeholder="Search party doc…" />
             </div>
 
             <div className="filter-group">
               <label>Vehicle No</label>
-              <input
-                type="text"
-                name="vehicleNo"
-                value={filters.vehicleNo}
-                onChange={handleChange}
-                placeholder="Search vehicle no…"
-              />
+              <input type="text" name="vehicleNo" value={filters.vehicleNo} onChange={handleChange} placeholder="Search vehicle no…" />
             </div>
 
             <div className="filter-group">
@@ -608,24 +456,12 @@ const InwardOutwardNote = () => {
 
           </div>
 
+          {/* No "Vehicle Out All" checkbox — removed per requirements */}
           <div className="filter-actions">
             <button className="reset-btn" onClick={handleReset}>Reset</button>
             <button className="apply-btn" onClick={handleApply}>
               {loading ? "Searching…" : "Apply"}
             </button>
-            {/* Vehicle Out ALL — below Apply button */}
-            <label
-              className={`vehicle-out-all-label ${closingAll ? "closing" : ""}`}
-              title="Check to close ALL active vehicles at once"
-            >
-              <input
-                type="checkbox"
-                checked={vehicleOutAll}
-                onChange={(e) => handleVehicleOutAll(e.target.checked)}
-                disabled={closingAll}
-              />
-              {closingAll ? "Closing…" : "Vehicle Out All"}
-            </label>
           </div>
         </div>
 
@@ -671,28 +507,6 @@ const InwardOutwardNote = () => {
       )}
 
       <style>{`
-        /* ── Vehicle Out All label ── */
-        .vehicle-out-all-label {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 7px 14px;
-          background: #fff7ed;
-          color: #c2410c;
-          border: 1.5px solid #fdba74;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          user-select: none;
-          transition: background 0.15s, border-color 0.15s;
-        }
-        .vehicle-out-all-label:hover { background: #ffedd5; border-color: #fb923c; }
-        .vehicle-out-all-label.closing { opacity: 0.6; cursor: not-allowed; }
-        .vehicle-out-all-label input[type="checkbox"] {
-          width: 15px; height: 15px; cursor: pointer; accent-color: #ea580c;
-        }
-
         /* ── Vehicle Out (single row) button ── */
         .vehicle-out-btn {
           padding: 4px 10px;
@@ -708,7 +522,6 @@ const InwardOutwardNote = () => {
         }
         .vehicle-out-btn:hover { background: #ffedd5; }
 
-        /* ── Status badges ── */
         .gin-status-badge {
           display: inline-block;
           padding: 2px 10px;
@@ -723,7 +536,6 @@ const InwardOutwardNote = () => {
         .badge-outpending { background: #fef9c3; color: #a16207; }
         .badge-closed     { background: #f1f5f9; color: #64748b; }
 
-        /* ── Result count note ── */
         .result-count {
           font-size: 12.5px;
           color: #64748b;
@@ -735,7 +547,6 @@ const InwardOutwardNote = () => {
           color: #94a3b8;
         }
 
-        /* ── Insert PO button ── */
         .insert-po-btn {
           padding: 8px 16px;
           background: #f0fdf4;
@@ -745,11 +556,9 @@ const InwardOutwardNote = () => {
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
-          transition: background 0.15s, border-color 0.15s;
         }
         .insert-po-btn:hover { background: #dcfce7; border-color: #4ade80; }
 
-        /* ── Modal styles ── */
         .gin-modal-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.45);
           z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -775,7 +584,6 @@ const InwardOutwardNote = () => {
         .gin-modal-table th {
           background: #f1f5f9; padding: 10px 12px; text-align: left;
           font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0;
-          white-space: nowrap;
         }
         .gin-modal-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
         .gin-modal-table tr:hover td { background: #f8fafc; }
@@ -783,41 +591,16 @@ const InwardOutwardNote = () => {
           background: none; border: none; color: #2563eb; font-weight: 700;
           font-size: 13px; cursor: pointer; text-decoration: underline; padding: 0;
         }
-        .gin-modal-po-link:hover { color: #1d4ed8; }
         .gin-modal-select-btn {
           padding: 4px 12px; background: #2563eb; color: #fff;
           border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
         }
         .gin-modal-select-btn:hover { background: #1d4ed8; }
+
+        .gin-header-btns { display: flex; gap: 10px; align-items: center; }
       `}</style>
     </div>
   );
 };
 
 export default InwardOutwardNote;
-
-/*
-═══════════════════════════════════════════════════════════════════════
-  BACKEND CHANGE REQUIRED — goodsInwardNoteRoutes.js
-═══════════════════════════════════════════════════════════════════════
-
-  The default load sends "statusIn" as a repeated query param to filter
-  multiple statuses (Open, Weighted, OutPending). Add this to the GET
-  /goods-inward-note route query builder:
-
-  // After existing status filter:
-  if (status) {
-    query.status = status;
-  } else if (req.query.statusIn) {
-    // Support statusIn as array or single value
-    const statusIn = Array.isArray(req.query.statusIn)
-      ? req.query.statusIn
-      : [req.query.statusIn];
-    query.status = { $in: statusIn };
-  }
-
-  Also update GoodsInwardNote.js — no schema change needed, just ensure
-  your STATUS_OPTIONS are consistent:
-    "Open", "Weighted", "OutPending", "Closed"
-═══════════════════════════════════════════════════════════════════════
-*/

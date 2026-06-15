@@ -326,8 +326,42 @@ table td{
   overflow-x:auto;
 }
 
-table{
-  min-width:2200px;
+/* Compact table — fits in viewport without horizontal scroll */
+.gin-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+
+/* Column width allocation */
+.gin-table th:nth-child(1)  { width:36px;  }  /* # */
+.gin-table th:nth-child(2)  { width:110px; }  /* IN/OUT No */
+.gin-table th:nth-child(3)  { width:82px;  }  /* Date */
+.gin-table th:nth-child(4)  { width:90px;  }  /* PO No */
+.gin-table th:nth-child(5)  { width:72px;  }  /* Type */
+.gin-table th:nth-child(6)  { width:80px;  }  /* Party Code */
+.gin-table th:nth-child(7)  { width:130px; }  /* Party Name */
+.gin-table th:nth-child(8)  { width:90px;  }  /* Vehicle No */
+.gin-table th:nth-child(9)  { width:100px; }  /* Site */
+.gin-table th:nth-child(10) { width:85px;  }  /* Status */
+.gin-table th:nth-child(11) { width:110px; }  /* Actions */
+
+.gin-table th,
+.gin-table td{
+  font-size:11.5px;
+  padding:7px 6px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  border-bottom:1px solid #eee;
+  text-align:left;
+}
+
+.gin-table thead th{
+  background:#f5f5f5;
+  border-bottom:1px solid #ddd;
+  font-weight:700;
+  color:#333;
 }
 
 .edit-btn{

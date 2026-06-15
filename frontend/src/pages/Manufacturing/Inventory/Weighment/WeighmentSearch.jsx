@@ -5,12 +5,16 @@ import "./WeighmentSearch.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const API = `${API_URL}/api/weighment`;
+const API     = `${API_URL}/api/weighment`;
+const GIN_API = `${API_URL}/api/goods-inward-note`;
+
+/* Status options updated per requirements: Draft, Partial, Submit, Weighted */
+const STATUS_OPTIONS = ["Draft", "Partial", "Submit", "Weighted"];
 
 const blankFilters = {
   fromDate: "", toDate: "", weighmentNo: "", vehicleNo: "",
-  inwardOutwardNoteNo: "", status: "", partyName: "", site: "",
-  transactionType: "", transactionCategory: "", listReversal: false,
+  inwardOutwardNoteNo: "", status: "", partyName: "", transactionType: "",
+  transactionCategory: "",
 };
 
 const WeighmentSearch = () => {
@@ -24,13 +28,30 @@ const WeighmentSearch = () => {
   const [editRow,        setEditRow]        = useState({});
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
-  useEffect(() => { fetchData(blankFilters); }, []);
+  /* Transaction categories fetched from GIN records */
+  const [txCategories, setTxCategories] = useState([]);
+
+  useEffect(() => {
+    fetchData(blankFilters);
+    fetchTxCategories();
+  }, []);
+
+  const fetchTxCategories = async () => {
+    try {
+      const res = await axios.get(GIN_API);
+      const data = Array.isArray(res.data) ? res.data : [];
+      const cats = [...new Set(data.map((d) => d.transactionCategory).filter(Boolean))].sort();
+      setTxCategories(cats);
+    } catch (err) {
+      console.error("Failed to fetch transaction categories", err);
+    }
+  };
 
   const fetchData = async (f) => {
     setLoading(true); setSearched(true);
     try {
       const params = {};
-      Object.entries(f).forEach(([k, v]) => { if (v !== "" && v !== false) params[k] = v; });
+      Object.entries(f).forEach(([k, v]) => { if (v !== "") params[k] = v; });
       const res = await axios.get(API, { params });
       setResults(res.data.data || []);
     } catch (err) {
@@ -39,8 +60,8 @@ const WeighmentSearch = () => {
   };
 
   const handleFilterChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFilters((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
+    const { name, value } = e.target;
+    setFilters((p) => ({ ...p, [name]: value }));
   };
 
   const handleApply = () => fetchData(filters);
@@ -72,37 +93,24 @@ const WeighmentSearch = () => {
     } catch (err) { console.error(err); alert("Update failed"); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this record?")) return;
-    try {
-      await axios.delete(`${API}/${id}`);
-      setResults((prev) => prev.filter((r) => r._id !== id));
-    } catch (err) { console.error(err); alert("Delete failed"); }
-  };
+  /* No delete handler — Delete button removed per requirements */
 
-  /* ── open full WeighmentDetail page ── */
-  const openDetail = (row) => navigate(`/weighment-detail/${row._id}`);
+  const openDetail = (row) =>
+    navigate(`/weighment-detail/${row._id}`, { state: { allowEdit: true } });
 
-  /* ─── Column definitions ─── */
+  /* ─── Compact column set per requirements ───
+     GIN/IN-OUT note, Weighment No, Vehicle No, Trans Type, Trans Category,
+     Party Name, Net Weight — all others removed from table */
   const COLS = [
     { label: "#" },
-    { label: "GIN No / Note No",        field: "inwardOutwardNoteNo", isLink: true },
-    { label: "Weighment No",            field: "weighmentNo" },
-    { label: "Vehicle No",              field: "vehicleNo" },
-    { label: "Transaction Category",    field: "transactionCategory", type: "select", opts: ["", "Purchase", "Sales"] },
-    { label: "Transaction Type",        field: "transactionType",     type: "select", opts: ["", "Inward", "Outward"] },
-    { label: "Status",                  field: "status",              type: "select", opts: ["Open", "Closed"] },
-    { label: "Party Name",              field: "partyName" },
-    { label: "Weighment Date",          field: "weighmentDate",       type: "date" },
-    { label: "First Weight (MT)",       field: "firstWeight" },
-    { label: "Second Weight (MT)",      field: "secondWeight" },
-    { label: "Net Weight (MT)",         field: "netWeight",           readOnly: true },
-    { label: "Site",                    field: "site" },
-    { label: "Transporter Name",        field: "transporterName" },
-    { label: "Weighment In Date",       field: "weighmentInDate",     type: "date" },
-    { label: "Weighment Out Date",      field: "weighmentOutDate",    type: "date" },
-    { label: "Supplier Invoice No",     field: "supplierInvoiceNo" },
-    { label: "Bill No",                 field: "billNo" },
+    { label: "GIN / IN-OUT Note No", field: "inwardOutwardNoteNo", isLink: true },
+    { label: "Weighment No",         field: "weighmentNo" },
+    { label: "Vehicle No",           field: "vehicleNo" },
+    { label: "Trans Type",           field: "transactionType", type: "select", opts: ["", "Inward", "Outward"] },
+    { label: "Trans Category",       field: "transactionCategory", type: "select", opts: ["", "Purchase", "Sales"] },
+    { label: "Party Name",           field: "partyName" },
+    { label: "Net Weight (MT)",      field: "netWeight", readOnly: true },
+    { label: "Status",               field: "status", type: "select", opts: ["", ...STATUS_OPTIONS] },
     { label: "Actions" },
   ];
 
@@ -112,12 +120,9 @@ const WeighmentSearch = () => {
 
     if (!isEditing) {
       const val = row[field] != null && row[field] !== "" ? row[field] : "-";
-
-      /* ── GIN No → clickable hyperlink → WeighmentDetail ── */
       if (isLink) {
         return (
-          <button className="ws-gin-link" onClick={() => openDetail(row)}
-            title={`Open full details for ${val}`}>
+          <button className="ws-gin-link" onClick={() => openDetail(row)} title={`Open details for ${val}`}>
             🔗 {val}
           </button>
         );
@@ -125,7 +130,6 @@ const WeighmentSearch = () => {
       return val;
     }
 
-    /* edit mode */
     if (readOnly || isLink)
       return <input value={editRow[field] ?? ""} readOnly className="ws-inline ws-readonly" />;
 
@@ -139,8 +143,7 @@ const WeighmentSearch = () => {
     return (
       <input type={type || "text"} name={field} value={editRow[field] ?? ""}
         onChange={handleEditChange}
-        className={`ws-inline${type === "date" ? " ws-date" : ""}${
-          field === "firstWeight" || field === "secondWeight" ? " ws-num" : ""}`} />
+        className={`ws-inline${type === "date" ? " ws-date" : ""}`} />
     );
   };
 
@@ -157,16 +160,42 @@ const WeighmentSearch = () => {
             <button className="create-btn" onClick={() => setShowCreateMenu((p) => !p)}>+ Create ▾</button>
             {showCreateMenu && (
               <div className="create-menu">
-                <button className="create-menu-item" onClick={() => { setShowCreateMenu(false); navigate("/create-weighment"); }}>Create</button>
-                <button className="create-menu-item" onClick={() => { setShowCreateMenu(false); navigate("/create-inward-weighment"); }}>Create Inward</button>
-                <button className="create-menu-item" onClick={() => { setShowCreateMenu(false); navigate("/create-outward-weighment"); }}>Create Outward</button>
+          <button
+            className="create-menu-item"
+            onClick={() => {
+              setShowCreateMenu(false);
+              navigate("/weighment/create/general");
+            }}
+          >
+            Create
+          </button>
+
+          <button
+            className="create-menu-item"
+            onClick={() => {
+              setShowCreateMenu(false);
+              navigate("/weighment/create/inward");
+            }}
+          >
+            Create Inward
+          </button>
+
+          <button
+            className="create-menu-item"
+            onClick={() => {
+              setShowCreateMenu(false);
+              navigate("/weighment/create/outward");
+            }}
+          >
+            Create Outward
+          </button>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* SEARCH PANEL */}
+      {/* SEARCH PANEL — ordered: From Date, To Date, Weighment No, Vehicle No, IN/OUT No, Status, Party Name, Trans Type, Trans Category */}
       <div className="search-panel">
         <div className="search-grid">
 
@@ -182,21 +211,17 @@ const WeighmentSearch = () => {
           <div className="field"><label>Vehicle No</label>
             <input type="text" name="vehicleNo" value={filters.vehicleNo} onChange={handleFilterChange} /></div>
 
-          <div className="field"><label>GIN No / Note No</label>
-            <input type="text" name="inwardOutwardNoteNo" value={filters.inwardOutwardNoteNo} onChange={handleFilterChange} placeholder="GIN/26-27/..." /></div>
+          <div className="field"><label>Inward / Outward Note No</label>
+            <input type="text" name="inwardOutwardNoteNo" value={filters.inwardOutwardNoteNo} onChange={handleFilterChange} placeholder="GIN/26-27/…" /></div>
 
           <div className="field"><label>Status</label>
             <select name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="">All</option><option>Open</option><option>Closed</option>
+              <option value="">All</option>
+              {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
             </select></div>
 
           <div className="field"><label>Party Name</label>
             <input type="text" name="partyName" value={filters.partyName} onChange={handleFilterChange} /></div>
-
-          <div className="field"><label>Site</label>
-            <select name="site" value={filters.site} onChange={handleFilterChange}>
-              <option value="">All</option><option>Factory Office-GYPMART INDIA</option>
-            </select></div>
 
           <div className="field"><label>Transaction Type</label>
             <select name="transactionType" value={filters.transactionType} onChange={handleFilterChange}>
@@ -205,16 +230,15 @@ const WeighmentSearch = () => {
 
           <div className="field"><label>Transaction Category</label>
             <select name="transactionCategory" value={filters.transactionCategory} onChange={handleFilterChange}>
-              <option value="">All</option><option>Purchase</option><option>Sales</option>
+              <option value="">All</option>
+              {txCategories.length > 0
+                ? txCategories.map((c) => <option key={c}>{c}</option>)
+                : <><option>Purchase</option><option>Sales</option></>}
             </select></div>
 
         </div>
 
         <div className="bottom-actions">
-          <label className="checkbox-wrap">
-            <input type="checkbox" name="listReversal" checked={filters.listReversal} onChange={handleFilterChange} />
-            List Reversals
-          </label>
           <div style={{ display: "flex", gap: "8px" }}>
             <button className="reset-btn" onClick={handleReset}>Reset</button>
             <button className="apply-btn" onClick={handleApply}>{loading ? "Searching..." : "Apply"}</button>
@@ -224,9 +248,7 @@ const WeighmentSearch = () => {
 
       {/* RESULT TABLE */}
       <div className="result-area">
-
         {loading && <div className="placeholder">Loading...</div>}
-
         {!loading && searched && results.length === 0 && <div className="placeholder">No records found</div>}
 
         {!loading && searched && results.length > 0 && (
@@ -244,6 +266,7 @@ const WeighmentSearch = () => {
                       {COLS.slice(1, -1).map((col) => (
                         <td key={col.field}>{renderCell(col, row)}</td>
                       ))}
+                      {/* Actions — Delete removed per requirements */}
                       <td className="action-cell">
                         {isEditing ? (
                           <>
@@ -251,10 +274,7 @@ const WeighmentSearch = () => {
                             <button className="cancel-row-btn" onClick={cancelEdit}>Cancel</button>
                           </>
                         ) : (
-                          <>
-                            <button className="edit-row-btn"   onClick={() => startEdit(row)}>Edit</button>
-                            <button className="delete-row-btn" onClick={() => handleDelete(row._id)}>Delete</button>
-                          </>
+                          <button className="edit-row-btn" onClick={() => startEdit(row)}>Edit</button>
                         )}
                       </td>
                     </tr>
@@ -264,7 +284,6 @@ const WeighmentSearch = () => {
             </table>
           </div>
         )}
-
       </div>
     </div>
   );
