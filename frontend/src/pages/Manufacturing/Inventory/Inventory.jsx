@@ -39,7 +39,7 @@ const navigate = useNavigate();
   },
   {
     shortName: "DG",
-    title: "Direct GRN",
+    title: "GRN",
     code: "M03DGRN",
     theme: "blue",
     path: "/direct-grn",

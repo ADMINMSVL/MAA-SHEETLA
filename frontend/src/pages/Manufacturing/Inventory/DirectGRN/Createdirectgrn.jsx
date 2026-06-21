@@ -1,413 +1,483 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import "./CreateDirectGRN.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const GIN_API = `${API_URL}/api/goods-inward-note`;
 const GRN_API = `${API_URL}/api/direct-grn`;
-const DOC_API = `${API_URL}/api/document-sequence`;
-const today   = new Date().toISOString().split("T")[0];
+const WEIGHMENT_API = `${API_URL}/api/weighment`;
+const DIRECT_GRN_MODULE = "Inventory";
+const DIRECT_GRN_ENTITY = "GRN";
+const today = new Date().toISOString().split("T")[0];
 
-/* ── blank item ── */
 const blankItem = (sNo) => ({
-  sNo, insertBags: "", itemRate: "", transactionNo: "",
-  partyName: "", broker: "", itemCode: "", itemName: "",
-  uom: "", salesThrough: "", _checked: false,
+  sNo,
+  itemCode: "",
+  itemName: "",
+  uom: "",
+  qty: "",
+  rate: "",
+  totalAmount: "",
+  _checked: false,
 });
 
-/* ── blank form (header) ── */
+const blankCharge = (sNo) => ({
+  sNo,
+  code: "",
+  description: "",
+  addOrSubtract: "",
+  amount: "",
+  _checked: false,
+});
+
 const defaultForm = () => ({
-  grnNo:               "",
-  status:              "Open",
-  grnDate:             today,
-  grnDescription:      "",
-  grnType:             "F and A Impact",
+  grnNo: "",
+  status: "Open",
+  grnDate: today,
+  grnDescription: "",
+  grnType: "F and A Impact",
   transactionCategory: "",
-  site:                "Factory Office-GYPMART INDIA",
-  accountingSite:      "Factory Office",
-  vendorCode:          "",
-  vendorName:          "",
-  vendorAddress:       "",
-  acCode:              "",
-  currency:            "",
-  exchangeRate:        "",
-  challanInvoiceNo:    "",
-  challanDate:         today,
-  deliveryMode:        "BY AIR-BY AIR",
-  creditTerms:         "",
-  manufacturerCode:    "",
-  manufacturerName:    "",
-  manufacturerAddress: "",
-  vehicleNo:           "",
-  billDate:            today,
-  ewayDate:            today,
-  deliveryTerm:        "",
-  remarks:             "",
-  comments:            "",
-  linkedGinNo:         "",
+  site: "",
+  challanInvoiceNo: "",
+  challanDate: today,
+  vendorCode: "",
+  vendorName: "",
+  vehicleNo: "",
+  linkedGinNo: "",
+  remarks: "",
 });
 
 const CreateDirectGRN = () => {
-
   const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+  const fromWeight = !!location.state?.fromWeight;
+  const isDetail = !!id;
 
-  /* ── form state ── */
-  const [form,    setForm]    = useState(defaultForm());
-  const [items,   setItems]   = useState([blankItem(1)]);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState(defaultForm());
+  const [items, setItems] = useState([blankItem(1)]);
+  const [charges, setCharges] = useState([blankCharge(1)]);
   const [insertCount, setInsertCount] = useState(1);
+  const [chargeInsertCount, setChargeInsertCount] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  /* ── GIN fetch state ── */
-  const [ginList,     setGinList]     = useState([]);
-  const [ginLoading,  setGinLoading]  = useState(false);
-  const [ginSearched, setGinSearched] = useState(false);
-  const [ginFilters,  setGinFilters]  = useState({
-    ginNumber: "", vendorCode: "", vendorName: "", vehicleNo: "",
-    transactionCategory: "", status: "", site: "",
-  });
-  const [selectedGinId, setSelectedGinId] = useState(null);
+  const [sites, setSites] = useState([]);
+  const [txCategories, setTxCategories] = useState([]);
+  const [itemMaster, setItemMaster] = useState([]);
+  const [chargeMaster, setChargeMaster] = useState([]);
+  const [weighments, setWeighments] = useState([]);
+  const [weightLoading, setWeightLoading] = useState(false);
+  const [selectedWeightId, setSelectedWeightId] = useState("");
+  const [showCharges, setShowCharges] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const canEdit = !isDetail || editMode;
 
-  /* ── transaction codes ── */
-  const [txCodes, setTxCodes] = useState([]);
+  /* fromWeight + not editing an existing record => show the weighment
+     picker first; user lands on the actual create form only after
+     choosing a weighment (or immediately for a plain "Create DGRN"). */
+  const [viewMode, setViewMode] = useState(fromWeight && !isDetail ? "list" : "form");
+  const [previewGrnNo, setPreviewGrnNo] = useState("");
 
-  /* ── auto-generate GRN No on mount + fetch tx codes ── */
   useEffect(() => {
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    setForm((p) => ({ ...p, grnNo: `DGRN/26-27/${rand}` }));
+    axios.get(`${API_URL}/api/sites`)
+      .then((res) => setSites((Array.isArray(res.data) ? res.data : []).filter((s) => s.status !== "Inactive")))
+      .catch(() => setSites([]));
 
-    axios.get(DOC_API)
-      .then((res) => setTxCodes(res.data.map((d) => d.generatedCode).filter(Boolean)))
-      .catch(() => {});
+    axios.get(`${API_URL}/api/transactions`)
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setTxCategories(list.filter((tx) =>
+          tx.module === DIRECT_GRN_MODULE &&
+          tx.businessEntity === DIRECT_GRN_ENTITY &&
+          (tx.status || "").toLowerCase() === "open"
+        ));
+      })
+      .catch(() => setTxCategories([]));
+
+    axios.get(`${API_URL}/api/items`)
+      .then((res) => setItemMaster((Array.isArray(res.data) ? res.data : []).filter((it) => it.status !== "Inactive")))
+      .catch(() => setItemMaster([]));
+
+    axios.get(`${API_URL}/api/charges-master`)
+      .then((res) => setChargeMaster((Array.isArray(res.data) ? res.data : []).filter((ch) => ch.status !== "Inactive")))
+      .catch(() => setChargeMaster([]));
   }, []);
 
-  /* ══════════════════════════════════
-     GIN SEARCH
-  ══════════════════════════════════ */
-  const handleGinFilterChange = (e) => {
-    const { name, value } = e.target;
-    setGinFilters((p) => ({ ...p, [name]: value }));
-  };
+  useEffect(() => {
+    if (!isDetail) return;
+    const loadRecord = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${GRN_API}/${id}`);
+        const data = res.data?.data || res.data;
+        setForm({ ...defaultForm(), ...data });
+        setItems(Array.isArray(data.items) && data.items.length > 0
+          ? data.items.map((item, idx) => ({ ...blankItem(idx + 1), ...item, sNo: idx + 1, _checked: false }))
+          : [blankItem(1)]);
+        setCharges(Array.isArray(data.charges) && data.charges.length > 0
+          ? data.charges.map((charge, idx) => ({ ...blankCharge(idx + 1), ...charge, sNo: idx + 1, _checked: false }))
+          : [blankCharge(1)]);
+        setShowCharges(Array.isArray(data.charges) && data.charges.length > 0);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load Direct GRN");
+        navigate("/direct-grn");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadRecord();
+  }, [id, isDetail, navigate]);
 
-  const handleGinSearch = async () => {
-    setGinLoading(true);
-    setGinSearched(true);
-    try {
-      const params = new URLSearchParams();
-      Object.entries(ginFilters).forEach(([k, v]) => { if (v) params.append(k, v); });
-      const res  = await axios.get(`${GIN_API}?${params.toString()}`);
-      setGinList(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to fetch GIN records");
-    } finally {
-      setGinLoading(false);
+  useEffect(() => {
+    if (!fromWeight) return;
+    const loadWeighments = async () => {
+      setWeightLoading(true);
+      try {
+        const res = await axios.get(WEIGHMENT_API);
+        setWeighments((res.data?.data || []).filter((row) => (row.status || "").toLowerCase() !== "closed"));
+      } catch (err) {
+        console.error(err);
+        setWeighments([]);
+      } finally {
+        setWeightLoading(false);
+      }
+    };
+    loadWeighments();
+  }, [fromWeight]);
+
+  useEffect(() => {
+    if (isDetail) return;
+    axios
+      .get(`${GRN_API}/preview-grn-no`, { params: { transactionCategory: form.transactionCategory || "" } })
+      .then((res) => setPreviewGrnNo(res.data?.grnNo || ""))
+      .catch(() => setPreviewGrnNo(""));
+  }, [isDetail, form.transactionCategory]);
+
+  useEffect(() => {
+    if (sites.length > 0 && !form.site) {
+      const site = sites[0];
+      setForm((prev) => ({ ...prev, site: site.siteCode || site.siteName || "" }));
     }
-  };
+  }, [sites, form.site]);
 
-  const handleGinReset = () => {
-    setGinFilters({ ginNumber:"", vendorCode:"", vendorName:"", vehicleNo:"",
-      transactionCategory:"", status:"", site:"" });
-    setGinList([]);
-    setGinSearched(false);
-    setSelectedGinId(null);
-  };
+  const itemNameOptions = useMemo(() => itemMaster.map((it) => it.itemName).filter(Boolean), [itemMaster]);
+  const itemCodeOptions = useMemo(() => itemMaster.map((it) => it.itemCode).filter(Boolean), [itemMaster]);
 
-  /* ── select a GIN row → auto-fill form ── */
-  const handleSelectGin = (gin) => {
-    setSelectedGinId(gin._id);
-    setForm((p) => ({
-      ...p,
-      linkedGinNo:         gin.ginNo               || p.linkedGinNo,
-      grnDate:             gin.ginDate              || p.grnDate,
-      transactionCategory: gin.transactionCategory  || p.transactionCategory,
-      site:                gin.site                 || p.site,
-      vendorCode:          gin.vendorCode           || p.vendorCode,
-      vendorName:          gin.vendorName           || p.vendorName,
-      vendorAddress:       gin.manufacturerAddress  || p.vendorAddress,
-      challanInvoiceNo:    gin.challanInvoiceNo     || p.challanInvoiceNo,
-      challanDate:         gin.challanDate          || p.challanDate,
-      deliveryMode:        gin.deliveryMode         || p.deliveryMode,
-      manufacturerCode:    gin.manufacturerCode     || p.manufacturerCode,
-      manufacturerName:    gin.manufacturerName     || p.manufacturerName,
-      manufacturerAddress: gin.manufacturerAddress  || p.manufacturerAddress,
-      vehicleNo:           gin.vehicleNo            || p.vehicleNo,
-      billDate:            gin.billDate             || p.billDate,
-      ewayDate:            gin.ewayDate             || p.ewayDate,
-      remarks:             gin.remarks              || p.remarks,
-      comments:            gin.comments             || p.comments,
-    }));
-
-    /* Pre-fill items from GIN if it has items */
-    if (Array.isArray(gin.items) && gin.items.length > 0) {
-      setItems(gin.items.map((it, i) => ({ ...it, sNo: i + 1, _checked: false })));
-    }
-  };
-
-  /* ══════════════════════════════════
-     FORM HANDLERS
-  ══════════════════════════════════ */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    if (!canEdit) return;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ── items ── */
-  const handleItemChange = (idx, field, value) =>
-    setItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], [field]: value }; return n; });
+  const selectWeighment = async (weighment) => {
+    setSelectedWeightId(weighment._id);
+    setWeightLoading(true);
+    try {
+      const res = await axios.get(`${WEIGHMENT_API}/${weighment._id}`);
+      const full = res.data?.data || weighment;
 
-  const handleItemCheck = (idx, checked) =>
-    setItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], _checked: checked }; return n; });
+      setForm((prev) => ({
+        ...prev,
+        grnDate: full.weighmentDate || prev.grnDate,
+        grnDescription: full.description || `From weighment ${full.weighmentNo || ""}`,
+        transactionCategory: full.transactionCategory || prev.transactionCategory,
+        site: full.site || prev.site,
+        challanInvoiceNo: full.supplierInvoiceNo || full.billNo || prev.challanInvoiceNo,
+        challanDate: full.supplierInvoiceDate || full.challanDate || prev.challanDate,
+        vendorCode: full.vendorCode || prev.vendorCode,
+        vendorName: full.vendorName || full.partyName || prev.vendorName,
+        vehicleNo: full.vehicleNo || prev.vehicleNo,
+        linkedGinNo: full.inwardOutwardNoteNo || full.weighmentNo || prev.linkedGinNo,
+        remarks: full.remarks || prev.remarks,
+      }));
 
-  const handleInsertRows = () => {
-    const count = Math.max(1, Math.min(50, Number(insertCount) || 1));
+      const sourceItems = Array.isArray(full.items) && full.items.length > 0
+        ? full.items
+        : [{
+            itemCode: "",
+            itemName: "",
+            uom: "",
+            netWeight: full.netWeight || "",
+          }];
+
+      setItems(sourceItems.map((item, idx) => ({
+        sNo: idx + 1,
+        itemCode: item.itemCode || "",
+        itemName: item.itemName || "",
+        uom: item.uom || "",
+        qty: item.netWeight || "",
+        rate: "",
+        totalAmount: "",
+        _checked: false,
+      })));
+
+      setViewMode("form");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch weighment details. Please try again.");
+    } finally {
+      setWeightLoading(false);
+    }
+  };
+
+  const handleItemChange = (idx, field, value) => {
+    if (!canEdit) return;
     setItems((prev) => {
-      const start = prev.length + 1;
-      return [...prev, ...Array.from({ length: count }, (_, i) => blankItem(start + i))];
+      const next = [...prev];
+      const row = { ...next[idx], [field]: value };
+      if (field === "qty" || field === "rate") {
+        const qty = Number(field === "qty" ? value : row.qty) || 0;
+        const rate = Number(field === "rate" ? value : row.rate) || 0;
+        row.totalAmount = qty && rate ? String(qty * rate) : "";
+      }
+      next[idx] = row;
+      return next;
     });
   };
 
-  const handleDeleteChecked = () =>
-    setItems((prev) => prev.filter((r) => !r._checked).map((r, i) => ({ ...r, sNo: i + 1 })));
+  const fillItemFromMaster = (idx, field, value) => {
+    const found = itemMaster.find((it) => it[field] === value);
+    setItems((prev) => {
+      const next = [...prev];
+      next[idx] = {
+        ...next[idx],
+        [field]: value,
+        itemCode: found?.itemCode || next[idx].itemCode || "",
+        itemName: found?.itemName || next[idx].itemName || "",
+        uom: found?.uom || next[idx].uom || "",
+      };
+      return next;
+    });
+  };
 
-  const anyChecked = items.some((r) => r._checked);
+  const handleItemCheck = (idx, checked) => {
+    if (!canEdit) return;
+    setItems((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], _checked: checked };
+      return next;
+    });
+  };
 
-  /* ── SAVE ── */
+  const handleInsertRows = () => {
+    if (!canEdit) return;
+    const count = Math.max(1, Math.min(50, Number(insertCount) || 1));
+    setItems((prev) => [
+      ...prev,
+      ...Array.from({ length: count }, (_, i) => blankItem(prev.length + i + 1)),
+    ]);
+  };
+
+  const handleDeleteChecked = () => {
+    if (!canEdit) return;
+    setItems((prev) => prev.filter((row) => !row._checked).map((row, idx) => ({ ...row, sNo: idx + 1 })));
+  };
+
+  const handleChargeChange = (idx, field, value) => {
+    if (!canEdit) return;
+    setCharges((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const selectCharge = (idx, code) => {
+    if (!canEdit) return;
+    const found = chargeMaster.find((charge) => charge.code === code);
+    setCharges((prev) => {
+      const next = [...prev];
+      next[idx] = {
+        ...next[idx],
+        code,
+        description: found?.details || "",
+        addOrSubtract: found?.addOrSubtract || "",
+      };
+      return next;
+    });
+  };
+
+  const handleChargeCheck = (idx, checked) => {
+    if (!canEdit) return;
+    setCharges((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], _checked: checked };
+      return next;
+    });
+  };
+
+  const handleInsertCharges = () => {
+    if (!canEdit) return;
+    const count = Math.max(1, Math.min(50, Number(chargeInsertCount) || 1));
+    setCharges((prev) => [
+      ...prev,
+      ...Array.from({ length: count }, (_, i) => blankCharge(prev.length + i + 1)),
+    ]);
+  };
+
+  const handleDeleteCharges = () => {
+    if (!canEdit) return;
+    setCharges((prev) => prev.filter((row) => !row._checked).map((row, idx) => ({ ...row, sNo: idx + 1 })));
+  };
+
   const handleSave = async (asDraft = false) => {
-    if (!form.grnDate)         { alert("GRN Date is required");            return; }
-    if (!form.vendorCode)      { alert("Vendor Code is required");         return; }
-    if (!form.challanInvoiceNo){ alert("Challan/Invoice No is required");  return; }
+    if (!form.grnDate) { alert("Date is required"); return; }
+    if (!form.transactionCategory) { alert("Transaction Category is required"); return; }
+    if (!form.site) { alert("Site is required"); return; }
 
     const cleanItems = items
-      .filter(({ sNo, _checked, ...rest }) => Object.values(rest).some((v) => v !== ""))
-      .map(({ _checked, ...r })            => r);
+      .filter(({ sNo, _checked, ...rest }) => Object.values(rest).some((value) => String(value ?? "").trim() !== ""))
+      .map(({ _checked, ...row }) => row);
 
-    const payload = {
-      ...form,
-      status: asDraft ? "Draft" : form.status,
-      items:  cleanItems,
-    };
+    const cleanCharges = charges
+      .filter(({ sNo, _checked, ...rest }) => Object.values(rest).some((value) => String(value ?? "").trim() !== ""))
+      .map(({ _checked, ...row }) => row);
 
     try {
       setLoading(true);
-      const res = await axios.post(GRN_API, payload);
-      if (res.data.success) {
+      const payload = {
+        ...form,
+        status: asDraft ? "Draft" : form.status,
+        items: cleanItems,
+        charges: cleanCharges,
+      };
+      const res = isDetail
+        ? await axios.put(`${GRN_API}/${id}`, payload)
+        : await axios.post(GRN_API, payload);
+      if (res.data?.success) {
         alert(asDraft ? "Saved as Draft" : "Direct GRN Saved Successfully");
         navigate("/direct-grn");
+      } else {
+        alert(res.data?.message || "Save failed");
       }
     } catch (err) {
       console.error(err);
-      alert("Save Failed. Please try again.");
+      alert(err.response?.data?.message || "Save Failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ══════════════════════════════════
-     RENDER
-  ══════════════════════════════════ */
+  const anyItemsChecked = items.some((row) => row._checked);
+  const anyChargesChecked = charges.some((row) => row._checked);
+  const itemsTotal = items.reduce((sum, row) => sum + (Number(row.totalAmount) || 0), 0);
+  const chargesTotal = charges.reduce((sum, row) => {
+    const amount = Number(row.amount) || 0;
+    return row.addOrSubtract === "Subtraction" ? sum - amount : sum + amount;
+  }, 0);
+  const grandTotal = itemsTotal + chargesTotal;
+
+  /* ── Step 1 of the "Create From Weight" flow: a standalone page that
+     just lists open/draft weighments. Picking one fetches its full
+     record and only then takes the user to the create form below. ── */
+  if (fromWeight && !isDetail && viewMode === "list") {
+    return (
+      <div className="cdgrn-page">
+        <ModuleNavbar />
+
+        <div className="cdgrn-page-header">
+          <button className="cdgrn-back-btn" onClick={() => navigate("/direct-grn")}>←</button>
+          <h2>Select Weighment for Direct GRN</h2>
+        </div>
+
+        <div className="cdgrn-card">
+          <div className="cdgrn-section-label">Open Weighments (Closed records are hidden)</div>
+          {weightLoading && <div className="cdgrn-placeholder">Loading weighments...</div>}
+          {!weightLoading && weighments.length === 0 && <div className="cdgrn-placeholder">No weighment records found</div>}
+          {!weightLoading && weighments.length > 0 && (
+            <div className="cdgrn-gin-table-wrap">
+              <table className="cdgrn-gin-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Weighment No</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Party</th>
+                    <th>Vehicle</th>
+                    <th>Net Weight</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weighments.map((weight, idx) => (
+                    <tr
+                      key={weight._id}
+                      className="cdgrn-gin-row"
+                      onClick={() => selectWeighment(weight)}
+                    >
+                      <td>{idx + 1}</td>
+                      <td><strong>{weight.weighmentNo || "-"}</strong></td>
+                      <td>{weight.weighmentDate || "-"}</td>
+                      <td>{weight.transactionType || "-"}</td>
+                      <td>{weight.vendorName || weight.partyName || "-"}</td>
+                      <td>{weight.vehicleNo || "-"}</td>
+                      <td>{weight.netWeight || "-"}</td>
+                      <td>{weight.status || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="cdgrn-page">
-
       <ModuleNavbar />
 
-      {/* ── PAGE HEADER ── */}
       <div className="cdgrn-page-header">
-        <button className="cdgrn-back-btn" onClick={() => navigate("/direct-grn")}>←</button>
-        <h2>Direct GRN</h2>
+        <button
+          className="cdgrn-back-btn"
+          onClick={() => (fromWeight && !isDetail ? setViewMode("list") : navigate("/direct-grn"))}
+        >
+          ←
+        </button>
+        <h2>{isDetail ? "Direct GRN Detail" : fromWeight ? "Create Direct GRN From Weight" : "Create Direct GRN"}</h2>
+        {isDetail && (!editMode ? (
+          <button className="cdgrn-submit-btn" type="button" onClick={() => setEditMode(true)}>Edit</button>
+        ) : (
+          <button className="cdgrn-cancel-btn" type="button" onClick={() => setEditMode(false)}>Viewing</button>
+        ))}
       </div>
 
-      {/* ══════════════════════════════════════════
-          SECTION 1 — FETCH GIN
-          Search GIN records and pick one to auto-fill
-      ══════════════════════════════════════════ */}
       <div className="cdgrn-card">
-        <div className="cdgrn-section-label">Fetch GIN Data (optional — select a record to auto-fill)</div>
-
-        <div className="cdgrn-gin-grid">
-
-          <div className="cdgrn-fg">
-            <label>GIN Number</label>
-            <input type="text" name="ginNumber" value={ginFilters.ginNumber}
-              onChange={handleGinFilterChange} placeholder="GIN/26-27/..." />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Vendor Code</label>
-            <input type="text" name="vendorCode" value={ginFilters.vendorCode}
-              onChange={handleGinFilterChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Vendor Name</label>
-            <input type="text" name="vendorName" value={ginFilters.vendorName}
-              onChange={handleGinFilterChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Vehicle No</label>
-            <input type="text" name="vehicleNo" value={ginFilters.vehicleNo}
-              onChange={handleGinFilterChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Transaction Category</label>
-            <select name="transactionCategory" value={ginFilters.transactionCategory}
-              onChange={handleGinFilterChange}>
-              <option value="">-- All --</option>
-              <option>Purchase</option>
-              <option>Sales</option>
-            </select>
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Status</label>
-            <select name="status" value={ginFilters.status} onChange={handleGinFilterChange}>
-              <option value="">-- All --</option>
-              <option>Open</option>
-              <option>Closed</option>
-            </select>
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Site</label>
-            <select name="site" value={ginFilters.site} onChange={handleGinFilterChange}>
-              <option value="">-- All --</option>
-              <option>Factory Office-GYPMART INDIA</option>
-            </select>
-          </div>
-
-        </div>
-
-        <div className="cdgrn-gin-actions">
-          <button className="cdgrn-reset-btn" onClick={handleGinReset}>Reset</button>
-          <button className="cdgrn-search-btn" onClick={handleGinSearch}>
-            {ginLoading ? "Searching..." : "Search GIN"}
-          </button>
-        </div>
-
-        {/* GIN results */}
-        {ginSearched && (
-          <div className="cdgrn-gin-results">
-            {ginLoading && <div className="cdgrn-placeholder">Loading GIN records...</div>}
-
-            {!ginLoading && ginList.length === 0 && (
-              <div className="cdgrn-placeholder">No GIN records found</div>
-            )}
-
-            {!ginLoading && ginList.length > 0 && (
-              <>
-                <div className="cdgrn-gin-hint">
-                  Click a row to auto-fill the GRN form below
-                </div>
-                <div className="cdgrn-gin-table-wrap">
-                  <table className="cdgrn-gin-table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>GIN No</th>
-                        <th>GIN Date</th>
-                        <th>Vehicle Entry</th>
-                        <th>Vendor Code</th>
-                        <th>Vendor Name</th>
-                        <th>Vehicle No</th>
-                        <th>Transaction Category</th>
-                        <th>Challan/Invoice No</th>
-                        <th>Challan Date</th>
-                        <th>GIN Type</th>
-                        <th>Delivery Mode</th>
-                        <th>Status</th>
-                        <th>Site</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ginList.map((gin, idx) => (
-                        <tr
-                          key={gin._id}
-                          className={`cdgrn-gin-row ${selectedGinId === gin._id ? "cdgrn-gin-selected" : ""}`}
-                          onClick={() => handleSelectGin(gin)}
-                          title="Click to auto-fill GRN form"
-                        >
-                          <td>{idx + 1}</td>
-                          <td><strong>{gin.ginNo || "-"}</strong></td>
-                          <td>{gin.ginDate || "-"}</td>
-                          <td>
-                            <span className={`cdgrn-entry-badge ${(gin.vehicleEntry || "").toLowerCase()}`}>
-                              {gin.vehicleEntry || "-"}
-                            </span>
-                          </td>
-                          <td>{gin.vendorCode || "-"}</td>
-                          <td>{gin.vendorName || "-"}</td>
-                          <td>{gin.vehicleNo  || "-"}</td>
-                          <td>{gin.transactionCategory || "-"}</td>
-                          <td>{gin.challanInvoiceNo    || "-"}</td>
-                          <td>{gin.challanDate         || "-"}</td>
-                          <td>{gin.ginType             || "-"}</td>
-                          <td>{gin.deliveryMode        || "-"}</td>
-                          <td>
-                            <span className={`cdgrn-status-badge ${(gin.status || "").toLowerCase()}`}>
-                              {gin.status || "-"}
-                            </span>
-                          </td>
-                          <td>{gin.site    || "-"}</td>
-                          <td>{gin.remarks || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ══════════════════════════════════════════
-          SECTION 2 — GRN FORM  (matches screenshot)
-      ══════════════════════════════════════════ */}
-      <div className="cdgrn-card">
-
         {form.linkedGinNo && (
           <div className="cdgrn-linked-banner">
-            ✓ Linked to GIN: <strong>{form.linkedGinNo}</strong>
+            Linked reference: <strong>{form.linkedGinNo}</strong>
           </div>
         )}
 
-        {/* ROW 1: GRN No + Status */}
-        <div className="cdgrn-top-row">
-          <div className="cdgrn-fg cdgrn-fg-auto">
-            <label>Direct GRN No.  ⊕</label>
-            <input value={form.grnNo} readOnly className="cdgrn-readonly" />
-          </div>
-          <div className="cdgrn-fg">
-            <label>Status</label>
-            <select name="status" value={form.status} onChange={handleChange}>
-              <option>Open</option>
-              <option>Closed</option>
-              <option>Draft</option>
-            </select>
-          </div>
-        </div>
-
-        {/* MAIN GRID — 4 columns, matches screenshot layout */}
+        <div className="cdgrn-section-label">Direct GRN Header</div>
         <div className="cdgrn-main-grid">
-
-          {/* Col 1 */}
           <div className="cdgrn-fg">
-            <label>Direct GRN Date *</label>
-            <input type="date" name="grnDate" value={form.grnDate} onChange={handleChange} className="cdgrn-highlight" />
+            <label>Date *</label>
+            <input type="date" name="grnDate" value={form.grnDate} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
-            <label>Direct GRN Description</label>
-            <input type="text" name="grnDescription" value={form.grnDescription} onChange={handleChange} placeholder="Enter description" />
+            <label>GRN No *</label>
+            <input
+              name="grnNo"
+              value={isDetail ? form.grnNo : (previewGrnNo ? `${previewGrnNo}` : "Generated on save")}
+              readOnly
+              className="cdgrn-readonly"
+            />
           </div>
 
           <div className="cdgrn-fg">
-            <label>Direct GRN Type *</label>
-            <select name="grnType" value={form.grnType} onChange={handleChange}>
+            <label>GRN Description</label>
+            <input name="grnDescription" value={form.grnDescription} onChange={handleChange} readOnly={!canEdit} />
+          </div>
+
+          <div className="cdgrn-fg">
+            <label>GRN Type</label>
+            <select name="grnType" value={form.grnType} onChange={handleChange} disabled={!canEdit}>
               <option>F and A Impact</option>
               <option>Domestic</option>
               <option>International</option>
@@ -416,322 +486,216 @@ const CreateDirectGRN = () => {
           </div>
 
           <div className="cdgrn-fg">
-            <label>Transaction Category</label>
-            <select name="transactionCategory" value={form.transactionCategory} onChange={handleChange}>
-              <option value="">--Select--</option>
-              {txCodes.map((c, i) => <option key={i}>{c}</option>)}
-              <option>Purchase</option>
-              <option>Sales</option>
+            <label>Transaction Category *</label>
+            <select name="transactionCategory" value={form.transactionCategory} onChange={handleChange} disabled={!canEdit || isDetail}>
+              <option value="">Select</option>
+              {form.transactionCategory && !txCategories.some((tx) => tx.categoryDescription === form.transactionCategory) && (
+                <option value={form.transactionCategory}>{form.transactionCategory}</option>
+              )}
+              {txCategories.map((tx) => (
+                <option key={tx._id} value={tx.categoryDescription}>
+                  {tx.transactionCategoryCode} - {tx.categoryDescription}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Col 2 */}
           <div className="cdgrn-fg">
             <label>Site *</label>
-            <select name="site" value={form.site} onChange={handleChange}>
-              <option>Factory Office-GYPMART INDIA</option>
+            <select name="site" value={form.site} onChange={handleChange} disabled={!canEdit}>
+              <option value="">Select</option>
+              {sites.map((site) => (
+                <option key={site._id} value={site.siteCode || site.siteName}>
+                  {site.siteCode || site.siteName}
+                  {site.siteName ? ` - ${site.siteName}` : ""}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="cdgrn-fg">
-            <label>Vendor Code *</label>
-            <input type="text" name="vendorCode" value={form.vendorCode} onChange={handleChange} placeholder="🔍" />
+            <label>Inv / Challan No</label>
+            <input name="challanInvoiceNo" value={form.challanInvoiceNo} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
-            <label>Vendor Name *</label>
-            <input type="text" name="vendorName" value={form.vendorName} onChange={handleChange} />
+            <label>Inv / Challan Date</label>
+            <input type="date" name="challanDate" value={form.challanDate} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
-            <label>Vendor Address</label>
-            <input type="text" name="vendorAddress" value={form.vendorAddress} onChange={handleChange} />
-          </div>
-
-          {/* Col 3 */}
-          <div className="cdgrn-fg">
-            <label>Accounting Site</label>
-            <select name="accountingSite" value={form.accountingSite} onChange={handleChange}>
-              <option>Factory Office</option>
-              <option>Factory Office-GYPMART INDIA</option>
-            </select>
+            <label>Vendor Code</label>
+            <input name="vendorCode" value={form.vendorCode} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
-            <label>A/c Code *</label>
-            <input type="text" name="acCode" value={form.acCode} onChange={handleChange} placeholder="🔍" />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Currency</label>
-            <select name="currency" value={form.currency} onChange={handleChange}>
-              <option value="">-- Select --</option>
-              <option>INR</option>
-              <option>USD</option>
-              <option>EUR</option>
-              <option>GBP</option>
-            </select>
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Exchange Rate</label>
-            <input type="number" name="exchangeRate" value={form.exchangeRate} onChange={handleChange} placeholder="1.00" />
-          </div>
-
-          {/* Col 4 */}
-          <div className="cdgrn-fg">
-            <label>Challan/Invoice No *</label>
-            <input type="text" name="challanInvoiceNo" value={form.challanInvoiceNo} onChange={handleChange} className="cdgrn-highlight" />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Challan Date *</label>
-            <input type="date" name="challanDate" value={form.challanDate} onChange={handleChange} className="cdgrn-highlight" />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Delivery Mode</label>
-            <select name="deliveryMode" value={form.deliveryMode} onChange={handleChange}>
-              <option>BY AIR-BY AIR</option>
-              <option>By Road</option>
-              <option>By Train</option>
-              <option>By Air</option>
-              <option>By Sea</option>
-            </select>
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Credit Terms</label>
-            <select name="creditTerms" value={form.creditTerms} onChange={handleChange}>
-              <option value="">--Select--</option>
-              <option>Net 30</option>
-              <option>Net 60</option>
-              <option>Net 90</option>
-              <option>Immediate</option>
-            </select>
-          </div>
-
-          {/* Row 2 of grid */}
-          <div className="cdgrn-fg">
-            <label>Manufacturer Code</label>
-            <input type="text" name="manufacturerCode" value={form.manufacturerCode} onChange={handleChange} placeholder="🔍" />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Manufacturer Name</label>
-            <input type="text" name="manufacturerName" value={form.manufacturerName} onChange={handleChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Manufacturer Address</label>
-            <input type="text" name="manufacturerAddress" value={form.manufacturerAddress} onChange={handleChange} />
+            <label>Vendor Name</label>
+            <input name="vendorName" value={form.vendorName} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
             <label>Vehicle No</label>
-            <input type="text" name="vehicleNo" value={form.vehicleNo} onChange={handleChange} />
+            <input name="vehicleNo" value={form.vehicleNo} onChange={handleChange} readOnly={!canEdit} />
           </div>
 
           <div className="cdgrn-fg">
-            <label>Bill Date</label>
-            <input type="date" name="billDate" value={form.billDate} onChange={handleChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>E-Way Date</label>
-            <input type="date" name="ewayDate" value={form.ewayDate} onChange={handleChange} />
-          </div>
-
-          <div className="cdgrn-fg">
-            <label>Delivery Term</label>
-            <input type="text" name="deliveryTerm" value={form.deliveryTerm} onChange={handleChange} placeholder="📎" />
-          </div>
-
-        </div>
-
-        {/* Remarks / Comments */}
-        <div className="cdgrn-textarea-row">
-          <div className="cdgrn-fg">
-            <label>Remarks</label>
-            <textarea rows="3" name="remarks" value={form.remarks} onChange={handleChange} />
-          </div>
-          <div className="cdgrn-fg">
-            <label>Comments</label>
-            <textarea rows="3" name="comments" value={form.comments} onChange={handleChange} />
+            <label>Status</label>
+            <select name="status" value={form.status} onChange={handleChange} disabled={!canEdit}>
+              <option>Open</option>
+              <option>Closed</option>
+              <option>Draft</option>
+            </select>
           </div>
         </div>
-
       </div>
-      {/* end header card */}
 
-      {/* ══════════════════════════════════════════
-          SECTION 3 — ITEMS GRID  (matches screenshot)
-      ══════════════════════════════════════════ */}
       <div className="cdgrn-card">
-
         <div className="cdgrn-items-header">
-          <span className="cdgrn-items-title">* Items</span>
-          {anyChecked && (
-            <button className="cdgrn-del-rows-btn" onClick={handleDeleteChecked}>Delete Selected</button>
-          )}
+          <span className="cdgrn-items-title">Items</span>
+          {anyItemsChecked && <button className="cdgrn-del-rows-btn" onClick={handleDeleteChecked}>Delete Selected</button>}
         </div>
 
         <div className="cdgrn-items-table-wrap">
           <table className="cdgrn-items-table">
             <thead>
               <tr>
-                <th>S No</th>
-                <th>✏</th>
+                <th>Sl No</th>
                 <th>Del</th>
-                <th>Item Rate</th>
-                <th>Transaction No</th>
-                <th>Party Name</th>
-                <th>Broker</th>
                 <th>Item Code</th>
                 <th>Item Name</th>
                 <th>UOM</th>
-                <th>Sales Through</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Total Amount</th>
               </tr>
             </thead>
             <tbody>
               {items.map((row, idx) => (
                 <tr key={idx} className={row._checked ? "cdgrn-row-checked" : ""}>
-
                   <td className="cdgrn-sno">{row.sNo}</td>
-
-                  {/* pencil icon / insert bags */}
-                  <td>
-                    <input
-                      className="cdgrn-item-input"
-                      value={row.insertBags}
-                      onChange={(e) => handleItemChange(idx, "insertBags", e.target.value)}
-                      placeholder="Bags"
-                    />
-                  </td>
-
-                  {/* delete checkbox */}
                   <td className="cdgrn-check-cell">
-                    <input
-                      type="checkbox"
-                      checked={row._checked}
-                      onChange={(e) => handleItemCheck(idx, e.target.checked)}
-                    />
+                    <input type="checkbox" checked={!!row._checked} onChange={(e) => handleItemCheck(idx, e.target.checked)} />
                   </td>
-
-                  <td>
-                    <input
-                      type="number"
-                      className="cdgrn-item-input cdgrn-item-num"
-                      value={row.itemRate}
-                      onChange={(e) => handleItemChange(idx, "itemRate", e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </td>
-
                   <td>
                     <input
                       className="cdgrn-item-input"
-                      value={row.transactionNo}
-                      onChange={(e) => handleItemChange(idx, "transactionNo", e.target.value)}
-                    />
-                  </td>
-
-                  <td>
-                    <input
-                      className="cdgrn-item-input cdgrn-item-wide"
-                      value={row.partyName}
-                      onChange={(e) => handleItemChange(idx, "partyName", e.target.value)}
-                    />
-                  </td>
-
-                  <td>
-                    <input
-                      className="cdgrn-item-input"
-                      value={row.broker}
-                      onChange={(e) => handleItemChange(idx, "broker", e.target.value)}
-                    />
-                  </td>
-
-                  <td>
-                    <input
-                      className="cdgrn-item-input"
+                      list="cdgrn-item-codes"
                       value={row.itemCode}
                       onChange={(e) => handleItemChange(idx, "itemCode", e.target.value)}
+                      onBlur={() => fillItemFromMaster(idx, "itemCode", row.itemCode)}
+                      readOnly={!canEdit}
                     />
                   </td>
-
                   <td>
                     <input
                       className="cdgrn-item-input cdgrn-item-wide"
+                      list="cdgrn-item-names"
                       value={row.itemName}
                       onChange={(e) => handleItemChange(idx, "itemName", e.target.value)}
+                      onBlur={() => fillItemFromMaster(idx, "itemName", row.itemName)}
+                      readOnly={!canEdit}
                     />
                   </td>
-
                   <td>
-                    <input
-                      className="cdgrn-item-input cdgrn-item-sm"
-                      value={row.uom}
-                      onChange={(e) => handleItemChange(idx, "uom", e.target.value)}
-                      placeholder="MT"
-                    />
+                    <input className="cdgrn-item-input cdgrn-item-sm" value={row.uom} onChange={(e) => handleItemChange(idx, "uom", e.target.value)} readOnly={!canEdit} />
                   </td>
-
                   <td>
-                    <input
-                      className="cdgrn-item-input"
-                      value={row.salesThrough}
-                      onChange={(e) => handleItemChange(idx, "salesThrough", e.target.value)}
-                    />
+                    <input type="number" className="cdgrn-item-input cdgrn-item-num" value={row.qty} onChange={(e) => handleItemChange(idx, "qty", e.target.value)} readOnly={!canEdit} />
                   </td>
-
+                  <td>
+                    <input type="number" className="cdgrn-item-input cdgrn-item-num" value={row.rate} onChange={(e) => handleItemChange(idx, "rate", e.target.value)} readOnly={!canEdit} />
+                  </td>
+                  <td>
+                    <input type="number" className="cdgrn-item-input cdgrn-item-num" value={row.totalAmount} onChange={(e) => handleItemChange(idx, "totalAmount", e.target.value)} readOnly={!canEdit} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Insert row bar */}
+        <datalist id="cdgrn-item-codes">
+          {itemCodeOptions.map((code) => <option key={code} value={code} />)}
+        </datalist>
+        <datalist id="cdgrn-item-names">
+          {itemNameOptions.map((name) => <option key={name} value={name} />)}
+        </datalist>
+
         <div className="cdgrn-insert-bar">
-          <input
-            type="number" min="1" max="50"
-            className="cdgrn-insert-count"
-            value={insertCount}
-            onChange={(e) => setInsertCount(e.target.value)}
-          />
-          <button className="cdgrn-insert-btn" onClick={handleInsertRows}>
-            Insert Row
+          <input type="number" min="1" max="50" className="cdgrn-insert-count" value={insertCount} onChange={(e) => setInsertCount(e.target.value)} />
+          <button className="cdgrn-insert-btn" onClick={handleInsertRows} disabled={!canEdit}>Add Row</button>
+        </div>
+        <div className="cdgrn-total-row">Item Total Amount: <strong>{itemsTotal.toFixed(2)}</strong></div>
+      </div>
+
+      <div className="cdgrn-card">
+        <div className="cdgrn-items-header">
+          <button className="cdgrn-toggle-btn" type="button" onClick={() => setShowCharges((prev) => !prev)}>
+            {showCharges ? "Hide" : "Show"} Charges and Discount
           </button>
+          {showCharges && anyChargesChecked && <button className="cdgrn-del-rows-btn" onClick={handleDeleteCharges}>Delete Selected</button>}
         </div>
 
-      </div>
-      {/* end items card */}
+        {showCharges && <div className="cdgrn-items-table-wrap">
+          <table className="cdgrn-items-table">
+            <thead>
+              <tr>
+                <th>Sl No</th>
+                <th>Del</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Add / Sub</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {charges.map((row, idx) => (
+                <tr key={idx} className={row._checked ? "cdgrn-row-checked" : ""}>
+                  <td className="cdgrn-sno">{row.sNo}</td>
+                  <td className="cdgrn-check-cell">
+                    <input type="checkbox" checked={!!row._checked} onChange={(e) => handleChargeCheck(idx, e.target.checked)} disabled={!canEdit} />
+                  </td>
+                  <td>
+                    <select className="cdgrn-item-input cdgrn-charge-code" value={row.code} onChange={(e) => selectCharge(idx, e.target.value)} disabled={!canEdit}>
+                      <option value="">Select</option>
+                      {chargeMaster.map((charge) => (
+                        <option key={charge._id} value={charge.code}>{charge.code}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input className="cdgrn-item-input cdgrn-charge-desc" value={row.description} onChange={(e) => handleChargeChange(idx, "description", e.target.value)} readOnly={!canEdit} />
+                  </td>
+                  <td>
+                    <select className="cdgrn-item-input cdgrn-charge-code" value={row.addOrSubtract} onChange={(e) => handleChargeChange(idx, "addOrSubtract", e.target.value)} disabled={!canEdit}>
+                      <option value="">Select</option>
+                      <option>Addition</option>
+                      <option>Subtraction</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="number" className="cdgrn-item-input cdgrn-item-num" value={row.amount} onChange={(e) => handleChargeChange(idx, "amount", e.target.value)} readOnly={!canEdit} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>}
 
-      {/* ── ACTION BUTTONS ── */}
-      <div className="cdgrn-form-actions">
-        <button
-          className="cdgrn-draft-btn"
-          onClick={() => handleSave(true)}
-          disabled={loading}
-        >
-          Save as Draft
-        </button>
-        <button
-          className="cdgrn-submit-btn"
-          onClick={() => handleSave(false)}
-          disabled={loading}
-        >
-          {loading ? "Submitting..." : "Submit"}
-        </button>
-        <button
-          className="cdgrn-cancel-btn"
-          onClick={() => navigate("/direct-grn")}
-          disabled={loading}
-        >
-          Cancel
-        </button>
+        {showCharges && <div className="cdgrn-insert-bar">
+          <input type="number" min="1" max="50" className="cdgrn-insert-count" value={chargeInsertCount} onChange={(e) => setChargeInsertCount(e.target.value)} />
+          <button className="cdgrn-insert-btn" onClick={handleInsertCharges} disabled={!canEdit}>Add Row</button>
+        </div>}
+        <div className="cdgrn-total-row">Grand Total Amount: <strong>{grandTotal.toFixed(2)}</strong></div>
       </div>
 
+      {canEdit && <div className="cdgrn-form-actions">
+        <button className="cdgrn-draft-btn" onClick={() => handleSave(true)} disabled={loading}>Save as Draft</button>
+        <button className="cdgrn-submit-btn" onClick={() => handleSave(false)} disabled={loading}>
+          {loading ? "Saving..." : "Submit"}
+        </button>
+        <button className="cdgrn-cancel-btn" onClick={() => navigate("/direct-grn")} disabled={loading}>Cancel</button>
+      </div>}
     </div>
   );
 };

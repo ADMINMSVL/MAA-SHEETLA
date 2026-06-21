@@ -5,6 +5,9 @@ const directGRNItemSchema = new mongoose.Schema({
   sNo:           Number,
   insertBags:    String,
   itemRate:      String,
+  qty:           String,
+  rate:          String,
+  tmt:           String,
   transactionNo: String,
   partyName:     String,
   broker:        String,
@@ -12,6 +15,14 @@ const directGRNItemSchema = new mongoose.Schema({
   itemName:      String,
   uom:           String,
   salesThrough:  String,
+}, { _id: false });
+
+const directGRNChargeSchema = new mongoose.Schema({
+  sNo:           Number,
+  code:          String,
+  description:   String,
+  addOrSubtract: String,
+  amount:        String,
 }, { _id: false });
 
 const directGRNSchema = new mongoose.Schema({
@@ -62,6 +73,7 @@ const directGRNSchema = new mongoose.Schema({
 
   /* ── items ── */
   items: [directGRNItemSchema],
+  charges: [directGRNChargeSchema],
 
 }, { timestamps: true });
 

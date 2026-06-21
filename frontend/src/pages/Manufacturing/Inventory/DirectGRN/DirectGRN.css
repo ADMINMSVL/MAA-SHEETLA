@@ -35,6 +35,468 @@
   background: #006fd6;
 }
 
+.dgrn-create-wrap {
+  position: relative;
+}
+
+.dgrn-create-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
+  z-index: 30;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.dgrn-create-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.dgrn-create-menu button:hover {
+  background: #f0f7ff;
+}
+
+/* ── Body ── */
+.dgrn-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Filter Panel ── */
+.dgrn-filter-panel {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 20px;
+}
+
+.dgrn-filter-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.dgrn-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.dgrn-fg {
+  display: flex;
+  flex-direction: column;
+}
+
+.dgrn-fg label {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.dgrn-fg input,
+.dgrn-fg select {
+  height: 36px;
+  border: 1px solid #d5d5d5;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.dgrn-fg input:focus,
+.dgrn-fg select:focus {
+  outline: none;
+  border-color: #0084ff;
+}
+
+.dgrn-filter-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dgrn-reset-btn {
+  border: 1px solid #aaa;
+  background: #fff;
+  color: #555;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dgrn-reset-btn:hover {
+  background: #f5f5f5;
+}
+
+.dgrn-apply-btn {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dgrn-apply-btn:hover:not(:disabled) {
+  background: #0b5ed7;
+}
+
+.dgrn-apply-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Result Area ── */
+.dgrn-result-area {
+  background: #fff;
+  border: 1px solid #ddd;
+  min-height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.dgrn-placeholder {
+  color: #888;
+  font-size: 16px;
+  margin: auto;
+  padding: 60px 20px;
+}
+
+.dgrn-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* ── Table ── */
+.dgrn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.dgrn-table th {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #333;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dgrn-table td {
+  border: 1px solid #e8e8e8;
+  padding: 8px 10px;
+  white-space: nowrap;
+  color: #444;
+  vertical-align: middle;
+}
+
+.dgrn-table tbody tr:hover {
+  background: #f0f7ff;
+}
+
+.dgrn-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.dgrn-table tbody tr:nth-child(even):hover {
+  background: #f0f7ff;
+}
+
+/* ── Editing row ── */
+.dgrn-editing-row {
+  background: #fffbe6 !important;
+}
+
+/* ── Status badges ── */
+.dgrn-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dgrn-badge-open   { background: #d1fae5; color: #065f46; }
+.dgrn-badge-closed { background: #fee2e2; color: #991b1b; }
+.dgrn-badge-draft  { background: #f3f4f6; color: #4b5563; }
+
+/* ── Amount cell ── */
+.dgrn-amount-cell { font-weight: 600; color: #1a56db; }
+
+/* ── Inline edit inputs ── */
+.dgrn-inline {
+  height: 28px;
+  border: 1px solid #91c0f8;
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 12px;
+  width: 110px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.dgrn-inline-wide  { width: 150px; }
+.dgrn-inline-date  { width: 130px; }
+.dgrn-inline-num   { width: 75px;  }
+.dgrn-inline-sm    { width: 60px;  }
+
+.dgrn-readonly {
+  background: #f0f0f0;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* ── Action buttons ── */
+.dgrn-action-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dgrn-edit-btn,
+.dgrn-delete-btn,
+.dgrn-save-btn,
+.dgrn-cancel-btn {
+  border: none;
+  border-radius: 3px;
+  padding: 5px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dgrn-edit-btn    { background: #0d6efd; color: #fff; }
+.dgrn-edit-btn:hover { background: #0b5ed7; }
+
+.dgrn-delete-btn  { background: #dc3545; color: #fff; }
+.dgrn-delete-btn:hover { background: #b02a37; }
+
+.dgrn-save-btn    { background: #198754; color: #fff; }
+.dgrn-save-btn:hover { background: #146c43; }
+
+.dgrn-cancel-btn  { background: #6c757d; color: #fff; }
+.dgrn-cancel-btn:hover { background: #565e64; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DirectGRN.css  — ADDITIONS  (append to your existing DirectGRN.css)
+   These new classes support:
+     • dgrn-link-btn        : GRN No clickable hyperlink in the search table
+     • dgrn-badge-draft     : Draft status badge colour
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── GRN No hyperlink button in search results table ── */
+.dgrn-link-btn {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.dgrn-link-btn:hover {
+  color: #4f46e5;
+}
+
+
+/* ── Draft status badge (was missing) ── */
+.dgrn-badge-draft {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CreateDirectGRN.css  — ADDITIONS  (append to your existing file)
+   These new classes support:
+     • cdgrn-grn-no-badge   : GRN No pill in the page header (detail mode)
+     • cdgrn-status-badge   : status pill in the page header (detail mode)
+     • cdgrn-edit-btn       : Edit toggle button (detail mode)
+     • cdgrn-edit-banner    : yellow edit-mode notification banner
+     • cdgrn-selected-hint  : green hint after selecting a weighment row
+     • cdgrn-wt-status      : status chips inside weighment picker table
+     • cdgrn-net-weight     : green-tinted read-only net-weight field
+     • cdgrn-fg-full        : full-width field inside the main grid
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── GRN No pill (header, detail mode) ── */
+.cdgrn-grn-no-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6366f1;
+  background: #eff0ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 20px;
+  padding: 4px 14px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* ── Status pill (header, detail mode) ── */
+.cdgrn-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.cdgrn-status-open   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.cdgrn-status-closed { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.cdgrn-status-draft  { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+
+/* ── Edit toggle button ── */
+.cdgrn-edit-btn {
+  padding: 7px 18px;
+  border: 1px solid #a5b4fc;
+  border-radius: 7px;
+  background: #eff0ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cdgrn-edit-btn:hover {
+  background: #e0e7ff;
+}
+
+/* ── Edit-mode banner (yellow notice bar) ── */
+.cdgrn-edit-banner {
+  margin: 0 0 0 0;
+  padding: 10px 20px;
+  background: #fef9c3;
+  border-bottom: 2px solid #fde68a;
+  font-size: 13px;
+  color: #854d0e;
+}
+
+/* ── "Weighment selected" hint ── */
+.cdgrn-selected-hint {
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #166534;
+  font-weight: 600;
+}
+
+/* ── Status chips inside the weighment picker table ── */
+.cdgrn-wt-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cdgrn-wt-status-draft    { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+.cdgrn-wt-status-partial  { background: #fef9c3; color: #854d0e; border: 1px solid #fcd34d; }
+.cdgrn-wt-status-submit   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.cdgrn-wt-status-weighted { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.cdgrn-wt-status-open     { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+/* ── Green-tinted read-only net-weight field ── */
+.cdgrn-net-weight {
+  background: #f0fdf4 !important;
+  border-color: #86efac !important;
+  color: #166534 !important;
+  font-weight: 700;
+}
+
+/* ── Full-width field span (remarks, etc.) ── */
+.cdgrn-fg-full {
+  grid-column: 1 / -1;
+}
+.cdgrn-fg-full textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #1e293b;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+.cdgrn-fg-full textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* ── Page ── */
+.dgrn-page {
+  min-height: 100vh;
+  background: #efefef;
+}
+
+/* ── Header ── */
+.dgrn-header {
+  height: 70px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.dgrn-header h2 {
+  margin: 0;
+  font-size: 28px;
+  color: #222;
+}
+
+.dgrn-create-btn {
+  background: #0084ff;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dgrn-create-btn:hover {
+  background: #006fd6;
+}
+
 /* ── Body ── */
 .dgrn-body {
   padding: 12px;
@@ -271,3 +733,30 @@
 
 .dgrn-cancel-btn  { background: #6c757d; color: #fff; }
 .dgrn-cancel-btn:hover { background: #565e64; }
+/* ── GRN No hyperlink ── */
+.dgrn-grn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0084ff;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dgrn-grn-link:hover { color: #005ec4; }
+
+/* ── View action button ── */
+.dgrn-view-btn {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.dgrn-view-btn:hover { background: #0b5ed7; }

@@ -14,6 +14,8 @@ import InwardOutwardNote     from "../pages/Manufacturing/Inventory/InwardOutwar
 import GINDetail             from "../pages/Manufacturing/Inventory/InwardOutwardNote/GINDetail";
 import GoodsReceiptNote      from "../pages/Manufacturing/Inventory/GoodsReceiptNote/GoodsReceiptNote";
 import DirectGRN             from "../pages/Manufacturing/Inventory/DirectGRN/DirectGRN";
+import CreateDirectGRN       from "../pages/Manufacturing/Inventory/DirectGRN/CreateDirectGRN";
+import DirectGRNDetail       from "../pages/Manufacturing/Inventory/DirectGRN/DirectGRNDetail";
 import ItemInventory         from "../pages/Manufacturing/Inventory/ItemInventory/ItemInventory";
 import CreateGoodsInwardNote from "../pages/Manufacturing/Inventory/CreateInventory/CreateGIN";
 import Transaction           from "../pages/Manufacturing/Masters/Transaction/Transaction";
@@ -21,10 +23,7 @@ import CreateTransaction     from "../pages/Manufacturing/Masters/Transaction/Cr
 import DocumentSequence      from "../pages/Manufacturing/Masters/DocumentSequence/DocumentSequence";
 import CreateDocumentSequence from "../pages/Manufacturing/Masters/DocumentSequence/CreateDocumentSequence/CreateDocumentSequence";
 import WeighmentSearch       from "../pages/Manufacturing/Inventory/Weighment/WeighmentSearch";
-// import WeighmentDetail       from "../pages/Manufacturing/Inventory/Weighment/WeighmentDetail/WeighmentDetail";
-// import CreateWeighment       from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/CreateWeighment";
-// import CreateInwardWeighment  from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createinwardweighment";
-// import CreateOutwardWeighment from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/Createoutwardweighment";
+
 import {
   CreateWeighment,
   CreateInwardWeighment,
@@ -125,6 +124,8 @@ const AppRoutes = () => {
       <Route path="/create-goods-inward-note" element={<CreateGoodsInwardNote />} />
       <Route path="/goods-receipt-note"       element={<GoodsReceiptNote />} />
       <Route path="/direct-grn"               element={<DirectGRN />} />
+      <Route path="/create-direct-grn"        element={<CreateDirectGRN />} />
+      <Route path="/direct-grn-details/:id"    element={<DirectGRNDetail />} />
       <Route path="/item-inventory"           element={<ItemInventory />} />
       <Route path="/item-Conversion"          element={<ItemConversion />} />
       <Route path="/create-item-conversion"   element={<CreateItemConversion />} />

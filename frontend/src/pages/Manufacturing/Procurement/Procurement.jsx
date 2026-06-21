@@ -7,13 +7,13 @@ const Procurement = () => {
   const navigate = useNavigate();
 
   const procurementCards = [
-    {
-      shortName: "RQ",
-      title: "Purchase Requisition",
-      code: "M02REQ",
-      theme: "purple",
-      path: "/purchase-requisition",
-    },
+    // {
+    //   shortName: "RQ",
+    //   title: "Purchase Requisition",
+    //   code: "M02REQ",
+    //   theme: "purple",
+    //   path: "/purchase-requisition",
+    // },
     {
       shortName: "PO",
       title: "Purchase Order",
