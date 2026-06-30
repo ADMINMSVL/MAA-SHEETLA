@@ -74,7 +74,7 @@ router.put("/scheme/:id", async (req, res) => {
     }
 
     const updated = await SchemeMaster.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     res.json({ success: true, message: "Updated Successfully", data: updated });

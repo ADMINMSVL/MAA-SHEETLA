@@ -52,11 +52,11 @@ const ModuleNavbar = () => {
 
       </div>
 
-      <div className="module-nav-right">
+      {/* <div className="module-nav-right">
         <span>🔍</span>
         <span>📤</span>
         <span>⚙️</span>
-      </div>
+      </div> */}
 
     </div>
   );

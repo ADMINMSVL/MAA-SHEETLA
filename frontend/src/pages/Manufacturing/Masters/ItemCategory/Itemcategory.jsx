@@ -5,6 +5,48 @@ import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
+const ITEM_TYPE_OPTIONS = [
+  "Raw Material",
+  "Semi Finished",
+  "Finished Goods",
+  "Consumables",
+  "Packing Material",
+  "Scrap",
+  "Service",
+];
+
+/* Coloured badge for item type */
+const TYPE_COLORS = {
+  "Raw Material":     { bg: "#fff3e0", color: "#e65100", border: "#ffcc80" },
+  "Semi Finished":    { bg: "#fce4ec", color: "#c62828", border: "#f48fb1" },
+  "Finished Goods":   { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
+  "Consumables":      { bg: "#e3f2fd", color: "#1565c0", border: "#90caf9" },
+  "Packing Material": { bg: "#f3e5f5", color: "#6a1b9a", border: "#ce93d8" },
+  "Scrap":            { bg: "#efebe9", color: "#4e342e", border: "#bcaaa4" },
+  "Service":          { bg: "#e0f7fa", color: "#006064", border: "#80deea" },
+};
+
+const TypeBadge = ({ value }) => {
+  const c = TYPE_COLORS[value] || { bg: "#f5f5f5", color: "#555", border: "#ddd" };
+  return (
+    <span
+      style={{
+        display:      "inline-block",
+        padding:      "2px 10px",
+        borderRadius: "12px",
+        fontSize:     "12px",
+        fontWeight:   "600",
+        background:   c.bg,
+        color:        c.color,
+        border:       `1px solid ${c.border}`,
+        whiteSpace:   "nowrap",
+      }}
+    >
+      {value}
+    </span>
+  );
+};
+
 const ItemCategory = () => {
   const navigate = useNavigate();
 
@@ -13,12 +55,15 @@ const ItemCategory = () => {
   const [search,   setSearch]   = useState("");
   const [status,   setStatus]   = useState("");
   const [editId,   setEditId]   = useState(null);
-  const [editData, setEditData] = useState({ categoryName: "", description: "", status: "" });
+  const [editData, setEditData] = useState({
+    itemCode: "", itemTypes: "", categoryName: "", description: "", status: "",
+  });
 
   const [suggestions, setSuggestions] = useState([]);
   const [showSug,     setShowSug]     = useState(false);
   const sugRef = useRef(null);
 
+  /* ── Fetch ── */
   const fetchData = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/item-categories`);
@@ -37,11 +82,14 @@ const ItemCategory = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  /* ── Search helpers ── */
   const handleSearchInput = (val) => {
     setSearch(val);
     if (val.trim()) {
       const lower = val.toLowerCase();
-      const matches = [...new Set(data.map((d) => d.categoryName).filter((n) => n?.toLowerCase().includes(lower)))].sort();
+      const matches = [...new Set(
+        data.map((d) => d.categoryName).filter((n) => n?.toLowerCase().includes(lower))
+      )].sort();
       setSuggestions(matches);
       setShowSug(matches.length > 0);
     } else {
@@ -65,6 +113,7 @@ const ItemCategory = () => {
     setFiltered(data);
   };
 
+  /* ── CRUD ── */
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this category?")) return;
     try { await axios.delete(`${API_URL}/api/item-category/${id}`); fetchData(); }
@@ -73,7 +122,13 @@ const ItemCategory = () => {
 
   const handleEdit = (item) => {
     setEditId(item._id);
-    setEditData({ categoryName: item.categoryName, description: item.description, status: item.status });
+    setEditData({
+      itemCode:     item.itemCode     || "",
+      itemTypes:    item.itemTypes    || "",
+      categoryName: item.categoryName || "",
+      description:  item.description  || "",
+      status:       item.status       || "Active",
+    });
   };
 
   const handleUpdate = async (id) => {
@@ -84,6 +139,7 @@ const ItemCategory = () => {
     } catch (err) { console.log(err); }
   };
 
+  /* ── Render ── */
   return (
     <div className="transaction-page">
       <ModuleNavbar />
@@ -98,6 +154,7 @@ const ItemCategory = () => {
 
         <div className="search-grid">
 
+          {/* Category Name typeahead */}
           <div className="form-group" style={{ position: "relative" }} ref={sugRef}>
             <label>Category Name</label>
             <input
@@ -117,6 +174,7 @@ const ItemCategory = () => {
             )}
           </div>
 
+          {/* Status */}
           <div className="form-group">
             <label>Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -136,15 +194,19 @@ const ItemCategory = () => {
         <div className="table-container">
           <table style={{ tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: "50px" }} />
-              <col style={{ width: "25%" }} />
-              <col style={{ width: "35%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "120px" }} />
+              <col style={{ width: "45px" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "26%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "110px" }} />
             </colgroup>
             <thead>
               <tr>
                 <th>S No</th>
+                <th>Item Code</th>
+                <th>Item Type</th>
                 <th>Category Name</th>
                 <th>Description</th>
                 <th>Status</th>
@@ -156,27 +218,89 @@ const ItemCategory = () => {
                 filtered.map((item, i) => (
                   <tr key={item._id}>
                     <td>{i + 1}</td>
-                    <td title={item.categoryName}>
-                      {editId === item._id ? (
-                        <input type="text" value={editData.categoryName}
-                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })} />
-                      ) : item.categoryName}
-                    </td>
-                    <td title={item.description}>
-                      {editId === item._id ? (
-                        <input type="text" value={editData.description}
-                          onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
-                      ) : item.description}
-                    </td>
+
+                    {/* ITEM CODE */}
                     <td>
                       {editId === item._id ? (
-                        <select value={editData.status}
-                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}>
+                        <input
+                          type="text"
+                          value={editData.itemCode}
+                          onChange={(e) => setEditData({ ...editData, itemCode: e.target.value })}
+                        />
+                      ) : (
+                        item.itemCode
+                      )}
+                    </td>
+
+                    {/* ITEM TYPE */}
+                    <td>
+                      {editId === item._id ? (
+                        <select
+                          value={editData.itemTypes}
+                          onChange={(e) => setEditData({ ...editData, itemTypes: e.target.value })}
+                          style={{
+                            width: "100%",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            border: "1.5px solid #1976d2",
+                            background: "#e8f4fd",
+                            color: "#1976d2",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="">— Select —</option>
+                          {ITEM_TYPE_OPTIONS.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        item.itemTypes ? <TypeBadge value={item.itemTypes} /> : "—"
+                      )}
+                    </td>
+
+                    {/* CATEGORY NAME */}
+                    <td title={item.categoryName}>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.categoryName}
+                          onChange={(e) => setEditData({ ...editData, categoryName: e.target.value })}
+                        />
+                      ) : (
+                        item.categoryName
+                      )}
+                    </td>
+
+                    {/* DESCRIPTION */}
+                    <td title={item.description}>
+                      {editId === item._id ? (
+                        <input
+                          type="text"
+                          value={editData.description}
+                          onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                        />
+                      ) : (
+                        item.description
+                      )}
+                    </td>
+
+                    {/* STATUS */}
+                    <td>
+                      {editId === item._id ? (
+                        <select
+                          value={editData.status}
+                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                        >
                           <option>Active</option>
                           <option>Inactive</option>
                         </select>
-                      ) : item.status}
+                      ) : (
+                        item.status
+                      )}
                     </td>
+
+                    {/* ACTION */}
                     <td className="action-col">
                       {editId === item._id ? (
                         <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
@@ -188,7 +312,7 @@ const ItemCategory = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="5" className="no-data">No Data Found</td></tr>
+                <tr><td colSpan="7" className="no-data">No Data Found</td></tr>
               )}
             </tbody>
           </table>

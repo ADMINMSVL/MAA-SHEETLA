@@ -7,6 +7,7 @@ const directGRNItemSchema = new mongoose.Schema({
   itemRate:      String,
   qty:           String,
   rate:          String,
+  totalAmount:   String,   // qty * rate (auto-calculated on frontend)
   tmt:           String,
   transactionNo: String,
   partyName:     String,
@@ -68,8 +69,9 @@ const directGRNSchema = new mongoose.Schema({
   remarks:             String,
   comments:            String,
 
-  /* ── linked GIN ── */
+  /* ── linked GIN / Item Conversion ── */
   linkedGinNo:         String,
+  linkedIcNo:          String,   // IC No that sourced this GRN (set when created from Item Conversion)
 
   /* ── items ── */
   items: [directGRNItemSchema],

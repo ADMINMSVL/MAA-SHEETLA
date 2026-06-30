@@ -25,6 +25,7 @@ const weighmentSchema = new mongoose.Schema(
     /* ── Part 2 ── */
     inwardOutwardNoteNo: String,
     vehicleNo:           String,
+    partyCode:           String,
     partyName:           String,
     site:                String,
     status:              String,   // Draft | Partial | Submit | Weighted

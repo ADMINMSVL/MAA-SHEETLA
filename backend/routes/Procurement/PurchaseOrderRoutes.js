@@ -55,6 +55,7 @@ const sanitizePO = (body) => {
     poNo: body.poNo || "",
     poDate: body.poDate || "",
     poType: body.poType || "",
+    transactionCategory: body.transactionCategory || "",
     site: body.site || "",
     partyCode: body.partyCode || "",
     partyName: body.partyName || "",
@@ -66,6 +67,7 @@ const sanitizePO = (body) => {
     remarks: body.remarks || "",
     basicAmount: toNum(body.basicAmount),
     netAmount: toNum(body.netAmount),
+    totalQty: toNum(body.totalQty),
 
     items,
     serviceRows,
@@ -172,7 +174,7 @@ router.put("/purchase-order/:id", async (req, res) => {
     const updated = await PurchaseOrder.findByIdAndUpdate(
       req.params.id,
       sanitizePO(req.body),
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
     if (!updated) return res.status(404).json({ success: false, message: "Not found" });
     res.json({ success: true, message: "Updated Successfully", data: updated });

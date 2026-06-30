@@ -171,7 +171,7 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const updated = await DirectGRN.findByIdAndUpdate(
-      req.params.id, req.body, { new: true, runValidators: true }
+      req.params.id, req.body, { returnDocument: "after", runValidators: true }
     );
     if (!updated) return res.status(404).json({ success: false, message: "Record Not Found" });
     res.json({ success: true, message: "Updated Successfully", data: updated });

@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./CreateGIN.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
+
+const PO_API = `${API_URL}/api/purchase-order`;
 import useSiteOptions from "../../../../hooks/useSiteOptions";
 
 /*
@@ -32,44 +35,118 @@ const blankItem = (sNo) => ({
   itemName: "",
   uom:      "",
   qty:      "",
-  rate:     "",
   _checked: false,
 });
 
-/* ── Simple typeahead component ── */
+/* ── Portal TypeAhead — dropdown renders on <body>, escapes any overflow:hidden/auto parent ── */
 const TypeAhead = ({ value, onChange, suggestions, onSelect, placeholder, className }) => {
-  const [show, setShow] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setShow(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
+  const [show,    setShow]    = useState(false);
+  const [coords,  setCoords]  = useState({ top: 0, left: 0, width: 0 });
+  const inputRef = useRef(null);
+  const listRef  = useRef(null);
 
   const filtered = value
     ? suggestions.filter((s) => s?.toLowerCase().includes(value.toLowerCase())).slice(0, 10)
     : [];
 
+  /* Recalculate position every time the dropdown opens or window scrolls/resizes */
+  const calcCoords = useCallback(() => {
+    if (!inputRef.current) return;
+    const rect   = inputRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropH  = Math.min(filtered.length * 32 + 8, 220);
+    /* If there is not enough space below, place above */
+    const goUp   = spaceBelow < dropH + 8;
+    setCoords({
+      left:  rect.left,
+      width: rect.width,
+      top:   goUp
+        ? rect.top  - dropH - 2
+        : rect.bottom + 2,
+    });
+  }, [filtered.length]);
+
+  useEffect(() => {
+    if (!show) return;
+    calcCoords();
+    window.addEventListener("scroll", calcCoords, true);
+    window.addEventListener("resize", calcCoords);
+    return () => {
+      window.removeEventListener("scroll", calcCoords, true);
+      window.removeEventListener("resize", calcCoords);
+    };
+  }, [show, calcCoords]);
+
+  /* Close on outside click */
+  useEffect(() => {
+    const h = (e) => {
+      if (
+        inputRef.current && !inputRef.current.contains(e.target) &&
+        listRef.current  && !listRef.current.contains(e.target)
+      ) setShow(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const dropdown = show && filtered.length > 0
+    ? ReactDOM.createPortal(
+        <ul
+          ref={listRef}
+          style={{
+            position:  "fixed",
+            top:       coords.top,
+            left:      coords.left,
+            width:     coords.width,
+            zIndex:    9999,
+            background: "#fff",
+            border:    "1.5px solid #93c5fd",
+            borderRadius: 6,
+            listStyle: "none",
+            margin:    0,
+            padding:   0,
+            maxHeight: 220,
+            overflowY: "auto",
+            boxShadow: "0 8px 24px rgba(37,99,235,0.15)",
+            scrollbarWidth: "thin",
+          }}
+        >
+          {filtered.map((s, i) => (
+            <li
+              key={i}
+              onMouseDown={(e) => { e.preventDefault(); onSelect(s); setShow(false); }}
+              style={{
+                padding: "7px 12px",
+                fontSize: 12,
+                cursor: "pointer",
+                borderBottom: "1px solid #f1f5f9",
+                color: "#1e293b",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#1d4ed8"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "#1e293b"; }}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>,
+        document.body
+      )
+    : null;
+
   return (
-    <div style={{ position: "relative" }} ref={ref}>
+    <>
       <input
+        ref={inputRef}
         type="text"
-        className={className || "cgin-input"}
+        className={className || "cgin-item-input"}
         value={value}
         onChange={(e) => { onChange(e.target.value); setShow(true); }}
-        onFocus={() => setShow(true)}
+        onFocus={() => { setShow(true); calcCoords(); }}
         placeholder={placeholder}
         autoComplete="off"
       />
-      {show && filtered.length > 0 && (
-        <ul className="cgin-suggestions">
-          {filtered.map((s, i) => (
-            <li key={i} onMouseDown={() => { onSelect(s); setShow(false); }}>{s}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+      {dropdown}
+    </>
   );
 };
 
@@ -78,6 +155,26 @@ const CreateGIN = () => {
   const location = useLocation();
   const [loading,     setLoading]     = useState(false);
   const [insertCount, setInsertCount] = useState(1);
+
+  /* ── Vehicle duplicate check ─────────────────────────────────────────────
+     Fires 500ms after the user stops typing in Vehicle No.
+     If a GIN with this vehicle exists and is NOT Closed → block + show alert.
+  ──────────────────────────────────────────────────────────────────────────── */
+  const [vehicleConflict,   setVehicleConflict]   = useState(null); // { ginNo, status } | null
+  const vehicleCheckTimerRef = useRef(null);
+
+  const checkVehicleConflict = useCallback(async (vehicleNo) => {
+    if (!vehicleNo || !vehicleNo.trim()) { setVehicleConflict(null); return; }
+    try {
+      const res     = await axios.get(`${API_URL}/api/goods-inward-note`);
+      const allGINs = Array.isArray(res.data) ? res.data : [];
+      const vNo     = vehicleNo.trim().toUpperCase();
+      const found   = allGINs.find(
+        (g) => g.vehicleNo?.trim().toUpperCase() === vNo && g.status !== "Closed"
+      );
+      setVehicleConflict(found ? { ginNo: found.ginNo, status: found.status } : null);
+    } catch { setVehicleConflict(null); }
+  }, []);
 
   /* ── master data ── */
   const { sites: siteOptions, loading: sitesLoading } = useSiteOptions("Inventory", "Inward");
@@ -96,25 +193,31 @@ const CreateGIN = () => {
     inOutType:           "Inward",
     poCpoNo:             "",
     ginDate:             "",
+    entryTime:           "",   // manual entry by user
     partyCode:           "",
     partyName:           "",
-    partyDoc:            "",
-    manufacturerName:    "",
-    manufacturerAddress: "",
     status:              "Open",
     challanInvoiceNo:    "",
     challanDate:         "",
+    challanTime:         "",
     vehicleNo:           "",
     remarks:             "",
     site:                "",
+    closedAt:            "",
+    closedDate:          "",   // manual closed date (shown when status = Closed)
+    closedTime:          "",   // manual closed time (shown when status = Closed)
+    exitTime:            "",
+    grossWeight:         "",
+    tareWeight:          "",
+    netWeight:           "",
   });
 
   const [items, setItems] = useState([blankItem(1)]);
 
-  /* ── Set default dates ── */
+  /* ── Set default date for GIN date only; challanDate is manual ── */
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
-    setForm((p) => ({ ...p, ginDate: today, challanDate: today }));
+    setForm((p) => ({ ...p, ginDate: today }));
   }, []);
 
   /* ── Default site ── */
@@ -151,10 +254,21 @@ const CreateGIN = () => {
       .catch(console.error);
   }, []);
 
-  /* ── Fetch Intransit POs ── */
+  /* ── Fetch Intransit POs — exclude those already linked to an existing GIN ── */
+  const [usedPONos, setUsedPONos] = useState(new Set());
+
   useEffect(() => {
-    axios.get(`${API_URL}/api/purchase-orders`)
-      .then((res) => setIntransitPOs(res.data.filter((po) => po.status === "Intransit")))
+    Promise.all([
+      axios.get(`${API_URL}/api/purchase-orders`),
+      axios.get(`${API_URL}/api/goods-inward-note`),
+    ])
+      .then(([poRes, ginRes]) => {
+        const allPOs  = poRes.data.filter((po) => po.status === "Intransit");
+        const ginData = Array.isArray(ginRes.data) ? ginRes.data : [];
+        const used    = new Set(ginData.map((g) => g.poCpoNo).filter(Boolean));
+        setUsedPONos(used);
+        setIntransitPOs(allPOs.filter((po) => !used.has(po.poNo)));
+      })
       .catch(console.error);
   }, []);
 
@@ -176,8 +290,7 @@ const CreateGIN = () => {
             itemCode:  it.itemCode     || "",
             itemName:  it.itemName     || "",
             uom:       it.uom          || "",
-            qty:       it.qty          || "",
-            rate:      it.rate         ?? it.netAmount ?? "",
+            qty:       it.qty ?? "",
             _checked:  false,
           }))
         );
@@ -241,8 +354,7 @@ const CreateGIN = () => {
           itemCode:  it.itemCode  || "",
           itemName:  it.itemName  || "",
           uom:       it.uom       || "",
-          qty:       it.qty       || "",
-          rate:      it.rate      ?? it.netAmount ?? "",
+          qty:       it.qty ?? "",
           _checked:  false,
         }))
       );
@@ -280,10 +392,43 @@ const CreateGIN = () => {
     });
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
-  };
+const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  /* ── Vehicle No: debounced duplicate check ── */
+  if (name === "vehicleNo") {
+    clearTimeout(vehicleCheckTimerRef.current);
+    vehicleCheckTimerRef.current = setTimeout(() => checkVehicleConflict(value), 500);
+  }
+
+  setForm((p) => {
+    const updated = { ...p, [name]: value };
+
+    const gross =
+      name === "grossWeight"
+        ? Number(value || 0)
+        : Number(p.grossWeight || 0);
+
+    const tare =
+      name === "tareWeight"
+        ? Number(value || 0)
+        : Number(p.tareWeight || 0);
+
+    updated.netWeight = gross > 0 || tare > 0
+      ? parseFloat((gross - tare).toFixed(6))
+      : "";
+
+    // Clear closed fields when status changes away from Closed
+    if (name === "status" && value !== "Closed") {
+      updated.closedDate = "";
+      updated.closedTime = "";
+      updated.closedAt   = "";
+      updated.exitTime   = "";
+    }
+
+    return updated;
+  });
+};
 
   /* ── item row handlers ── */
   const handleItemChange = (rowIdx, field, value) => {
@@ -315,6 +460,28 @@ const CreateGIN = () => {
   const handleSave = async () => {
     if (!form.transactionCategory) { alert("Please select a Transaction Category"); return; }
     if (!form.ginDate)             { alert("Date is required");                     return; }
+    if (!form.vehicleNo || !form.vehicleNo.trim()) { alert("Vehicle No is required"); return; }
+
+    /* Block if this vehicle has an active (non-Closed) GIN — re-check at save time.
+       This is a hard ERROR, not a soft warning: the record is NOT created. */
+    if (vehicleConflict) {
+      alert(`❌ Error: Vehicle "${form.vehicleNo.trim()}" has not exited yet (still IN).\nExisting GIN: ${vehicleConflict.ginNo} | Status: ${vehicleConflict.status}\n\nMark that vehicle OUT (Closed) before creating a new Inward entry.\nThis entry was NOT created.`);
+      return;
+    }
+    /* Also do a live check in case the state hasn't resolved yet — final guard before any write */
+    try {
+      const checkRes = await axios.get(`${API_URL}/api/goods-inward-note`);
+      const allGINs  = Array.isArray(checkRes.data) ? checkRes.data : [];
+      const vNo      = form.vehicleNo.trim().toUpperCase();
+      const conflict = allGINs.find(
+        (g) => g.vehicleNo?.trim().toUpperCase() === vNo && g.status !== "Closed"
+      );
+      if (conflict) {
+        alert(`❌ Error: Vehicle "${form.vehicleNo.trim()}" has not exited yet (still IN).\nExisting GIN: ${conflict.ginNo} | Status: ${conflict.status}\n\nMark that vehicle OUT (Closed) before creating a new Inward entry.\nThis entry was NOT created.`);
+        setVehicleConflict({ ginNo: conflict.ginNo, status: conflict.status });
+        return;
+      }
+    } catch { /* non-blocking */ }
 
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) { alert("Invalid transaction category"); return; }
@@ -338,18 +505,60 @@ const CreateGIN = () => {
           const { sNo, _checked, ...rest } = r;
           return Object.values(rest).some((v) => String(v).trim() !== "");
         })
-        .map(({ _checked, ...r }) => ({ ...r, qty: Number(r.qty) || 0, rate: Number(r.rate) || 0 }));
+        .map(({ _checked, ...r }) => ({ ...r, qty: Number(r.qty) || 0 }));
 
-      /* 3. Save note */
+      /* 3. Build entry/exit time from manual inputs */
+      const entryTime   = form.entryTime || "";
+      const isClosed    = form.status === "Closed";
+
+      let exitTime = "";
+      let closedAt = "";
+      if (isClosed) {
+        if (!form.closedDate || !form.closedTime) {
+          alert("Please enter both Closed Date and Closed Time when status is Closed");
+          setLoading(false);
+          return;
+        }
+        exitTime = `${form.closedTime}:00`;
+        closedAt = new Date(`${form.closedDate}T${form.closedTime}:00`).toISOString();
+      }
+
       const payload = {
         ...form,
         ginNo:               officialNo,
         transactionCategory: cat.categoryDescription,
         items:               cleanItems,
+        entryTime,
+        exitTime,
+        closedAt,
       };
 
       const res = await axios.post(`${API_URL}/api/goods-inward-note`, payload);
       if (res.data.success) {
+        /* ── Step 2 → PO: Intransit → Convert ──────────────────────────────
+           When an Inward GIN is created and its status is "Open", advance
+           the linked PO from "Intransit" to "Convert" so the flow progresses.
+           Only triggers for Inward entries with status Open, and only when
+           the PO is currently Intransit (avoids overwriting other statuses
+           like Partial/Closed/Cancelled).
+        ──────────────────────────────────────────────────────────────────── */
+        if (payload.poCpoNo && payload.inOutType === "Inward" && payload.status === "Open") {
+          try {
+            const poListRes = await axios.get(`${API_URL}/api/purchase-orders`);
+            const allPOs    = Array.isArray(poListRes.data) ? poListRes.data : [];
+            const linkedPO  = allPOs.find((po) => po.poNo === payload.poCpoNo);
+            if (linkedPO?._id && linkedPO.status === "Intransit") {
+              await axios.put(`${PO_API}/${linkedPO._id}`, {
+                ...linkedPO,
+                status: "Convert",
+              });
+            }
+          } catch (poErr) {
+            console.warn("Could not update PO status to Convert:", poErr.message);
+            /* non-blocking — GIN is already saved, PO update is a best-effort */
+          }
+        }
+
         alert("Inward Outward Note Saved Successfully");
         navigate("/inward-outward-note");
       }
@@ -370,7 +579,7 @@ const CreateGIN = () => {
       {/* HEADER */}
       <div className="cgin-header">
         <div className="cgin-header-left">
-          <button className="cgin-back-btn" onClick={() => navigate("/inward-outward-note")}>←</button>
+          <button className="app-back-btn" onClick={() => navigate("/inward-outward-note")}>← Back</button>
           <h2>Create Inward Outward Note</h2>
         </div>
       </div>
@@ -422,7 +631,7 @@ const CreateGIN = () => {
             <select name="inOutType" value={form.inOutType} onChange={handleChange}>
               <option value="Inward">Inward</option>
               <option value="Outward">Outward</option>
-              <option value="General">General</option>
+              {/* <option value="General">General</option> */}
             </select>
           </div>
 
@@ -449,6 +658,27 @@ const CreateGIN = () => {
             <input type="date" name="ginDate" value={form.ginDate} onChange={handleChange} />
           </div>
 
+          {/* GATE ENTRY TIME — manual entry */}
+          <div className="cgin-field">
+            <label>Gate Entry Time</label>
+            <input
+              type="time"
+              name="entryTime"
+              value={form.entryTime}
+              onChange={handleChange}
+              style={{
+                height: 34,
+                border: "1px solid #86efac",
+                borderRadius: 6,
+                padding: "0 8px",
+                fontSize: 12,
+                background: "#f0fdf4",
+                color: "#15803d",
+                fontWeight: 600,
+              }}
+            />
+          </div>
+
           {/* 7. PARTY CODE — typeahead */}
           <div className="cgin-field">
             <label>Party Code</label>
@@ -473,49 +703,13 @@ const CreateGIN = () => {
             />
           </div>
 
-          {/* 9. PARTY DOC */}
-          <div className="cgin-field">
-            <label>Party Doc</label>
-            <input
-              type="text"
-              name="partyDoc"
-              value={form.partyDoc}
-              onChange={handleChange}
-              placeholder="Enter party document no."
-            />
-          </div>
-
-          {/* 10. MFG NAME */}
-          <div className="cgin-field">
-            <label>Mfg. Name</label>
-            <input
-              type="text"
-              name="manufacturerName"
-              value={form.manufacturerName}
-              onChange={handleChange}
-              placeholder="Enter manufacturer name"
-            />
-          </div>
-
-          {/* 11. MFG ADDRESS */}
-          <div className="cgin-field">
-            <label>Mfg. Address</label>
-            <input
-              type="text"
-              name="manufacturerAddress"
-              value={form.manufacturerAddress}
-              onChange={handleChange}
-              placeholder="Enter manufacturer address"
-            />
-          </div>
-
-          {/* 12. STATUS */}
+          {/* 9. STATUS */}
           <div className="cgin-field">
             <label>Status</label>
             <select name="status" value={form.status} onChange={handleChange}>
               <option value="Open">Open</option>
-              <option value="Weighted">Weighted</option>
-              <option value="OutPending">OutPending</option>
+              {/* <option value="Weighted">Weighted</option>
+              <option value="OutPending">OutPending</option> */}
               <option value="Closed">Closed</option>
             </select>
           </div>
@@ -533,27 +727,66 @@ const CreateGIN = () => {
             />
           </div>
 
-          {/* 14. CHALLAN DATE */}
+          {/* CHALLAN INVOICE DATE + TIME */}
           <div className="cgin-field">
-            <label>Challan Invoice Date</label>
-            <input
-              type="date"
-              name="challanDate"
-              value={form.challanDate}
-              onChange={handleChange}
-              className="inp-highlight"
-            />
+            <label>Challan Invoice Date &amp; Time</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="date"
+                name="challanDate"
+                value={form.challanDate}
+                onChange={handleChange}
+                className="inp-highlight"
+                style={{ flex: 1 }}
+              />
+              <input
+                type="time"
+                name="challanTime"
+                value={form.challanTime}
+                onChange={handleChange}
+                className="inp-highlight"
+                style={{ width: 110 }}
+              />
+            </div>
           </div>
 
-          {/* 15. VEHICLE NO */}
+          {/* CLOSED DATE + TIME — shown only when status = Closed, manual entry */}
+          {form.status === "Closed" && (
+            <>
+              <div className="cgin-field">
+                <label style={{ color: "#dc2626", fontWeight: 700 }}>🚪 * Closed Date</label>
+                <input
+                  type="date"
+                  name="closedDate"
+                  value={form.closedDate}
+                  onChange={handleChange}
+                  style={{ height: 34, border: "1.5px solid #fca5a5", borderRadius: 6, padding: "0 8px", fontSize: 12, background: "#fff1f2" }}
+                />
+              </div>
+              <div className="cgin-field">
+                <label style={{ color: "#dc2626", fontWeight: 700 }}>⏱ * Closed Time</label>
+                <input
+                  type="time"
+                  name="closedTime"
+                  value={form.closedTime}
+                  onChange={handleChange}
+                  style={{ height: 34, border: "1.5px solid #fca5a5", borderRadius: 6, padding: "0 8px", fontSize: 12, background: "#fff1f2", color: "#dc2626", fontWeight: 600 }}
+                />
+              </div>
+            </>
+          )}
+
+          {/* 15. VEHICLE NO — REQUIRED */}
           <div className="cgin-field">
-            <label>Vehicle No</label>
+            <label>* Vehicle No</label>
             <input
               type="text"
               name="vehicleNo"
               value={form.vehicleNo}
               onChange={handleChange}
-              placeholder="Enter vehicle no"
+              onBlur={(e) => { clearTimeout(vehicleCheckTimerRef.current); checkVehicleConflict(e.target.value); }}
+              placeholder="Enter vehicle no (required)"
+              required
             />
           </div>
 
@@ -568,20 +801,62 @@ const CreateGIN = () => {
             </select>
           </div>
 
-        </div>
+          {/* GROSS WEIGHT */}
+          <div className="cgin-field">
+            <label>Gross Weight</label>
+            <input
+              type="number"
+              name="grossWeight"
+              value={form.grossWeight}
+              onChange={handleChange}
+              placeholder="e.g. 25000"
+              min="0"
+              step="0.01"
+            />
+          </div>
 
-        {/* REMARKS */}
-        <div className="cgin-full-width" style={{ marginTop: 12 }}>
+          {/* TARE WEIGHT */}
+          <div className="cgin-field">
+            <label>Tare Weight</label>
+            <input
+              type="number"
+              name="tareWeight"
+              value={form.tareWeight}
+              onChange={handleChange}
+              placeholder="e.g. 7500"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          {/* NET WEIGHT */}
+          <div className="cgin-field">
+            <label>Net Weight</label>
+            <input
+              type="number"
+              name="netWeight"
+              value={form.netWeight}
+              readOnly
+              style={{
+                background: "#f8fafc",
+                fontWeight: "600",
+              }}
+            />
+          </div>
+
+          {/* REMARKS — compact, inside grid */}
           <div className="cgin-field">
             <label>Remarks</label>
             <textarea
-              rows="3"
+              rows="1"
               name="remarks"
               value={form.remarks}
               onChange={handleChange}
               placeholder="Enter remarks…"
+              style={{ resize: "vertical", minHeight: 36 }}
             />
           </div>
+
         </div>
 
         {/* ── ITEMS SECTION ── */}
@@ -604,8 +879,7 @@ const CreateGIN = () => {
                   <th style={{ minWidth: 160 }}>Item Code</th>
                   <th style={{ minWidth: 200 }}>Item Name</th>
                   <th style={{ width: 90 }}>UOM</th>
-                  <th style={{ width: 100 }}>Qty</th>
-                  <th style={{ width: 110 }}>Rate (₹)</th>
+                  <th style={{ width: 90 }}>Qty</th>
                 </tr>
               </thead>
               <tbody>
@@ -655,30 +929,18 @@ const CreateGIN = () => {
                       />
                     </td>
 
-                    {/* Qty */}
+                    {/* Qty — auto-filled from PO, editable */}
                     <td>
                       <input
                         type="number"
-                        className="cgin-item-input cgin-item-num"
+                        className="cgin-item-input cgin-item-sm"
                         value={row.qty}
                         onChange={(e) => handleItemChange(idx, "qty", e.target.value)}
-                        placeholder="0"
+                        placeholder="Qty"
                         min="0"
                       />
                     </td>
 
-                    {/* Rate — pre-filled from PO, editable */}
-                    <td>
-                      <input
-                        type="number"
-                        className="cgin-item-input cgin-item-num"
-                        value={row.rate}
-                        onChange={(e) => handleItemChange(idx, "rate", e.target.value)}
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                      />
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -701,12 +963,35 @@ const CreateGIN = () => {
           </div>
         </div>
 
+        {/* ── Vehicle conflict ERROR banner — blocks save, record is NOT created ── */}
+        {vehicleConflict && (
+          <div style={{
+            margin: "0 0 12px 0", padding: "12px 16px",
+            background: "#fef2f2", border: "1.5px solid #ef4444",
+            borderRadius: 8, color: "#991b1b", fontSize: 13, fontWeight: 600,
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <span style={{ fontSize: 18 }}>❌</span>
+            <span>
+              <strong>Error:</strong> Vehicle <strong>{form.vehicleNo}</strong> has not exited yet (still IN).
+              {" "}GIN: <strong>{vehicleConflict.ginNo}</strong> | Status: <strong>{vehicleConflict.status}</strong>.
+              {" "}Mark that vehicle <strong>OUT (Closed)</strong> first — this entry cannot be created until then.
+            </span>
+          </div>
+        )}
+
         {/* ACTIONS */}
         <div className="cgin-actions">
           <button className="btn-cancel" onClick={() => navigate("/inward-outward-note")} disabled={loading}>
             Cancel
           </button>
-          <button className="btn-save" onClick={handleSave} disabled={loading}>
+          <button
+            className="btn-save"
+            onClick={handleSave}
+            disabled={loading || !!vehicleConflict}
+            title={vehicleConflict ? "Resolve vehicle conflict before saving" : ""}
+            style={vehicleConflict ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+          >
             {loading ? "Saving…" : "Save"}
           </button>
         </div>

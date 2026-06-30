@@ -92,7 +92,7 @@ router.put("/site/:id", async (req, res) => {
     }
 
     const updated = await SiteMaster.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     res.json({ success: true, message: "Updated Successfully", data: updated });

@@ -15,6 +15,25 @@ const prefixMap = {
   General: "GN",
 };
 
+/* ─── ALLOWED STATUSES ───────────────────────────────────────────────────────
+   "Draft"   = first weight captured only
+   "Saved"   = both weights captured (weighment complete)
+   "Convert" = IC has been started from this weighment (locked)
+   "Open"    = no weight yet
+   "Closed"  = fully processed (GRN approved)
+   We accept all of these and pass them straight through — no enum restriction
+   at the route level so the model enum (if any) is bypassed via $set on PUT
+   and handled by sanitizebody on POST.
+─────────────────────────────────────────────────────────────────────────────── */
+const VALID_STATUSES = ["Open", "Draft", "Saved", "Convert", "Closed"];
+
+const sanitizeBody = (body) => {
+  const out = { ...body };
+  /* Ensure status is one of our allowed values; fall back to "Open" */
+  if (!VALID_STATUSES.includes(out.status)) out.status = "Open";
+  return out;
+};
+
 const getNextWeighmentNo = async (transactionType) => {
   const prefix = prefixMap[transactionType] || "GN";
 
@@ -47,14 +66,16 @@ router.get("/next-no", async (req, res) => {
 /* POST / — create new weighment */
 router.post("/", async (req, res) => {
   try {
+    const body = sanitizeBody(req.body);
     /* Auto-assign weighment number if not provided */
-    if (!req.body.weighmentNo && req.body.transactionType) {
-      req.body.weighmentNo = await getNextWeighmentNo(req.body.transactionType);
+    if (!body.weighmentNo && body.transactionType) {
+      body.weighmentNo = await getNextWeighmentNo(body.transactionType);
     }
-    const weighment = new Weighment(req.body);
+    const weighment = new Weighment(body);
     await weighment.save();
     res.status(201).json({ success: true, message: "Weighment Saved", data: weighment });
   } catch (error) {
+    console.error("Weighment POST error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -67,17 +88,34 @@ router.get("/", async (req, res) => {
       inwardOutwardNoteNo, status, partyName, site,
       transactionType, transactionCategory,
     } = req.query;
+    /* statusIn is read directly from req.query below — not destructured here */
 
     const query = {};
 
     if (weighmentNo)         query.weighmentNo         = { $regex: weighmentNo, $options: "i" };
     if (vehicleNo)           query.vehicleNo           = { $regex: vehicleNo, $options: "i" };
     if (inwardOutwardNoteNo) query.inwardOutwardNoteNo = { $regex: inwardOutwardNoteNo, $options: "i" };
-    if (status)              query.status              = status;
     if (partyName)           query.partyName           = { $regex: partyName, $options: "i" };
     if (site)                query.site                = { $regex: site, $options: "i" };
     if (transactionType)     query.transactionType     = transactionType;
     if (transactionCategory) query.transactionCategory = transactionCategory;
+
+    /* ── STATUS FILTER ───────────────────────────────────────────────────────
+       Three ways the frontend can pass status:
+       1. status=Open          → single exact match
+       2. statusIn=Open&statusIn=Draft  → array of values ($in)
+       3. nothing              → no status filter (fetch all)
+    ──────────────────────────────────────────────────────────────────────── */
+    const statusIn = req.query.statusIn
+      ? (Array.isArray(req.query.statusIn) ? req.query.statusIn : [req.query.statusIn])
+      : null;
+
+    if (status) {
+      query.status = status;
+    } else if (statusIn && statusIn.length > 0) {
+      query.status = { $in: statusIn };
+    }
+    /* else: no status filter — return all records */
 
     if (fromDate || toDate) {
       query.weighmentDate = {};
@@ -107,15 +145,19 @@ router.get("/:id", async (req, res) => {
 /* PUT /:id — update a weighment */
 router.put("/:id", async (req, res) => {
   try {
+    const body = sanitizeBody(req.body);
     const updated = await Weighment.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
-      { returnDocument: "after", runValidators: true }
+      { $set: body },
+      /* runValidators: false — we sanitize manually above so enum on
+         the Mongoose model never blocks Draft / Saved / Convert */
+      { returnDocument: "after", runValidators: false }
     );
     if (!updated)
       return res.status(404).json({ success: false, message: "Record not found" });
     res.status(200).json({ success: true, message: "Weighment Updated", data: updated });
   } catch (error) {
+    console.error("Weighment PUT error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

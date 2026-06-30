@@ -56,7 +56,7 @@ router.put("/transaction/:id", async (req, res) => {
     const updated = await Transaction.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { returnDocument: "after" }
     );
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {

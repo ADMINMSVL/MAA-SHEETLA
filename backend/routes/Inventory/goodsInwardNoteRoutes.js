@@ -216,7 +216,7 @@ router.put("/goods-inward-note/:id", async (req, res) => {
     const updatedData = await GoodsInwardNote.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
     if (!updatedData)
       return res.status(404).json({ success: false, message: "Record Not Found" });

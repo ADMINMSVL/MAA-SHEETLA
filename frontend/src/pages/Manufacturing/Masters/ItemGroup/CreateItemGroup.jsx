@@ -75,7 +75,7 @@ const CreateItemGroup = () => {
     if (!formData.itemGroup.trim()) return alert("Item Group is required.");
 
     try {
-      const res = await axios.post(`${API_URL}/api/create-item-type`, formData);
+      const res = await axios.post(`${API_URL}/api/create-item-group`, formData);
       alert(res.data.message);
       setFormData({ itemGroup: "", itemTypes: "", description: "", status: "Active" });
       setCatInput("");
@@ -90,7 +90,7 @@ const CreateItemGroup = () => {
       <ModuleNavbar />
 
       <div className="create-header">
-        <button className="back-btn" onClick={() => navigate("/item-type")}>
+        <button className="back-btn" onClick={() => navigate(-1)}>
           ← Back
         </button>
         <h1>Item Group</h1>
@@ -158,7 +158,7 @@ const CreateItemGroup = () => {
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
           <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn" onClick={() => navigate("/item-type")}>
+          <button className="cancel-btn" onClick={() => navigate(-1)}>
             Cancel
           </button>
         </div>

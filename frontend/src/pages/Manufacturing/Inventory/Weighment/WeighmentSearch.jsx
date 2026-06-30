@@ -9,18 +9,20 @@ const API     = `${API_URL}/api/weighment`;
 const GIN_API = `${API_URL}/api/goods-inward-note`;
 
 /* Status options updated per requirements: Draft, Partial, Submit, Weighted */
-const STATUS_OPTIONS = ["Draft", "Partial", "Submit", "Weighted"];
+const STATUS_OPTIONS = ["Open", "Draft", "Saved", "Convert", "Closed"];
 
 const blankFilters = {
   fromDate: "", toDate: "", weighmentNo: "", vehicleNo: "",
   inwardOutwardNoteNo: "", status: "", partyName: "", transactionType: "",
-  transactionCategory: "",
+  transactionModule: "", transactionCategory: "",
 };
+
+const defaultFilters = { ...blankFilters, status: "" };
 
 const WeighmentSearch = () => {
   const navigate = useNavigate();
 
-  const [filters,        setFilters]        = useState(blankFilters);
+  const [filters,        setFilters]        = useState(defaultFilters);
   const [results,        setResults]        = useState([]);
   const [searched,       setSearched]       = useState(false);
   const [loading,        setLoading]        = useState(false);
@@ -28,32 +30,80 @@ const WeighmentSearch = () => {
   const [editRow,        setEditRow]        = useState({});
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
-  /* Transaction categories fetched from GIN records */
-  const [txCategories, setTxCategories] = useState([]);
+  /* Transaction categories + modules fetched from the Transaction master
+     (businessEntity === "Weighment"). categoryToModule maps a category's
+     description back to its Module, so results can be filtered/labelled
+     by Module even though Weighment records only store transactionCategory. */
+  const [txCategories,    setTxCategories]    = useState([]);
+  const [txModules,       setTxModules]       = useState([]);
+  const [categoryToModule, setCategoryToModule] = useState({});
 
   useEffect(() => {
-    fetchData(blankFilters);
+    fetchData(defaultFilters);
     fetchTxCategories();
   }, []);
 
   const fetchTxCategories = async () => {
     try {
-      const res = await axios.get(GIN_API);
-      const data = Array.isArray(res.data) ? res.data : [];
-      const cats = [...new Set(data.map((d) => d.transactionCategory).filter(Boolean))].sort();
+      const res  = await axios.get(`${API_URL}/api/transactions`);
+      const list = Array.isArray(res.data) ? res.data : [];
+      const weighmentTx = list.filter(
+        (tx) => tx.businessEntity === "Weighment" && (tx.status || "").toLowerCase() === "open"
+      );
+
+      const cats = weighmentTx.map((tx) => tx.categoryDescription).filter(Boolean).sort();
       setTxCategories(cats);
+
+      const modules = [...new Set(weighmentTx.map((tx) => tx.module).filter(Boolean))].sort();
+      setTxModules(modules);
+
+      const map = {};
+      weighmentTx.forEach((tx) => {
+        if (tx.categoryDescription) map[tx.categoryDescription] = tx.module;
+      });
+      setCategoryToModule(map);
     } catch (err) {
       console.error("Failed to fetch transaction categories", err);
     }
   };
 
+  /* ── Default active statuses shown on load / reset ── */
+  const ACTIVE_STATUSES = ["Open", "Draft", "Convert", "Saved"];
+
   const fetchData = async (f) => {
     setLoading(true); setSearched(true);
     try {
-      const params = {};
-      Object.entries(f).forEach(([k, v]) => { if (v !== "") params[k] = v; });
-      const res = await axios.get(API, { params });
-      setResults(res.data.data || []);
+      /* Build URLSearchParams so we can append multiple statusIn values.
+         transactionModule has no column on Weighment records — it's derived
+         from the linked Transaction Category, so it's applied client-side
+         below rather than sent to the backend. */
+      const params = new URLSearchParams();
+
+      /* Add all non-empty non-status, non-module filters */
+      Object.entries(f).forEach(([k, v]) => {
+        if (k !== "status" && k !== "transactionModule" && v !== "") params.append(k, v);
+      });
+
+      if (f.status === "All") {
+        /* "All" — send no status filter at all → backend returns everything */
+      } else if (f.status) {
+        /* Specific single status selected */
+        params.append("status", f.status);
+      } else {
+        /* Default: show Open + Draft + Convert (active records) */
+        ACTIVE_STATUSES.forEach((s) => params.append("statusIn", s));
+      }
+
+      const res = await axios.get(`${API}?${params.toString()}`);
+      let data = res.data.data || [];
+
+      if (f.transactionModule) {
+        data = data.filter(
+          (row) => categoryToModule[row.transactionCategory] === f.transactionModule
+        );
+      }
+
+      setResults(data);
     } catch (err) {
       console.error(err); alert("Failed to fetch records");
     } finally { setLoading(false); }
@@ -65,7 +115,7 @@ const WeighmentSearch = () => {
   };
 
   const handleApply = () => fetchData(filters);
-  const handleReset = () => { setFilters(blankFilters); fetchData(blankFilters); };
+  const handleReset = () => { setFilters(defaultFilters); fetchData(defaultFilters); };
 
   /* ── inline edit ── */
   const startEdit  = (row) => { setEditId(row._id); setEditRow({ ...row }); };
@@ -98,39 +148,30 @@ const WeighmentSearch = () => {
   const openDetail = (row) =>
     navigate(`/weighment-detail/${row._id}`, { state: { allowEdit: true } });
 
-  /* ─── Compact column set per requirements ───
-     GIN/IN-OUT note, Weighment No, Vehicle No, Trans Type, Trans Category,
-     Party Name, Net Weight — all others removed from table */
+  /* ─── Column set — Weighment No first, full row clickable ───
+     Weighment No (first, highlighted), GIN/IN-OUT note, Vehicle No, Trans Type,
+     Trans Category, Party Name, Net Weight, Status */
   const COLS = [
     { label: "#" },
-    { label: "GIN / IN-OUT Note No", field: "inwardOutwardNoteNo", isLink: true },
-    { label: "Weighment No",         field: "weighmentNo" },
+    { label: "Weighment No",         field: "weighmentNo",         readOnly: true },
+    { label: "Inward/Outward Note No", field: "inwardOutwardNoteNo", readOnly: true },
     { label: "Vehicle No",           field: "vehicleNo" },
-    { label: "Trans Type",           field: "transactionType", type: "select", opts: ["", "Inward", "Outward"] },
+    { label: "Trans Type",           field: "transactionType",     type: "select", opts: ["", "Inward", "Outward"] },
     { label: "Trans Category",       field: "transactionCategory", type: "select", opts: ["", "Purchase", "Sales"] },
     { label: "Party Name",           field: "partyName" },
-    { label: "Net Weight (MT)",      field: "netWeight", readOnly: true },
-    { label: "Status",               field: "status", type: "select", opts: ["", ...STATUS_OPTIONS] },
-    { label: "Actions" },
+    { label: "Net Weight (MT)",      field: "netWeight",           readOnly: true },
+    { label: "Status",               field: "status",              type: "select", opts: ["", ...STATUS_OPTIONS] },
   ];
 
   const renderCell = (col, row) => {
     const isEditing = editId === row._id;
-    const { field, type, opts, readOnly, isLink } = col;
+    const { field, type, opts, readOnly } = col;
 
     if (!isEditing) {
-      const val = row[field] != null && row[field] !== "" ? row[field] : "-";
-      if (isLink) {
-        return (
-          <button className="ws-gin-link" onClick={() => openDetail(row)} title={`Open details for ${val}`}>
-            🔗 {val}
-          </button>
-        );
-      }
-      return val;
+      return row[field] != null && row[field] !== "" ? row[field] : "-";
     }
 
-    if (readOnly || isLink)
+    if (readOnly)
       return <input value={editRow[field] ?? ""} readOnly className="ws-inline ws-readonly" />;
 
     if (type === "select")
@@ -151,11 +192,13 @@ const WeighmentSearch = () => {
     <div className="weighment-page">
       <ModuleNavbar />
 
-      {/* HEADER */}
-      <div className="weighment-header">
-        <h2>Weighment</h2>
-        <div className="header-actions">
-          <button className="old-btn">Access Old Screen</button>
+      {/* HEADER — styled like InwardOutwardNote page */}
+      <div className="gin-search-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="create-btn" style={{ background: "#2563eb" }} onClick={() => navigate("/")}>← Back</button>
+          <h2 style={{ fontSize: 18, color: "#1e293b", fontWeight: 700, margin: 0 }}>Weighment</h2>
+        </div>
+        <div className="header-actions" style={{ display: "flex", gap: 12 }}>
           <div className="create-dropdown-wrap">
             <button className="create-btn" onClick={() => setShowCreateMenu((p) => !p)}>+ Create ▾</button>
             {showCreateMenu && (
@@ -177,7 +220,7 @@ const WeighmentSearch = () => {
               navigate("/weighment/create/inward");
             }}
           >
-            Create Inward
+            Create From Inward
           </button>
 
           <button
@@ -187,7 +230,7 @@ const WeighmentSearch = () => {
               navigate("/weighment/create/outward");
             }}
           >
-            Create Outward
+            Create From Outward
           </button>
               </div>
             )}
@@ -216,8 +259,9 @@ const WeighmentSearch = () => {
 
           <div className="field"><label>Status</label>
             <select name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="">All</option>
-              {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+              <option value="">Active (Open, Draft, Convert, Saved)</option>
+              <option value="All">All — Show Everything</option>
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select></div>
 
           <div className="field"><label>Party Name</label>
@@ -228,12 +272,16 @@ const WeighmentSearch = () => {
               <option value="">All</option><option>Inward</option><option>Outward</option>
             </select></div>
 
+          <div className="field"><label>Transaction Module</label>
+            <select name="transactionModule" value={filters.transactionModule} onChange={handleFilterChange}>
+              <option value="">All</option>
+              {txModules.map((m) => <option key={m}>{m}</option>)}
+            </select></div>
+
           <div className="field"><label>Transaction Category</label>
             <select name="transactionCategory" value={filters.transactionCategory} onChange={handleFilterChange}>
               <option value="">All</option>
-              {txCategories.length > 0
-                ? txCategories.map((c) => <option key={c}>{c}</option>)
-                : <><option>Purchase</option><option>Sales</option></>}
+              {txCategories.map((c) => <option key={c}>{c}</option>)}
             </select></div>
 
         </div>
@@ -253,29 +301,83 @@ const WeighmentSearch = () => {
 
         {!loading && searched && results.length > 0 && (
           <div className="result-table-wrap">
+            <div style={{
+              padding: "8px 14px 6px",
+              fontSize: 12, color: "#64748b",
+              borderBottom: "1px solid #f1f5f9",
+            }}>
+              Showing <strong>{results.length}</strong> record{results.length !== 1 ? "s" : ""}
+              {!filters.status && (
+                <span style={{ color: "#94a3b8", fontStyle: "italic" }}>
+                  {" "}— active only (Open, Draft, Convert, Saved). Select "All — Show Everything" to see all records.
+                </span>
+              )}
+            </div>
             <table className="result-table">
               <thead>
-                <tr>{COLS.map((c) => <th key={c.label}>{c.label}</th>)}</tr>
+                <tr>
+                  <th>#</th>
+                  <th>Weighment No</th>
+                  <th>Inward/Outward Note No</th>
+                  <th>Vehicle No</th>
+                  <th>Trans Type</th>
+                  <th>Module</th>
+                  <th>Trans Category</th>
+                  <th>Party Name</th>
+                  <th>Net Weight (MT)</th>
+                  <th>Status</th>
+                </tr>
               </thead>
               <tbody>
                 {results.map((row, idx) => {
-                  const isEditing = editId === row._id;
                   return (
-                    <tr key={row._id || idx} className={isEditing ? "editing-row" : ""}>
+                    <tr
+                      key={row._id || idx}
+                      onClick={() => openDetail(row)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <td>{idx + 1}</td>
-                      {COLS.slice(1, -1).map((col) => (
-                        <td key={col.field}>{renderCell(col, row)}</td>
-                      ))}
-                      {/* Actions — Delete removed per requirements */}
-                      <td className="action-cell">
-                        {isEditing ? (
-                          <>
-                            <button className="save-row-btn"   onClick={saveEdit}>Save</button>
-                            <button className="cancel-row-btn" onClick={cancelEdit}>Cancel</button>
-                          </>
-                        ) : (
-                          <button className="edit-row-btn" onClick={() => startEdit(row)}>Edit</button>
-                        )}
+                      {/* Weighment No — highlighted */}
+                      <td>
+                        <span style={{
+                          display: "inline-block",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontWeight: 700,
+                          fontSize: 13,
+                          padding: "3px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #bfdbfe",
+                          letterSpacing: "0.3px",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {row.weighmentNo || "—"}
+                        </span>
+                      </td>
+                      <td>{row.inwardOutwardNoteNo || "—"}</td>
+                      <td>{row.vehicleNo || "—"}</td>
+                      <td>{row.transactionType || "—"}</td>
+                      <td>{categoryToModule[row.transactionCategory] || "—"}</td>
+                      <td>{row.transactionCategory || "—"}</td>
+                      <td>{row.partyName || "—"}</td>
+                      <td>{row.netWeight || "—"}</td>
+                      <td>
+                        {(() => {
+                          const s = row.status || "";
+                          const badgeStyle = {
+                            display: "inline-block",
+                            fontSize: 11, fontWeight: 700,
+                            padding: "2px 9px", borderRadius: 20,
+                            whiteSpace: "nowrap",
+                            ...(s === "Open"    ? { background: "#dbeafe", color: "#1d4ed8" } :
+                                s === "Draft"   ? { background: "#e0f2fe", color: "#0369a1" } :
+                                s === "Saved"   ? { background: "#d1fae5", color: "#065f46" } :
+                                s === "Convert" ? { background: "#ede9fe", color: "#6d28d9" } :
+                                s === "Closed"  ? { background: "#f1f5f9", color: "#475569" } :
+                                                  { background: "#f1f5f9", color: "#64748b" }),
+                          };
+                          return <span style={badgeStyle}>{s || "—"}</span>;
+                        })()}
                       </td>
                     </tr>
                   );

@@ -1,257 +1,53 @@
-.weighment-page{
-  min-height:100vh;
-  background:#efefef;
-}
+/* ══════════════════════════════════════════════════════════════
+   WeighmentSearch.css  — compact, full-screen result, responsive
+══════════════════════════════════════════════════════════════ */
 
-.weighment-header{
-  height:70px;
-  background:#fff;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:0 20px;
-  border-bottom:1px solid #ddd;
-}
-
-.weighment-header h2{
-  margin:0;
-  font-size:38px;
-  color:#222;
-}
-
-.header-actions{
-  display:flex;
-  gap:12px;
-}
-
-.old-btn{
-  border:1px solid #3c89d9;
-  background:white;
-  color:#3c89d9;
-  padding:10px 18px;
-  border-radius:4px;
-  cursor:pointer;
-}
-
-.create-btn{
-  background:#0084ff;
-  color:white;
-  border:none;
-  padding:10px 18px;
-  border-radius:4px;
-  cursor:pointer;
-}
-
-.search-panel{
-  background:white;
-  margin:12px;
-  padding:20px;
-  border:1px solid #ddd;
-}
-
-.search-grid{
-  display:grid;
-  grid-template-columns:
-  repeat(4,1fr);
-  gap:16px;
-}
-
-.field{
-  display:flex;
-  flex-direction:column;
-}
-
-.field label{
-  font-size:13px;
-  margin-bottom:6px;
-  color:#444;
-}
-
-.field input,
-.field select{
-  height:38px;
-  border:1px solid #d5d5d5;
-  padding:0 10px;
-  font-size:14px;
-}
-
-.bottom-actions{
-  margin-top:20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.checkbox-wrap{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-
-.apply-btn{
-  background:#0d6efd;
-  color:white;
-  border:none;
-  padding:10px 22px;
-  border-radius:4px;
-  cursor:pointer;
-}
-
-.result-area{
-  background:white;
-  margin:12px;
-  height:350px;
-  border:1px solid #ddd;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-
-.placeholder{
-  color:#666;
-  font-size:18px;
-}
-/* Results table */
-.result-area {
-  background: white;
-  margin: 12px;
-  min-height: 350px;
-  border: 1px solid #ddd;
+/* ── Page shell ── */
+.weighment-page {
+  height: 100vh;
+  max-height: 100vh;
+  background: #f0f2f5;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow: auto;
+  flex-direction: column;
+  overflow: hidden;   /* entire page locked — inner areas scroll */
 }
 
-.result-table-wrap {
+/* ── Header — same style as InwardOutwardNote page ── */
+.gin-search-header {
   width: 100%;
-  overflow-x: auto;
-}
-
-.result-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.result-table th {
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  padding: 10px 12px;
-  text-align: left;
-  white-space: nowrap;
-  font-weight: 600;
-  color: #333;
-  position: sticky;
-  top: 0;
-}
-
-.result-table td {
-  border: 1px solid #e8e8e8;
-  padding: 9px 12px;
-  white-space: nowrap;
-  color: #444;
-}
-
-.result-table tbody tr:hover {
-  background: #f0f7ff;
-}
-
-.result-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
-
-.result-table tbody tr:nth-child(even):hover {
-  background: #f0f7ff;
-}
-
-/* ── Inline edit inputs ── */
-.inline-input {
-  height: 30px;
-  border: 1px solid #91c0f8;
-  border-radius: 3px;
-  padding: 0 6px;
-  font-size: 12px;
-  width: 110px;
+  min-height: 48px;
   background: #fff;
-  box-sizing: border-box;
-}
-
-.inline-date  { width: 130px; }
-.inline-num   { width: 70px; }
-
-.inline-readonly {
-  background: #f0f0f0;
-  color: #888;
-  cursor: not-allowed;
-}
-
-/* ── Row highlight when editing ── */
-.editing-row {
-  background: #fffbe6 !important;
-}
-
-/* ── Action buttons column ── */
-.action-cell {
-  white-space: nowrap;
   display: flex;
-  gap: 6px;
   align-items: center;
-  padding: 6px 10px !important;
-  border: 1px solid #e8e8e8;
+  justify-content: space-between;
+  padding: 6px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.edit-row-btn,
-.delete-row-btn,
-.save-row-btn,
-.cancel-row-btn {
-  border: none;
-  border-radius: 3px;
-  padding: 5px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.edit-row-btn   { background: #0d6efd; color: #fff; }
-.edit-row-btn:hover { background: #0b5ed7; }
-
-.delete-row-btn { background: #dc3545; color: #fff; }
-.delete-row-btn:hover { background: #b02a37; }
-
-.save-row-btn   { background: #198754; color: #fff; }
-.save-row-btn:hover { background: #146c43; }
-
-.cancel-row-btn { background: #6c757d; color: #fff; }
-.cancel-row-btn:hover { background: #565e64; }
-
-/* ── ADD THESE STYLES TO YOUR EXISTING WeighmentSearch.css ── */
-
-/* Create dropdown wrapper */
-.create-dropdown-wrap {
-  position: relative;
-  display: inline-block;
-}
-
+/* ── Create button ── */
 .create-btn {
-  background: #1a73e8;
+  background: #2563eb;
   color: #fff;
   border: none;
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
   transition: background 0.2s;
+  white-space: nowrap;
 }
+.create-btn:hover { background: #1d4ed8; }
 
-.create-btn:hover {
-  background: #1558b0;
-}
-
+/* ── Create dropdown ── */
+.create-dropdown-wrap { position: relative; display: inline-block; }
 .create-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -260,145 +56,215 @@
   border: 1px solid #dde3ec;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  min-width: 180px;
+  min-width: 170px;
   z-index: 999;
   overflow: hidden;
   animation: menuSlide 0.15s ease;
 }
-
 @keyframes menuSlide {
-  from { opacity: 0; transform: translateY(-6px); }
+  from { opacity: 0; transform: translateY(-5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .create-menu-item {
   display: block;
   width: 100%;
-  padding: 11px 18px;
+  padding: 9px 16px;
   text-align: left;
   background: transparent;
   border: none;
-  font-size: 14px;
-  color: #2c3e50;
+  border-bottom: 1px solid #f0f4f8;
+  font-size: 13px;
+  color: #1e293b;
   cursor: pointer;
   transition: background 0.15s;
-  border-bottom: 1px solid #f0f4f8;
-}
-
-.create-menu-item:last-child {
-  border-bottom: none;
-}
-
-.create-menu-item:hover {
-  background: #f0f6ff;
-  color: #1a73e8;
-  font-weight: 600;
-}
-
-/* ════════════════════════════════════════════════
-   ADDITIONS — Append to your existing WeighmentSearch.css
-   Covers: expand button, detail panel, badges, create dropdown
-════════════════════════════════════════════════ */
-
-/* ── Create dropdown ── */
-.create-dropdown-wrap { position: relative; display: inline-block; }
-.create-btn {
-  background: #1a73e8; color: #fff; border: none;
-  padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 600;
-  cursor: pointer; display: flex; align-items: center; gap: 4px;
-}
-.create-btn:hover { background: #1558b0; }
-.create-menu {
-  position: absolute; top: calc(100% + 4px); right: 0;
-  background: #fff; border: 1px solid #dde3ec; border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12); min-width: 180px; z-index: 999; overflow: hidden;
-}
-.create-menu-item {
-  display: block; width: 100%; padding: 11px 18px; text-align: left;
-  background: transparent; border: none; border-bottom: 1px solid #f0f4f8;
-  font-size: 14px; color: #2c3e50; cursor: pointer; transition: background 0.15s;
 }
 .create-menu-item:last-child { border-bottom: none; }
-.create-menu-item:hover { background: #f0f6ff; color: #1a73e8; font-weight: 600; }
+.create-menu-item:hover { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
 
-/* ── Expand button ── */
-.ws-expand-btn {
-  background: #e8f0fe; border: 1px solid #c5d8fc; border-radius: 4px;
-  width: 26px; height: 26px; font-size: 10px; cursor: pointer; color: #1a73e8;
-  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
-}
-.ws-expand-btn.open { background: #1a73e8; color: #fff; border-color: #1a73e8; }
-.ws-expand-btn:hover { opacity: 0.82; }
-
-/* ── Row states ── */
-tr.expanded-row > td { background: #f0f6ff !important; }
-tr.editing-row  > td { background: #fffbe6 !important; }
-
-/* ── Badges ── */
-.ws-status-badge, .ws-type-badge {
-  display: inline-block; padding: 2px 10px; border-radius: 12px;
-  font-size: 11px; font-weight: 700;
-}
-.ws-status-badge.open    { background: #d1fae5; color: #065f46; }
-.ws-status-badge.closed  { background: #fee2e2; color: #991b1b; }
-.ws-type-badge.inward    { background: #dbeafe; color: #1e40af; }
-.ws-type-badge.outward   { background: #fef3c7; color: #92400e; }
-
-/* ── Inline inputs ── */
-.ws-inline {
-  height: 28px; border: 1px solid #91c0f8; border-radius: 3px;
-  padding: 0 6px; font-size: 12px; width: 120px; background: #fff; outline: none;
-}
-.ws-inline:focus { border-color: #1a73e8; }
-.ws-inline.ws-date { width: 130px; }
-.ws-inline.ws-num  { width: 80px; }
-.ws-inline.readonly { background: #f5f7fa; color: #8896ab; cursor: not-allowed; }
-
-/* action cell */
-.action-cell { white-space: nowrap; }
-.save-row-btn, .cancel-row-btn, .edit-row-btn, .delete-row-btn {
-  border: none; border-radius: 4px; padding: 5px 10px;
-  font-size: 11px; font-weight: 600; cursor: pointer; margin-right: 3px;
-}
-.save-row-btn   { background: #28a745; color: #fff; }
-.cancel-row-btn { background: #6c757d; color: #fff; }
-.edit-row-btn   { background: #0d6efd; color: #fff; }
-.delete-row-btn { background: #dc3545; color: #fff; }
-.save-row-btn:hover   { background: #218838; }
-.cancel-row-btn:hover { background: #565e64; }
-.edit-row-btn:hover   { background: #0b5ed7; }
-.delete-row-btn:hover { background: #b02a37; }
-
-/* ── DETAIL PANEL ── */
-.ws-detail-row > td { padding: 0 !important; background: #f8faff !important; }
-.ws-detail-panel {
-  padding: 20px 24px; border-top: 2px solid #1a73e8; border-bottom: 2px solid #1a73e8;
-  background: #f8faff;
-}
-.ws-detail-header {
-  font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
-  text-transform: uppercase; color: #1a73e8; margin-bottom: 14px;
-}
-.ws-detail-grid {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 18px;
-}
-.ws-detail-field { display: flex; flex-direction: column; gap: 2px; }
-.ws-detail-label {
-  font-size: 10px; font-weight: 700; color: #6b7a99;
-  text-transform: uppercase; letter-spacing: 0.4px;
-}
-.ws-detail-value {
-  font-size: 13px; color: #1a2540; font-weight: 500;
-  background: #fff; border: 1px solid #e4e8f0;
-  border-radius: 4px; padding: 4px 8px; min-height: 28px;
+/* ── Search panel — compact ── */
+.search-panel {
+  background: #fff;
+  margin: 8px 10px 0;
+  padding: 10px 12px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  flex-shrink: 0;
 }
 
-/* ── old-btn ── */
+/* 9 fields across in 3 rows × 3 cols, then compact */
+.search-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 6px 8px;
+}
+
+/* ── Filter field — compact ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field input,
+.field select {
+  height: 28px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  padding: 0 7px;
+  font-size: 11px;
+  color: #111827;
+  background: #fff;
+  outline: none;
+  width: 100%;
+}
+.field input:focus,
+.field select:focus { border-color: #2563eb; }
+.field input::placeholder { color: #bdc6d0; font-size: 10px; }
+
+/* ── Bottom actions — compact ── */
+.bottom-actions {
+  margin-top: 7px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.reset-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 5px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+.reset-btn:hover { background: #e2e8f0; }
+
+.apply-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 5px 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.apply-btn:hover { background: #1d4ed8; }
+
+/* ── Result area — fills remaining screen, no outer scroll ── */
+.result-area {
+  background: white;
+  margin: 6px 10px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.placeholder {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: auto;
+  padding: 32px;
+  text-align: center;
+}
+
+/* ── Table wrapper — scrolls inside, not the page ── */
+.result-table-wrap {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Table ── */
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 900px;   /* keeps columns from squashing on wide screens */
+}
+
+.result-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.result-table th {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.result-table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 7px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  color: #111827;
+  font-size: 12px;
+}
+
+/* Weighment No column — allow badge to show fully */
+.result-table td:nth-child(2) {
+  max-width: none;
+  white-space: nowrap;
+}
+
+.result-table tbody tr:last-child td { border-bottom: none; }
+.result-table tbody tr:hover { background: #f0f7ff; cursor: pointer; }
+.result-table tbody tr:nth-child(even) { background: #fafbfc; }
+.result-table tbody tr:nth-child(even):hover { background: #f0f7ff; }
+
+/* ── Misc leftovers (keep for compatibility) ── */
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.weighment-header { display: none; }
 .old-btn {
   background: #fff; color: #5a6785; border: 1px solid #c8d0e0;
-  padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+  padding: 5px 12px; border-radius: 5px; font-size: 12px; cursor: pointer;
 }
-.old-btn:hover { background: #f0f4ff; }
+.checkbox-wrap { display: flex; gap: 8px; align-items: center; }
+.editing-row { background: #fffbe6 !important; }
+.action-cell { white-space: nowrap; }
 
-@media (max-width: 1100px) { .ws-detail-grid { grid-template-columns: repeat(4,1fr); } }
-@media (max-width: 800px)  { .ws-detail-grid { grid-template-columns: repeat(2,1fr); } }
+/* ── Responsive ── */
+@media (max-width: 1200px) { .search-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (max-width: 900px)  { .search-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  {
+  .search-grid { grid-template-columns: repeat(2, 1fr); }
+  .search-panel { margin: 6px 6px 0; padding: 8px; }
+  .result-area  { margin: 4px 6px 6px; }
+}
+@media (max-width: 420px)  { .search-grid { grid-template-columns: 1fr; } }

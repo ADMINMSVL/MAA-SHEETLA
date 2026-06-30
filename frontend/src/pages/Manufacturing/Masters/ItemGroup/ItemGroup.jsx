@@ -46,7 +46,7 @@ const ItemGroup = () => {
 
   const fetchData = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/item-types`);
+      const res = await axios.get(`${API_URL}/api/item-group`);
       setData(res.data);
       setFiltered(res.data);
     } catch (err) { console.log(err); }
@@ -89,7 +89,7 @@ const ItemGroup = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this item group?")) return;
-    try { await axios.delete(`${API_URL}/api/item-type/${id}`); fetchData(); }
+    try { await axios.delete(`${API_URL}/api/item-group/${id}`); fetchData(); }
     catch (err) { console.log(err); }
   };
 
@@ -100,7 +100,7 @@ const ItemGroup = () => {
 
   const handleUpdate = async (id) => {
     try {
-      await axios.put(`${API_URL}/api/item-type/${id}`, editData);
+      await axios.put(`${API_URL}/api/item-group/${id}`, editData);
       setEditId(null);
       fetchData();
     } catch (err) { console.log(err); }
@@ -112,7 +112,7 @@ const ItemGroup = () => {
 
       <div className="transaction-topbar">
         <h1>Item Group</h1>
-        <button className="create-btn" onClick={() => navigate("/create-item-type")}>Create ▼</button>
+        <button className="create-btn" onClick={() => navigate("/create-item-group")}>Create ▼</button>
       </div>
 
       <div className="search-container">

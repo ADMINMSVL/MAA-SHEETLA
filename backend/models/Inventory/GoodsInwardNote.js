@@ -20,8 +20,13 @@ const goodsInwardNoteSchema = new mongoose.Schema({
   /* ── PO Reference ── */
   poCpoNo:             String,
 
-  /* ── Date ── */
-  ginDate:             String,
+  /* ── Entry date / time — manually entered by the user ── */
+  ginDate:             String,   // Entry date (YYYY-MM-DD)
+  entryTime:           String,   // Gate entry time (HH:MM) — entered manually
+
+  /* ── Exit / Closed date & time — manually entered when status → Closed ── */
+  exitTime:            String,   // Closed time (HH:MM:SS) — entered manually
+  closedDate:          String,   // Closed date (YYYY-MM-DD) — entered manually
 
   /* ── Party ── */
   partyCode:           String,
@@ -38,7 +43,16 @@ const goodsInwardNoteSchema = new mongoose.Schema({
   /* ── Challan / Vehicle ── */
   challanInvoiceNo:    String,
   challanDate:         String,
+  challanTime:         String,   // HH:MM — entered manually alongside challanDate
   vehicleNo:           String,
+
+  /* ── Closed timestamp — composed from closedDate + closedTime ── */
+  closedAt:            String,   // ISO datetime string composed from manual closedDate + closedTime
+
+  /* ── Weights (manual entry) ── */
+  grossWeight:         Number,
+  tareWeight:          Number,
+  netWeight:           Number,
 
   /* ── Notes ── */
   remarks:             String,

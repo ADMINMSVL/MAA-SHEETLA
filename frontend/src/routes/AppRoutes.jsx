@@ -15,7 +15,6 @@ import GINDetail             from "../pages/Manufacturing/Inventory/InwardOutwar
 import GoodsReceiptNote      from "../pages/Manufacturing/Inventory/GoodsReceiptNote/GoodsReceiptNote";
 import DirectGRN             from "../pages/Manufacturing/Inventory/DirectGRN/DirectGRN";
 import CreateDirectGRN       from "../pages/Manufacturing/Inventory/DirectGRN/CreateDirectGRN";
-import DirectGRNDetail       from "../pages/Manufacturing/Inventory/DirectGRN/DirectGRNDetail";
 import ItemInventory         from "../pages/Manufacturing/Inventory/ItemInventory/ItemInventory";
 import CreateGoodsInwardNote from "../pages/Manufacturing/Inventory/CreateInventory/CreateGIN";
 import Transaction           from "../pages/Manufacturing/Masters/Transaction/Transaction";
@@ -25,12 +24,14 @@ import CreateDocumentSequence from "../pages/Manufacturing/Masters/DocumentSeque
 import WeighmentSearch       from "../pages/Manufacturing/Inventory/Weighment/WeighmentSearch";
 
 import {
-  CreateWeighment,
   CreateInwardWeighment,
   CreateOutwardWeighment,
   CreateGeneralWeighment,
-  WeighmentDetail
+  CreateInwardWeighmentForm,
+  CreateOutwardWeighmentForm,
+  // WeighmentDetail
 } from "../pages/Manufacturing/Inventory/Weighment/CreateWeighment/WeighmentPages";
+import WeighmentDetail        from"../pages/Manufacturing/Inventory/Weighment/WeighmentDetail/WeighmentDetail";
 import ItemConversion         from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversion";
 import CreateItemConversion   from "../pages/Manufacturing/Inventory/ItemConversion/CreateItemConversion";
 import ItemConversionDetail   from "../pages/Manufacturing/Inventory/ItemConversion/ItemConversionDetail";
@@ -69,8 +70,8 @@ import CreateSite     from "../pages/Manufacturing/Masters/SiteMaster/CreateSite
 // MASTERS — batch 2
 import ItemCategory        from "../pages/Manufacturing/Masters/ItemCategory/Itemcategory";
 import CreateItemCategory  from "../pages/Manufacturing/Masters/ItemCategory/CreateItemCategory";
-import ItemGroup           from "../pages/Manufacturing/Masters/ItemType/ItemType";
-import CreateItemGroup     from "../pages/Manufacturing/Masters/ItemType/CreateItemType";
+import ItemGroup           from "../pages/Manufacturing/Masters/ItemGroup/ItemGroup";
+import CreateItemGroup     from "../pages/Manufacturing/Masters/ItemGroup/CreateItemGroup";
 import TaxDetails          from "../pages/Manufacturing/Masters/TaxDetails/TaxDetails";
 import CreateTaxDetails    from "../pages/Manufacturing/Masters/TaxDetails/CreateTaxDetails";
 import ProductionDetails   from "../pages/Manufacturing/Masters/ProductionDetails/ProductionDetails";
@@ -81,7 +82,15 @@ import ItemDetail          from "../pages/Manufacturing/Masters/ItemMaster/ItemD
 import CreateItemConversionMaster from "../pages/Manufacturing/Masters/ItemConversion/CreateItemConversionMaster";
 import ItemConversionMasterPage   from "../pages/Manufacturing/Masters/ItemConversion/ItemConversionMasterPage";
 
-// MASTERS — batch 3 (NEW)
+// MASTERS — ItemClass (new)
+import ItemClass       from "../pages/Manufacturing/Masters/ItemClass/ItemClass";
+import CreateItemClass from "../pages/Manufacturing/Masters/ItemClass/CreateItemClass";
+
+// MASTERS — ItemTaxClass (new)
+import ItemTaxClass       from "../pages/Manufacturing/Masters/ItemTaxClass/ItemTaxClass";
+import CreateItemTaxClass from "../pages/Manufacturing/Masters/ItemTaxClass/CreateItemTaxClass";
+
+// MASTERS — batch 3
 import ServiceMaster       from "../pages/Manufacturing/Masters/ServiceMaster/ServiceMaster";
 import CreateServiceMaster from "../pages/Manufacturing/Masters/ServiceMaster/CreateServiceMaster";
 import ChargesMaster       from "../pages/Manufacturing/Masters/ChargesMaster/ChargesMaster";
@@ -119,16 +128,16 @@ const AppRoutes = () => {
       <Route path="/sales-contract/edit/:id" element={<SalesContractForm />} />
 
       {/* INVENTORY */}
-      <Route path="/inward-outward-note"      element={<InwardOutwardNote />} />
-      <Route path="/gin-detail/:id"           element={<GINDetail />} />
-      <Route path="/create-goods-inward-note" element={<CreateGoodsInwardNote />} />
-      <Route path="/goods-receipt-note"       element={<GoodsReceiptNote />} />
-      <Route path="/direct-grn"               element={<DirectGRN />} />
-      <Route path="/create-direct-grn"        element={<CreateDirectGRN />} />
-      <Route path="/direct-grn-details/:id"    element={<DirectGRNDetail />} />
-      <Route path="/item-inventory"           element={<ItemInventory />} />
-      <Route path="/item-Conversion"          element={<ItemConversion />} />
-      <Route path="/create-item-conversion"   element={<CreateItemConversion />} />
+      <Route path="/inward-outward-note"        element={<InwardOutwardNote />} />
+      <Route path="/gin-detail/:id"             element={<GINDetail />} />
+      <Route path="/create-goods-inward-note"   element={<CreateGoodsInwardNote />} />
+      <Route path="/goods-receipt-note"         element={<GoodsReceiptNote />} />
+      <Route path="/direct-grn"                 element={<DirectGRN />} />
+      <Route path="/create-direct-grn"          element={<CreateDirectGRN />} />
+      <Route path="/direct-grn-details/:id"     element={<CreateDirectGRN />} />
+      <Route path="/item-inventory"             element={<ItemInventory />} />
+      <Route path="/item-Conversion"            element={<ItemConversion />} />
+      <Route path="/create-item-conversion"     element={<CreateItemConversion />} />
       <Route path="/item-conversion-detail/:id" element={<ItemConversionDetail />} />
 
       {/* PROCUREMENT */}
@@ -140,34 +149,27 @@ const AppRoutes = () => {
       <Route path="/purchase-requisition-detail/:id" element={<PRDetail />} />
 
       {/* PRODUCTION */}
-      <Route path="/ccm-production"            element={<CCMProduction />} />
-      <Route path="/create-ccm-production"     element={<CreateCCMProduction />} />
-      <Route path="/ccm-detail/:id"            element={<CCMDetail />} />
-      <Route path="/rolling-production"        element={<RollingProduction />} />
-      <Route path="/create-rolling-production" element={<CreateRollingProduction />} />
-      <Route path="/rolling-detail/:id"        element={<RollingDetail />} />
-      <Route path="/bundling-production"       element={<BundlingProduction />} />
+      <Route path="/ccm-production"             element={<CCMProduction />} />
+      <Route path="/create-ccm-production"      element={<CreateCCMProduction />} />
+      <Route path="/ccm-detail/:id"             element={<CCMDetail />} />
+      <Route path="/rolling-production"         element={<RollingProduction />} />
+      <Route path="/create-rolling-production"  element={<CreateRollingProduction />} />
+      <Route path="/rolling-detail/:id"         element={<RollingDetail />} />
+      <Route path="/bundling-production"        element={<BundlingProduction />} />
       <Route path="/create-bundling-production" element={<CreateBundlingProduction />} />
-      <Route path="/bundling-detail/:id"       element={<BundlingDetail />} />
-      <Route path="/production-inventory"      element={<ProductionDashboard />} />
-      <Route path="/production-reports"        element={<ProductionInventory />} />
-      <Route path="/production-dashboard"      element={<ProductionReports />} />
+      <Route path="/bundling-detail/:id"        element={<BundlingDetail />} />
+      <Route path="/production-inventory"       element={<ProductionDashboard />} />
+      <Route path="/production-reports"         element={<ProductionInventory />} />
+      <Route path="/production-dashboard"       element={<ProductionReports />} />
 
       {/* WEIGHMENT */}
       <Route path="/weighment-search"         element={<WeighmentSearch />} />
-      {/* <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} /> */}
-      {/* <Route path="/create-weighment"         element={<CreateWeighment />} />
-      <Route path="/create-inward-weighment"  element={<CreateInwardWeighment />} />
-      <Route path="/create-outward-weighment" element={<CreateOutwardWeighment />} /> */}
-      {/* <Route path="/weighment/create"         element={<CreateWeighment />} /> */}
       <Route path="/weighment/create/inward"  element={<CreateInwardWeighment />} />
       <Route path="/weighment/create/outward" element={<CreateOutwardWeighment />} />
-      <Route
-          path="/weighment/create/general"
-          element={<CreateGeneralWeighment />}
-      />
+      <Route path="/weighment/create/general" element={<CreateGeneralWeighment />} />
       <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} />
-
+      <Route path="/weighment/create/inward/form"  element={<CreateInwardWeighmentForm />} />
+      <Route path="/weighment/create/outward/form" element={<CreateOutwardWeighmentForm />} />
       {/* MASTERS — existing */}
       <Route path="/document-sequence"        element={<DocumentSequence />} />
       <Route path="/create-document-sequence" element={<CreateDocumentSequence />} />
@@ -175,23 +177,27 @@ const AppRoutes = () => {
       <Route path="/create-transaction"       element={<CreateTransaction />} />
 
       {/* MASTERS — batch 1 */}
-      <Route path="/party-master"      element={<PartyMaster />} />
-      <Route path="/create-party"      element={<CreateParty />} />
-      <Route path="/party-detail/:id"  element={<PartyDetail />} />
-      <Route path="/item-master"       element={<ItemMaster />} />
-      <Route path="/create-item"       element={<CreateItem />} />
-      <Route path="/uom-master"        element={<UOMMaster />} />
-      <Route path="/create-uom"        element={<CreateUOM />} />
-      <Route path="/party-type"        element={<PartyType />} />
-      <Route path="/create-party-type" element={<CreatePartyType />} />
+      <Route path="/party-master"                  element={<PartyMaster />} />
+      <Route path="/create-party"                  element={<CreateParty />} />
+      <Route path="/party-detail/:id"              element={<PartyDetail />} />
+      <Route path="/item-master"                   element={<ItemMaster />} />
+      <Route path="/create-item"                   element={<CreateItem />} />
+      <Route path="/uom-master"                    element={<UOMMaster />} />
+      <Route path="/create-uom"                    element={<CreateUOM />} />
+      <Route path="/party-type"                    element={<PartyType />} />
+      <Route path="/create-party-type"             element={<CreatePartyType />} />
       <Route path="/item-conversion-master"        element={<ItemConversionMasterPage />} />
       <Route path="/create-item-conversion-master" element={<CreateItemConversionMaster />} />
 
       {/* MASTERS — batch 2 */}
       <Route path="/item-category"             element={<ItemCategory />} />
       <Route path="/create-item-category"      element={<CreateItemCategory />} />
-      <Route path="/item-type"                 element={<ItemGroup />} />
-      <Route path="/create-item-type"          element={<CreateItemGroup />} />
+      <Route path="/item-group"                 element={<ItemGroup />} />
+      <Route path="/create-item-group"          element={<CreateItemGroup />} />
+      <Route path="/item-class"                element={<ItemClass />} />
+      <Route path="/create-item-class"         element={<CreateItemClass />} />
+      <Route path="/item-tax-class"            element={<ItemTaxClass />} />
+      <Route path="/create-item-tax-class"     element={<CreateItemTaxClass />} />
       <Route path="/tax-details"               element={<TaxDetails />} />
       <Route path="/create-tax-details"        element={<CreateTaxDetails />} />
       <Route path="/production-details"        element={<ProductionDetails />} />
@@ -202,7 +208,7 @@ const AppRoutes = () => {
       <Route path="/create-site"               element={<CreateSite />} />
       <Route path="/item-detail/:id"           element={<ItemDetail />} />
 
-      {/* MASTERS — batch 3 (NEW) */}
+      {/* MASTERS — batch 3 */}
       <Route path="/service-master"        element={<ServiceMaster />} />
       <Route path="/create-service-master" element={<CreateServiceMaster />} />
       <Route path="/charges-master"        element={<ChargesMaster />} />

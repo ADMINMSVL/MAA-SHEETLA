@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
@@ -23,20 +23,16 @@ const CreateParty = () => {
     status:       "Active",
   });
 
-  const [partyTypes, setPartyTypes] = useState([]);
-  const [loading,    setLoading]    = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    axios.get(`${API_URL}/api/party-types`)
-      .then((res) => setPartyTypes(res.data.filter((t) => t.status === "Active")))
-      .catch((err) => console.log("Error loading party types:", err));
-  }, []);
+  /* Type is now a fixed list — no longer sourced from the Party Type master */
+  const PARTY_TYPE_OPTIONS = ["Supplier", "Customer", "Both"];
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
-    if (!formData.partyCode.trim() || !formData.partyName.trim() || !formData.pin.trim()) {
-      return alert("Party Code, Party Name and Pin are required.");
+    if (!formData.partyCode.trim() || !formData.partyName.trim()) {
+      return alert("Party Code and Party Name are required.");
     }
     try {
       setLoading(true);
@@ -79,24 +75,15 @@ const CreateParty = () => {
             <input type="text" name="partyName" value={formData.partyName} onChange={handleChange} placeholder="Full name" />
           </div>
 
-          {/* TYPE — loaded from API */}
+          {/* TYPE — fixed list (Supplier / Customer / Both) */}
           <div className="form-group">
-            <label>* Type</label>
+            <label>Type</label>
             <select name="type" value={formData.type} onChange={handleChange}>
               <option value="">- Select -</option>
-              {partyTypes.length > 0 ? (
-                partyTypes.map((pt) => (
-                  <option key={pt._id} value={pt.partyType}>{pt.partyType}</option>
-                ))
-              ) : (
-                <option disabled>No party types found — add in Party Type master</option>
-              )}
+              {PARTY_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
             </select>
-            {partyTypes.length === 0 && (
-              <span style={{ fontSize: "11px", color: "#e55", marginTop: "4px" }}>
-                Go to Masters → Party Type and create types first.
-              </span>
-            )}
           </div>
 
           <div className="form-group">
@@ -115,7 +102,7 @@ const CreateParty = () => {
           </div>
 
           <div className="form-group">
-            <label>* Pin</label>
+            <label>Pin</label>
             <input type="text" name="pin" value={formData.pin} onChange={handleChange} placeholder="PIN code" />
           </div>
 

@@ -42,7 +42,7 @@ router.post("/create-item-conversion-master", async (req, res) => {
 /* PUT update master */
 router.put("/item-conversion-master/:id", async (req, res) => {
   try {
-    const updated = await ItemConversionMaster.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ItemConversionMaster.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -122,16 +122,18 @@ router.post("/item-conversion", async (req, res) => {
 /* GET all with filters */
 router.get("/item-conversion", async (req, res) => {
   try {
-    const { fromDate, toDate, icNo, vehicleNo, itemCode } = req.query;
+    const { fromDate, toDate, icNo, vehicleNo, itemCode, status, transactionCategory } = req.query;
     const q = {};
     if (fromDate || toDate) {
       q.conversionDate = {};
       if (fromDate) q.conversionDate.$gte = fromDate;
       if (toDate)   q.conversionDate.$lte = toDate;
     }
-    if (icNo)      q.icNo      = { $regex: icNo,      $options: "i" };
-    if (vehicleNo) q.vehicleNo = { $regex: vehicleNo, $options: "i" };
-    if (itemCode)  q.itemCode  = { $regex: itemCode,  $options: "i" };
+    if (icNo)                q.icNo               = { $regex: icNo,                $options: "i" };
+    if (vehicleNo)           q.vehicleNo          = { $regex: vehicleNo,           $options: "i" };
+    if (itemCode)            q.itemCode           = { $regex: itemCode,            $options: "i" };
+    if (status)              q.status             = { $regex: status,              $options: "i" };
+    if (transactionCategory) q.transactionCategory = { $regex: transactionCategory, $options: "i" };
 
     const data = await ItemConversion.find(q).sort({ createdAt: -1 });
     res.json(data);
@@ -150,7 +152,7 @@ router.get("/item-conversion/:id", async (req, res) => {
 /* PUT update */
 router.put("/item-conversion/:id", async (req, res) => {
   try {
-    const updated = await ItemConversion.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ItemConversion.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../PartyMaster/CreateParty.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
 const CreateUOM = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     uomName: "",
     status: "Active",
@@ -45,6 +48,7 @@ const CreateUOM = () => {
       <ModuleNavbar />
 
       <div className="create-header">
+        <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
         <h1>UOM Master</h1>
       </div>
 
@@ -79,12 +83,8 @@ const CreateUOM = () => {
         </div>
 
         <div className="action-buttons">
-          <button
-            className="submit-btn"
-            onClick={handleSubmit}
-          >
-            Submit
-          </button>
+          <button className="submit-btn" onClick={handleSubmit}>Submit</button>
+          <button className="cancel-btn" onClick={() => navigate(-1)}>Cancel</button>
         </div>
 
       </div>

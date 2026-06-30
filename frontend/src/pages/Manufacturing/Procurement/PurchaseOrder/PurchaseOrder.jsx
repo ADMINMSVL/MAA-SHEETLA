@@ -5,7 +5,7 @@ import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 import "./PurchaseOrder.css";
 
-const STATUS_OPTIONS = ["All", "Ordered", "Intransit", "Closed", "Cancelled"];
+const STATUS_OPTIONS = ["All", "Ordered", "Intransit", "Convert", "Partial", "Closed", "Cancelled"];
 
 /* Reusable typeahead */
 const TypeAhead = ({ value, onChange, suggestions, onSelect, placeholder }) => {
@@ -16,7 +16,9 @@ const TypeAhead = ({ value, onChange, suggestions, onSelect, placeholder }) => {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
-  const filtered = suggestions.filter((s) => s?.toLowerCase().includes(value.toLowerCase()));
+  const filtered = value
+    ? suggestions.filter((s) => s?.toLowerCase().includes(value.toLowerCase()))
+    : suggestions;
   return (
     <div style={{ position: "relative" }} ref={ref}>
       <input
@@ -26,10 +28,15 @@ const TypeAhead = ({ value, onChange, suggestions, onSelect, placeholder }) => {
         placeholder={placeholder || "Type to search…"}
         className="po-search-input"
       />
-      {show && value && filtered.length > 0 && (
+      {show && filtered.length > 0 && (
         <ul className="po-suggestion-list">
-          {filtered.map((s) => (
-            <li key={s} onMouseDown={() => { onSelect(s); setShow(false); }}>{s}</li>
+          {filtered.map((s, i) => (
+            <li
+              key={`${s}-${i}`}
+              onMouseDown={(e) => { e.preventDefault(); onSelect(s); setShow(false); }}
+            >
+              {s}
+            </li>
           ))}
         </ul>
       )}
@@ -42,83 +49,92 @@ const PurchaseOrder = () => {
   const [orders,   setOrders]   = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [parties,  setParties]  = useState([]);
+  const [transactionCategories, setTransactionCategories] = useState([]);
 
-  const [srchPoNo,   setSrchPoNo]   = useState("");
-  const [srchParty,  setSrchParty]  = useState("");
-  const [srchStatus, setSrchStatus] = useState("All");
+  const [srchPoNo,     setSrchPoNo]     = useState("");
+  const [srchParty,    setSrchParty]    = useState("");
+  const [srchTxnCat,   setSrchTxnCat]   = useState("");
+  const [srchStatus,   setSrchStatus]   = useState("All");
   const [srchDateFrom, setSrchDateFrom] = useState("");
   const [srchDateTo,   setSrchDateTo]   = useState("");
 
-const fetchOrders = async () => {
-  try {
-    const res = await axios.get(`${API_URL}/api/purchase-orders`);
+  const ACTIVE_STATUSES = ["Ordered", "Intransit", "Convert", "Partial"];
 
-    setOrders(res.data);
+  const fetchOrders = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/purchase-orders`);
+      setOrders(res.data);
 
-    // Default view: hide Closed & Cancelled
-    const activePOs = res.data.filter(
-      (po) => po.status !== "Closed" && po.status !== "Cancelled"
-    );
-
-    setFiltered(activePOs);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      // Default view: show all in-progress POs
+      const activePOs = res.data.filter((po) => ACTIVE_STATUSES.includes(po.status));
+      setFiltered(activePOs);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   const fetchMasters = async () => {
     try {
       const partyRes = await axios.get(`${API_URL}/api/parties`);
       setParties(partyRes.data.filter((p) => p.status === "Active"));
     } catch (err) { console.log(err); }
+    try {
+      const txnRes = await axios.get(`${API_URL}/api/transactions`);
+      setTransactionCategories(
+        (txnRes.data || []).filter((t) => {
+          if (t.status !== "Open") return false;
+          const mod = (t.module || "").toLowerCase();
+          const ent = (t.businessEntity || "").toLowerCase();
+          return (
+            mod.includes("purchase order") ||
+            mod.includes("procurement") ||
+            ent.includes("purchase order") ||
+            ent === "po" ||
+            ent === "req.po"
+          );
+        })
+      );
+    } catch (err) { console.log(err); }
   };
 
   useEffect(() => { fetchOrders(); fetchMasters(); }, []);
 
   const partyNames = [...new Set(parties.map((p) => p.partyName).filter(Boolean))].sort();
+  const txnCategoryLabels = [...new Set(transactionCategories.map((t) => t.categoryDescription).filter(Boolean))].sort();
 
   const handleSearch = () => {
+    // When "All" selected apply the active-statuses default unless a specific status is chosen
     let f =
-  srchStatus === "All"
-    ? orders.filter(
-        (po) =>
-          po.status !== "Closed" &&
-          po.status !== "Cancelled"
-      )
-    : [...orders];
+      srchStatus === "All"
+        ? orders.filter((po) => ACTIVE_STATUSES.includes(po.status))
+        : [...orders];
+
     if (srchPoNo)   f = f.filter((o) => o.poNo?.toLowerCase().includes(srchPoNo.toLowerCase()));
     if (srchParty)  f = f.filter((o) => o.partyName?.toLowerCase().includes(srchParty.toLowerCase()));
+    if (srchTxnCat) f = f.filter((o) => o.transactionCategory?.toLowerCase().includes(srchTxnCat.toLowerCase()));
     if (srchStatus && srchStatus !== "All") f = f.filter((o) => o.status === srchStatus);
     if (srchDateFrom) f = f.filter((o) => o.poDate >= srchDateFrom);
     if (srchDateTo)   f = f.filter((o) => o.poDate <= srchDateTo);
     setFiltered(f);
   };
 
-const handleReset = () => {
-  setSrchPoNo("");
-  setSrchParty("");
-  setSrchStatus("All");
-  setSrchDateFrom("");
-  setSrchDateTo("");
+  const handleReset = () => {
+    setSrchPoNo("");
+    setSrchParty("");
+    setSrchTxnCat("");
+    setSrchStatus("All");
+    setSrchDateFrom("");
+    setSrchDateTo("");
 
-  const activePOs = orders.filter(
-    (po) => po.status !== "Closed" && po.status !== "Cancelled"
-  );
-
-  setFiltered(activePOs);
-};
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this Purchase Order?")) return;
-    try {
-      await axios.delete(`${API_URL}/api/purchase-order/${id}`);
-      fetchOrders();
-    } catch (err) { console.log(err); }
+    const activePOs = orders.filter((po) => ACTIVE_STATUSES.includes(po.status));
+    setFiltered(activePOs);
   };
 
   const statusColor = (s) => {
     if (s === "Ordered")   return "#2563eb";
     if (s === "Intransit") return "#d97706";
+    if (s === "Convert")   return "#7c3aed";
+    if (s === "Partial")   return "#b45309";
     if (s === "Closed")    return "#16a34a";
     if (s === "Cancelled") return "#dc2626";
     return "#64748b";
@@ -157,6 +173,12 @@ const handleReset = () => {
           </div>
 
           <div className="po-field">
+            <label>Transaction Category</label>
+            <TypeAhead value={srchTxnCat} onChange={setSrchTxnCat}
+              suggestions={txnCategoryLabels} onSelect={setSrchTxnCat} placeholder="Type transaction category…" />
+          </div>
+
+          <div className="po-field">
             <label>Status</label>
             <select className="po-search-input" value={srchStatus}
               onChange={(e) => setSrchStatus(e.target.value)}>
@@ -183,7 +205,7 @@ const handleReset = () => {
         </div>
       </div>
 
-      {/* TABLE — columns: PO No | Date | Party | Type | Item | Qty | Amount | ETA | Status | Action */}
+      {/* TABLE */}
       <div className="po-table-card">
         <div className="po-table-wrap">
           <table className="po-table">
@@ -193,48 +215,52 @@ const handleReset = () => {
                 <th>PO No</th>
                 <th>Date</th>
                 <th>Party</th>
+                <th>Transaction Category</th>
                 <th>Type</th>
                 <th>Item</th>
                 <th>Qty</th>
                 <th>Amount</th>
                 <th>ETA</th>
                 <th>Status</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length > 0 ? (
                 filtered.map((po, i) => (
-                  <tr key={po._id}>
+                  <tr
+                    key={po._id}
+                    onClick={() => navigate(`/purchase-order-detail/${po._id}`)}
+                    style={{ cursor: "pointer" }}
+                    title="Click to view details"
+                  >
                     <td>{i + 1}</td>
                     <td>
-                      <button className="po-no-link"
-                        onClick={() => navigate(`/purchase-order-detail/${po._id}`)}
-                        title="Click to view full details">
+                      {/* PO No highlighted as a link-style text */}
+                      <span
+                        className="po-no-link"
+                        style={{ pointerEvents: "none" }}
+                      >
                         {po.poNo}
-                      </button>
+                      </span>
                     </td>
                     <td>{po.poDate ? po.poDate.slice(0, 10) : ""}</td>
                     <td>{po.partyName}</td>
+                    <td>{po.transactionCategory || "-"}</td>
                     <td>{po.poType}</td>
                     <td>{po.items?.map((it) => it.itemName).filter(Boolean).join(", ") || "-"}</td>
                     <td>{po.items?.reduce((s, it) => s + Number(it.qty || 0), 0) || 0}</td>
                     <td>₹ {Number(po.netAmount || 0).toLocaleString("en-IN")}</td>
                     <td>{po.eta ? po.eta.slice(0, 10) : "-"}</td>
                     <td>
-                      <span className="po-status-badge"
+                      <span
+                        className="po-status-badge"
                         style={{
                           background: statusColor(po.status) + "22",
                           color: statusColor(po.status),
-                        }}>
+                        }}
+                      >
                         {po.status}
                       </span>
-                    </td>
-                    <td>
-                      <button className="po-act-btn po-view"
-                        onClick={() => navigate(`/purchase-order-detail/${po._id}`)}>
-                        View
-                      </button>
                     </td>
                   </tr>
                 ))

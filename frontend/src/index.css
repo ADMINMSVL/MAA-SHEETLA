@@ -25,6 +25,15 @@
   --radius:  12px;
   --shadow:  0 4px 24px rgba(0,0,0,0.08);
   --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+
+  /* Shared back-button tokens */
+  --back-btn-bg:       #2563eb;
+  --back-btn-bg-hover: #1d4ed8;
+  --back-btn-color:    #ffffff;
+  --back-btn-radius:   8px;
+  --back-btn-h:        34px;
+  --back-btn-px:       14px;
+  --back-btn-font:     13px;
 }
 
 html, body, #root {
@@ -48,6 +57,40 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+/* ══════════════════════════════════════════
+   UNIVERSAL BACK BUTTON  — used by ALL pages
+   Class: .app-back-btn
+   (Replaces: back-btn, po-back-btn, pod-back-btn, gd-back-btn)
+══════════════════════════════════════════ */
+.app-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: var(--back-btn-h);
+  padding: 0 var(--back-btn-px);
+  background: var(--back-btn-bg);
+  color: var(--back-btn-color);
+  border: none;
+  border-radius: var(--back-btn-radius);
+  font-size: var(--back-btn-font);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.18);
+  flex-shrink: 0;
+}
+.app-back-btn:hover {
+  background: var(--back-btn-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37,99,235,0.28);
+}
+.app-back-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(37,99,235,0.18);
 }
 
 /* ══════════════════════════════════════════

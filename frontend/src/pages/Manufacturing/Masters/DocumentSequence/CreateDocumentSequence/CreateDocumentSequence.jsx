@@ -15,6 +15,15 @@ const buildDatePart = (format) => {
 
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed)
+       e.g. 01-Jan-2026 → 26001, 31-Dec-2026 → 26365 */
+    const year   = today.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((today - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;
 };
 
@@ -364,6 +373,7 @@ const CreateDocumentSequence = () => {
               <option value="dd/mm/yy">dd/mm/yy</option>
               <option value="mm/dd/yy">mm/dd/yy</option>
               <option value="yy/mm/dd">yy/mm/dd</option>
+              <option value="julian">Julian (YY + DDD) — e.g. 26001</option>
             </select>
           </div>
 
@@ -380,7 +390,11 @@ const CreateDocumentSequence = () => {
               </div>
               <small className="cds-preview-hint">
                 Format: Prefix
-                {formData.useDateFragment ? " + date" : ""}
+                {formData.useDateFragment
+                  ? formData.sequenceFormat === "julian"
+                    ? " + Julian date (YY+DDD)"
+                    : " + date"
+                  : ""}
                 {" + "}
                 {Math.max(1, Number(formData.sequenceDigits) || 2)}-digit sequence no
               </small>

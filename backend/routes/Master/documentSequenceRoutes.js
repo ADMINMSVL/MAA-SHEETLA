@@ -11,6 +11,15 @@ const buildDatePart = (format) => {
 
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed)
+       e.g. 01-Jan-2026 → 26001, 31-Dec-2026 → 26365, 31-Dec-2024 → 24366 */
+    const year   = today.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((today - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;  // default dd/mm/yy
 };
 
@@ -64,7 +73,7 @@ router.post("/create-document-sequence", async (req, res) => {
           generatedCode,
         },
       },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: "after", upsert: true, runValidators: true }
     );
 
     res.status(201).json({ success: true, message: "Document Sequence Saved", generatedCode, data: newData });
@@ -129,7 +138,7 @@ router.put("/document-sequence/:id", async (req, res) => {
           generatedCode,
         },
       },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     res.json({ success: true, message: "Document Sequence Updated", generatedCode, data: updated });

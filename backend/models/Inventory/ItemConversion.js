@@ -7,7 +7,8 @@ const conversionRowSchema = new mongoose.Schema({
   inventoryCode: { type: String, default: "" },  // item code from Item Master
   uom:           { type: String, default: "" },   // auto from Item Master
   raQty:         { type: Number, default: 0 },    // manual entry (was rQty)
-  rate:          { type: Number, default: 0 },    // auto from Item Master
+  rateDiff:      { type: Number, default: 0 },    // from Item Master rateDiff field
+  rate:          { type: Number, default: 0 },    // baseRate + rateDiff (auto-calculated)
   amount:        { type: Number, default: 0 },    // raQty * rate (auto-calculated)
 
   /* legacy fields (kept for backward compatibility) */
@@ -20,6 +21,9 @@ const itemConversionSchema = new mongoose.Schema({
 
   /* ── Document No ── */
   icNo:          { type: String, required: true },
+
+  /* ── Transaction Category (master-driven; determines IC No prefix) ── */
+  transactionCategory: { type: String, default: "" },
 
   /* ── Reference from Inward note ── */
   ginId:         { type: String, default: "" },

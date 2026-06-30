@@ -57,7 +57,7 @@ router.get("/rolling-production/:id", async (req, res) => {
 /* ── UPDATE ── */
 router.put("/rolling-production/:id", async (req, res) => {
   try {
-    const updated = await RollingProduction.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updated = await RollingProduction.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after", runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: "Record not found" });
     res.json({ success: true, message: "Updated successfully", data: updated });
   } catch (err) {

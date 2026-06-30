@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const ItemType = require("../../models/Master/Itemtype");
+const ItemType = require("../../models/Master/ItemGroup");
 
-router.post("/create-item-type", async (req, res) => {
+router.post("/create-item-group", async (req, res) => {
   try {
     const doc = new ItemType(req.body);
     await doc.save();
@@ -12,7 +12,7 @@ router.post("/create-item-type", async (req, res) => {
   }
 });
 
-router.get("/item-types", async (req, res) => {
+router.get("/item-group", async (req, res) => {
   try {
     const data = await ItemType.find().sort({ createdAt: -1 });
     res.status(200).json(data);
@@ -21,16 +21,16 @@ router.get("/item-types", async (req, res) => {
   }
 });
 
-router.put("/item-type/:id", async (req, res) => {
+router.put("/item-group/:id", async (req, res) => {
   try {
-    const updated = await ItemType.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ItemType.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.delete("/item-type/:id", async (req, res) => {
+router.delete("/item-group/:id", async (req, res) => {
   try {
     await ItemType.findByIdAndDelete(req.params.id);
     res.json({ message: "Deleted Successfully" });

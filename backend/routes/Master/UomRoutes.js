@@ -44,7 +44,7 @@ router.put("/uom/:id", async (req, res) => {
       await UOM.findByIdAndUpdate(
         req.params.id,
         req.body,
-        { new: true }
+        { returnDocument: "after" }
       );
 
     res.json({

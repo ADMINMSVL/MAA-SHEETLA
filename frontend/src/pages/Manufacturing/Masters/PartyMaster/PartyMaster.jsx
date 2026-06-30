@@ -14,13 +14,16 @@ const PARTY_FIELDS = [
   { key: "city", label: "City", required: false },
   { key: "addressLine1", label: "Address Line 1", required: false },
   { key: "addressLine2", label: "Address Line 2", required: false },
-  { key: "pin", label: "Pin", required: true },
+  { key: "pin", label: "Pin", required: false },
   { key: "gstNo", label: "GST No", required: false },
   { key: "mobile", label: "Mobile", required: false },
   { key: "payTerms", label: "Pay Terms", required: false },
   { key: "creditDays", label: "Credit Days", required: false },
   { key: "status", label: "Status", required: false, default: "Active" },
 ];
+
+/* Type is a fixed list — no longer sourced from a Type master */
+const PARTY_TYPE_OPTIONS = ["Supplier", "Customer", "Both"];
 
 const getValue = (item, keys) => {
   const keyList = Array.isArray(keys) ? keys : [keys];
@@ -36,7 +39,6 @@ const PartyMaster = () => {
 
   const [parties, setParties] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
-  const [partyTypes, setPartyTypes] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   /* SEARCH FIELDS */
@@ -56,18 +58,8 @@ const PartyMaster = () => {
     }
   };
 
-  const fetchPartyTypes = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/party-types`);
-      setPartyTypes(res.data.filter((item) => item.status === "Active"));
-    } catch (error) {
-      console.log("Error loading party types:", error);
-    }
-  };
-
   useEffect(() => {
     fetchParties();
-    fetchPartyTypes();
   }, []);
 
   /* SEARCH */
@@ -133,10 +125,8 @@ const PartyMaster = () => {
             <label>Type</label>
             <select value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">- Select -</option>
-              {partyTypes.map((item) => (
-                <option key={item._id} value={item.partyType}>
-                  {item.partyType}
-                </option>
+              {PARTY_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
           </div>

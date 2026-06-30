@@ -192,7 +192,7 @@ router.put("/purchase-requisition/:id", async (req, res) => {
     const updated = await PurchaseRequisition.findByIdAndUpdate(
       req.params.id,
       update,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {

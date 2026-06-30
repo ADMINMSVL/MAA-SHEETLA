@@ -5,87 +5,57 @@ import "./ItemInventory.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
-const GIN_API = `${API_URL}/api/goods-inward-note`;
-const IC_API  = `${API_URL}/api/item-conversion`;
-const ITEM_API = `${API_URL}/api/items`;
+/* ── API endpoints ── */
+const DGRN_API     = `${API_URL}/api/direct-grn`;
+const ITEMS_API    = `${API_URL}/api/items`;
+const CAT_API      = `${API_URL}/api/item-categories`;
+const GROUP_API    = `${API_URL}/api/item-group`;
 
-/* ── helpers ── */
-const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtQty = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-const today = new Date().toISOString().split("T")[0];
-const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+/* ── Item type options (matches master) ── */
+const ITEM_TYPE_OPTIONS = [
+  "Raw Material",
+  "Semi Finished",
+  "Finished Goods",
+  "Consumables",
+  "Packing Material",
+  "Scrap",
+  "Service",
+];
 
-const blankFilters = {
-  itemCode: "",
-  itemName: "",
-  itemGroup: "",
-  fromDate: thirtyDaysAgo,
-  toDate: today,
-  transactionCategory: "",
-  vehicleEntry: "",
+/* ── UOM conversion table: baseUOM → { actualUOM, factor }
+   factor = how many base units make 1 actual unit
+   e.g. 1 MT = 1000 KG  →  KG is base, factor=1000
+   Add more rows as needed for your business. ── */
+const UOM_CONVERSION = {
+  KG:   { actualUOM: "MT",  factor: 1000 },
+  MT:   { actualUOM: "MT",  factor: 1    },
+  PCS:  { actualUOM: "PCS", factor: 1    },
+  BAG:  { actualUOM: "MT",  factor: 50   },   // 50 KG bags → MT
+  NOS:  { actualUOM: "NOS", factor: 1    },
+  LTR:  { actualUOM: "KL",  factor: 1000 },
+  GM:   { actualUOM: "KG",  factor: 1000 },
 };
 
-/* ── stock aggregator ──
-   Builds per-item stock from GIN items arrays.
-   Inward GINs ADD stock, Outward GINs SUBTRACT.
-*/
-const buildStockMap = (ginRecords) => {
-  const map = {};
+const toActual = (qty, uom) => {
+  const conv = UOM_CONVERSION[uom?.toUpperCase?.()];
+  if (!conv || conv.factor === 1) return { actualUOM: uom || "-", actualQty: qty };
+  return { actualUOM: conv.actualUOM, actualQty: qty / conv.factor };
+};
 
-  const ensure = (code, name, uom) => {
-    if (!map[code]) {
-      map[code] = {
-        itemCode: code,
-        itemName: name || code,
-        uom: uom || "",
-        inwardQty: 0,
-        outwardQty: 0,
-        inwardValue: 0,
-        outwardValue: 0,
-        transactions: [],
-      };
-    }
-  };
+/* ── Number formatters ── */
+const fmtQty = (n, d = 3) =>
+  Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt2 = (n) =>
+  Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  ginRecords.forEach((gin) => {
-    const isInward = (gin.vehicleEntry || gin.inOutType || "").toLowerCase() === "inward";
-    const items = gin.items || [];
-    items.forEach((item) => {
-      const code = item.itemCode || item.itemName || "UNKNOWN";
-      const name = item.itemName || code;
-      const uom  = item.uom || "";
-      const qty  = Number(item.qty  || 0);
-      const rate = Number(item.rate || 0);
-      const val  = qty * rate;
-
-      ensure(code, name, uom);
-
-      if (isInward) {
-        map[code].inwardQty   += qty;
-        map[code].inwardValue += val;
-      } else {
-        map[code].outwardQty   += qty;
-        map[code].outwardValue += val;
-      }
-
-      map[code].transactions.push({
-        date:     gin.ginDate || "-",
-        ginNo:    gin.ginNo   || "-",
-        type:     isInward ? "Inward" : "Outward",
-        qty,
-        rate,
-        value: val,
-        vendor: gin.vendorName || gin.partyName || "-",
-        status: gin.status || "-",
-      });
-    });
-  });
-
-  return Object.values(map).map((s) => ({
-    ...s,
-    closingQty:   s.inwardQty - s.outwardQty,
-    closingValue: s.inwardValue - s.outwardValue,
-  }));
+/* ── Blank filters ── */
+const BLANK = {
+  fromDate:   "",
+  toDate:     "",
+  itemTypes:  "",
+  category:   "",
+  itemGroup:  "",
+  itemName:   "",
 };
 
 /* ════════════════════════════════════════════════════════════════
@@ -94,490 +64,600 @@ const buildStockMap = (ginRecords) => {
 const ItemInventory = () => {
   const navigate = useNavigate();
 
-  const [filters,   setFilters]   = useState(blankFilters);
-  const [searched,  setSearched]  = useState(false);
-  const [loading,   setLoading]   = useState(false);
+  /* ── filter state ── */
+  const [filters,  setFilters]  = useState(BLANK);
+  const [searched, setSearched] = useState(false);
+  const [loading,  setLoading]  = useState(false);
 
-  const [stockRows,    setStockRows]    = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [itemMasters,  setItemMasters]  = useState([]);
+  /* ── master data ── */
+  const [allItems,      setAllItems]      = useState([]);   // item master
+  const [allCategories, setAllCategories] = useState([]);   // item-category master
+  const [allGroups,     setAllGroups]     = useState([]);   // item-group master
 
-  /* summary KPIs */
-  const [kpis, setKpis] = useState({
-    totalItems: 0, totalInward: 0, totalOutward: 0,
-    totalClosingQty: 0, totalClosingValue: 0,
-  });
+  /* ── results ── */
+  const [rows,         setRows]         = useState([]);
+  const [selectedRow,  setSelectedRow]  = useState(null);  // for transaction detail panel
 
-  /* fetch item master for group filter */
+  /* ════════════════════ LOAD MASTERS ════════════════════ */
   useEffect(() => {
-    axios.get(ITEM_API)
-      .then((r) => setItemMasters(Array.isArray(r.data) ? r.data : []))
-      .catch(() => {});
+    axios.get(ITEMS_API).then((r) => setAllItems(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    axios.get(CAT_API).then((r)   => setAllCategories(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    axios.get(GROUP_API).then((r) => setAllGroups(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
-  const itemGroups = [...new Set(itemMasters.map((i) => i.itemGroup).filter(Boolean))];
+  /* ════════════════════ CASCADED OPTIONS ════════════════════
+     Category options: filtered by selected itemTypes
+     Group options:    filtered by selected category
+     Item options:     filtered by selected group (or category or type)
+  ════════════════════════════════════════════════════════════ */
+  /* case-insensitive string compare helper */
+  const ciEq = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 
-  const handleChange = (e) =>
-    setFilters((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const categoryOptions = allCategories.filter((c) =>
+    !filters.itemTypes || ciEq(c.itemTypes, filters.itemTypes)
+  );
+
+  const groupOptions = allGroups.filter((g) => {
+    if (filters.category) return ciEq(g.itemTypes, filters.category);
+    if (filters.itemTypes) {
+      const matchingCats = allCategories
+        .filter((c) => ciEq(c.itemTypes, filters.itemTypes))
+        .map((c) => (c.categoryName || "").trim().toLowerCase());
+      return matchingCats.includes((g.itemTypes || "").trim().toLowerCase());
+    }
+    return true;
+  });
+
+  const itemOptions = allItems.filter((item) => {
+    if (filters.itemTypes && !ciEq(item.itemTypes, filters.itemTypes)) return false;
+    if (filters.category  && !ciEq(item.category,  filters.category))  return false;
+    if (filters.itemGroup && !ciEq(item.itemGroup,  filters.itemGroup)) return false;
+    return true;
+  });
+
+  /* ════════════════════ FILTER CHANGE ════════════════════ */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    // Cascade reset: changing itemTypes resets downstream
+    if (name === "itemTypes") {
+      setFilters((p) => ({ ...p, itemTypes: value, category: "", itemGroup: "", itemName: "" }));
+    } else if (name === "category") {
+      setFilters((p) => ({ ...p, category: value, itemGroup: "", itemName: "" }));
+    } else if (name === "itemGroup") {
+      setFilters((p) => ({ ...p, itemGroup: value, itemName: "" }));
+    } else {
+      setFilters((p) => ({ ...p, [name]: value }));
+    }
+  };
 
   const handleReset = () => {
-    setFilters(blankFilters);
-    setStockRows([]);
-    setSelectedItem(null);
+    setFilters(BLANK);
+    setRows([]);
+    setSelectedRow(null);
     setSearched(false);
   };
 
+  /* ════════════════════ SEARCH ════════════════════
+     1. Fetch Direct GRN records (with optional date range)
+     2. Expand GRN items into per-item aggregates
+     3. Enrich each row with item master data (UOM, type, category, group)
+     4. Apply client-side filters for type / category / group / itemName
+  ════════════════════════════════════════════════ */
   const handleSearch = useCallback(async () => {
     setLoading(true);
     setSearched(true);
-    setSelectedItem(null);
+    setSelectedRow(null);
 
     try {
+      /* ── 1. Fetch Direct GRN ── */
       const params = new URLSearchParams();
-      if (filters.fromDate)           params.append("fromDate",           filters.fromDate);
-      if (filters.toDate)             params.append("toDate",             filters.toDate);
-      if (filters.vehicleEntry)       params.append("vehicleEntry",       filters.vehicleEntry);
-      if (filters.transactionCategory) params.append("transactionCategory", filters.transactionCategory);
+      if (filters.fromDate) params.append("fromDate", filters.fromDate);
+      if (filters.toDate)   params.append("toDate",   filters.toDate);
 
-      const res = await axios.get(`${GIN_API}?${params.toString()}`);
-      let gins = Array.isArray(res.data) ? res.data : [];
+      const res  = await axios.get(`${DGRN_API}?${params.toString()}`);
+      const grns = Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
-      /* client-side item code / name filter */
-      if (filters.itemCode || filters.itemName || filters.itemGroup) {
-        const code  = filters.itemCode.toLowerCase();
-        const name  = filters.itemName.toLowerCase();
-        const group = filters.itemGroup.toLowerCase();
+      /* ── 2. Aggregate per item ── */
+      const map = {};
 
-        gins = gins.filter((gin) =>
-          (gin.items || []).some((it) => {
-            const master = itemMasters.find(
-              (m) => m.itemCode === it.itemCode || m.itemName === it.itemName
-            );
-            return (
-              (!code  || (it.itemCode  || "").toLowerCase().includes(code)) &&
-              (!name  || (it.itemName  || "").toLowerCase().includes(name)) &&
-              (!group || (master?.itemGroup || "").toLowerCase().includes(group))
-            );
-          })
-        );
-      }
+      grns.forEach((grn) => {
+        (grn.items || []).forEach((lineItem) => {
+          const code = (lineItem.itemCode || lineItem.itemName || "").trim();
+          if (!code) return;
 
-      const rows = buildStockMap(gins);
+          if (!map[code]) {
+            map[code] = {
+              itemCode:     code,
+              itemName:     lineItem.itemName || code,
+              uom:          lineItem.uom      || "",
+              totalQty:     0,
+              totalAmount:  0,
+              transactions: [],
+            };
+          }
 
-      /* apply item-level filter after aggregation */
-      const filtered = rows.filter((r) => {
-        const code  = filters.itemCode.toLowerCase();
-        const name  = filters.itemName.toLowerCase();
-        return (
-          (!code || r.itemCode.toLowerCase().includes(code)) &&
-          (!name || r.itemName.toLowerCase().includes(name))
-        );
+          const qty    = Number(lineItem.qty    || 0);
+          const amount = Number(lineItem.totalAmount || 0);
+
+          map[code].totalQty    += qty;
+          map[code].totalAmount += amount;
+          map[code].transactions.push({
+            grnNo:     grn.grnNo      || "-",
+            grnDate:   grn.grnDate    || "-",
+            partyName: grn.partyName  || grn.vendorName || "-",
+            vehicleNo: grn.vehicleNo  || "-",
+            invoiceNo: grn.challanInvoiceNo || "-",
+            status:    grn.status     || "-",
+            qty,
+            rate:      Number(lineItem.rate  || 0),
+            amount,
+            uom:       lineItem.uom  || "",
+          });
+        });
       });
 
-      setStockRows(filtered);
-
-      setKpis({
-        totalItems:       filtered.length,
-        totalInward:      filtered.reduce((s, r) => s + r.inwardQty, 0),
-        totalOutward:     filtered.reduce((s, r) => s + r.outwardQty, 0),
-        totalClosingQty:  filtered.reduce((s, r) => s + r.closingQty, 0),
-        totalClosingValue: filtered.reduce((s, r) => s + r.closingValue, 0),
+      /* ── 3. Enrich with item master ── */
+      let enriched = Object.values(map).map((row) => {
+        const master = allItems.find(
+          (m) => m.itemCode === row.itemCode || m.itemName === row.itemName
+        );
+        return {
+          ...row,
+          uom:       master?.uom       || row.uom  || "-",
+          itemTypes: master?.itemTypes || "",
+          category:  master?.category  || "",
+          itemGroup: master?.itemGroup || "",
+        };
       });
+
+      /* ── 4. Client-side filter (case-insensitive) ── */
+      const ci = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+      if (filters.itemTypes) enriched = enriched.filter((r) => ci(r.itemTypes, filters.itemTypes));
+      if (filters.category)  enriched = enriched.filter((r) => ci(r.category,  filters.category));
+      if (filters.itemGroup) enriched = enriched.filter((r) => ci(r.itemGroup, filters.itemGroup));
+      if (filters.itemName)  enriched = enriched.filter((r) =>
+        r.itemName.toLowerCase().includes(filters.itemName.toLowerCase()) ||
+        r.itemCode.toLowerCase().includes(filters.itemName.toLowerCase())
+      );
+
+      setRows(enriched);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch inventory data");
+      alert("Failed to load inventory data. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [filters, itemMasters]);
-
-  /* ── colour class for closing stock ── */
-  const stockClass = (qty) =>
-    qty <= 0 ? "ii-stock-nil" : qty < 10 ? "ii-stock-low" : "ii-stock-ok";
+  }, [filters, allItems]);
 
   /* ════════════════════════════════════════════════════════════
      RENDER
   ════════════════════════════════════════════════════════════ */
   return (
-    <div className="ii-page">
+    <div className="inv-page">
       <ModuleNavbar />
 
-      {/* PAGE HEADER */}
-      <div className="ii-page-header">
-        <button className="ii-back-btn" onClick={() => navigate("/inventory")}>←</button>
-        <div className="ii-header-title">
-          <h2>Item Inventory</h2>
-          <span className="ii-header-sub">Stock ledger by item · GIN-based</span>
+      {/* ══════════ TOP BAR (mirrors DirectGRN) ══════════ */}
+      <div className="inv-topbar">
+        <div className="inv-topbar-left">
+          <button className="inv-back-btn" onClick={() => navigate(-1)}>← Back</button>
+          <div>
+            <h1>Item Inventory</h1>
+            <span className="inv-topbar-sub">
+              {searched && !loading
+                ? `${rows.length} item${rows.length !== 1 ? "s" : ""} found from GRN records`
+                : "Search by filters to view GRN-based stock"}
+            </span>
+          </div>
         </div>
-        <span className="ii-badge">M03II</span>
       </div>
 
-      {/* BODY — 2-column split */}
-      <div className="ii-body">
+      {/* ══════════ CONTENT ══════════ */}
+      <div className="inv-content">
 
-        {/* ══════════ LEFT — SEARCH PANEL ══════════ */}
-        <aside className="ii-sidebar">
-          <div className="ii-card">
-            <div className="ii-section-title">
-              <span className="ii-section-icon">🔍</span> Search Filters
-            </div>
+        {/* ── SEARCH FILTER CARD ── */}
+        <div className="inv-card">
+          <div className="inv-filter-title">🔍 Search Filters</div>
 
-            <div className="ii-field">
-              <label>Item Code</label>
+          <div className="inv-filter-grid">
+
+            {/* FROM DATE */}
+            <div className="inv-fg">
+              <label>From Date</label>
               <input
-                type="text"
-                name="itemCode"
-                value={filters.itemCode}
+                type="date"
+                name="fromDate"
+                value={filters.fromDate}
                 onChange={handleChange}
-                placeholder="e.g. RM001"
               />
             </div>
 
-            <div className="ii-field">
-              <label>Item Name</label>
+            {/* TO DATE */}
+            <div className="inv-fg">
+              <label>To Date</label>
               <input
-                type="text"
-                name="itemName"
-                value={filters.itemName}
+                type="date"
+                name="toDate"
+                value={filters.toDate}
                 onChange={handleChange}
-                placeholder="Search by item name"
               />
             </div>
 
-            <div className="ii-field">
-              <label>Item Group</label>
-              <select name="itemGroup" value={filters.itemGroup} onChange={handleChange}>
-                <option value="">-- All Groups --</option>
-                {itemGroups.map((g) => (
-                  <option key={g} value={g}>{g}</option>
+            {/* ITEM TYPE */}
+            <div className="inv-fg">
+              <label>Item Type</label>
+              <select name="itemTypes" value={filters.itemTypes} onChange={handleChange}>
+                <option value="">— All Types —</option>
+                {ITEM_TYPE_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </div>
 
-            <div className="ii-field">
-              <label>Transaction Category</label>
-              <select name="transactionCategory" value={filters.transactionCategory} onChange={handleChange}>
-                <option value="">-- All --</option>
-                <option>Purchase</option>
-                <option>Sales</option>
-                <option>Transfer</option>
+            {/* ITEM CATEGORY (cascaded from type) */}
+            <div className="inv-fg">
+              <label>Item Category</label>
+              <select name="category" value={filters.category} onChange={handleChange}>
+                <option value="">— All Categories —</option>
+                {categoryOptions.map((c) => (
+                  <option key={c._id} value={c.categoryName}>{c.categoryName}</option>
+                ))}
               </select>
             </div>
 
-            <div className="ii-field">
-              <label>Vehicle Entry</label>
-              <select name="vehicleEntry" value={filters.vehicleEntry} onChange={handleChange}>
-                <option value="">-- All --</option>
-                <option value="Inward">Inward</option>
-                <option value="Outward">Outward</option>
+            {/* ITEM GROUP (cascaded from category) */}
+            <div className="inv-fg">
+              <label>Item Group</label>
+              <select name="itemGroup" value={filters.itemGroup} onChange={handleChange}>
+                <option value="">— All Groups —</option>
+                {groupOptions.map((g) => (
+                  <option key={g._id} value={g.itemGroup}>{g.itemGroup}</option>
+                ))}
               </select>
             </div>
 
-            <div className="ii-field">
-              <label>From Date</label>
-              <input type="date" name="fromDate" value={filters.fromDate} onChange={handleChange} />
+            {/* ITEM NAME (cascaded from group) */}
+            <div className="inv-fg">
+              <label>Item Name</label>
+              <select name="itemName" value={filters.itemName} onChange={handleChange}>
+                <option value="">— All Items —</option>
+                {itemOptions.map((it) => (
+                  <option key={it._id} value={it.itemName}>
+                    {it.itemCode} — {it.itemName}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="ii-field">
-              <label>To Date</label>
-              <input type="date" name="toDate" value={filters.toDate} onChange={handleChange} />
-            </div>
-
-            <div className="ii-sidebar-actions">
-              <button className="ii-reset-btn" onClick={handleReset}>Reset</button>
-              <button className="ii-search-btn" onClick={handleSearch} disabled={loading}>
-                {loading ? "Searching…" : "Search"}
-              </button>
-            </div>
           </div>
 
-          {/* QUICK STATS (visible after search) */}
-          {searched && !loading && (
-            <div className="ii-card ii-quick-stats">
-              <div className="ii-section-title">
-                <span className="ii-section-icon">📊</span> Summary
-              </div>
-              <div className="ii-stat-row">
-                <span className="ii-stat-label">Total Items</span>
-                <span className="ii-stat-value">{kpis.totalItems}</span>
-              </div>
-              <div className="ii-stat-row">
-                <span className="ii-stat-label">Total Inward Qty</span>
-                <span className="ii-stat-value ii-val-in">{fmtQty(kpis.totalInward)}</span>
-              </div>
-              <div className="ii-stat-row">
-                <span className="ii-stat-label">Total Outward Qty</span>
-                <span className="ii-stat-value ii-val-out">{fmtQty(kpis.totalOutward)}</span>
-              </div>
-              <div className="ii-stat-row">
-                <span className="ii-stat-label">Net Closing Qty</span>
-                <span className={`ii-stat-value ${kpis.totalClosingQty >= 0 ? "ii-val-in" : "ii-val-out"}`}>
-                  {fmtQty(kpis.totalClosingQty)}
-                </span>
-              </div>
-              <div className="ii-stat-row ii-stat-row--total">
-                <span className="ii-stat-label">Closing Stock Value</span>
-                <span className="ii-stat-value">₹ {fmt(kpis.totalClosingValue)}</span>
-              </div>
+          <div className="inv-filter-actions">
+            <button className="inv-reset-btn" onClick={handleReset}>Reset</button>
+            <button
+              className="inv-apply-btn"
+              onClick={handleSearch}
+              disabled={loading}
+            >
+              {loading ? "Searching…" : "Search"}
+            </button>
+          </div>
+        </div>
+
+        {/* ── RESULTS AREA ── */}
+
+        {/* Not yet searched */}
+        {!searched && !loading && (
+          <div className="inv-empty-state">
+            <div className="inv-empty-icon">📦</div>
+            <div className="inv-empty-title">Item Inventory</div>
+            <div className="inv-empty-sub">
+              Select filters above and click <strong>Search</strong> to view GRN-based stock levels.
             </div>
-          )}
-        </aside>
+          </div>
+        )}
 
-        {/* ══════════ RIGHT — DASHBOARD ══════════ */}
-        <main className="ii-main">
+        {/* Loading spinner */}
+        {loading && (
+          <div className="inv-empty-state">
+            <div className="inv-spinner" />
+            <div className="inv-empty-sub">Fetching GRN records…</div>
+          </div>
+        )}
 
-          {/* NOT YET SEARCHED */}
-          {!searched && (
-            <div className="ii-empty-state">
-              <div className="ii-empty-icon">📦</div>
-              <div className="ii-empty-title">Item Inventory Dashboard</div>
-              <div className="ii-empty-sub">
-                Use the filters on the left and click <strong>Search</strong> to load stock data.
-              </div>
-            </div>
-          )}
-
-          {/* LOADING */}
-          {loading && (
-            <div className="ii-empty-state">
-              <div className="ii-spinner"></div>
-              <div className="ii-empty-sub">Fetching stock data…</div>
-            </div>
-          )}
-
-          {/* RESULTS */}
-          {searched && !loading && (
-
-            <>
-              {/* KPI BAR */}
-              <div className="ii-kpi-bar">
-                <div className="ii-kpi-card">
-                  <div className="ii-kpi-label">Total Items</div>
-                  <div className="ii-kpi-value">{kpis.totalItems}</div>
-                </div>
-                <div className="ii-kpi-card ii-kpi-inward">
-                  <div className="ii-kpi-label">Total Inward</div>
-                  <div className="ii-kpi-value">{fmtQty(kpis.totalInward)}</div>
-                </div>
-                <div className="ii-kpi-card ii-kpi-outward">
-                  <div className="ii-kpi-label">Total Outward</div>
-                  <div className="ii-kpi-value">{fmtQty(kpis.totalOutward)}</div>
-                </div>
-                <div className="ii-kpi-card ii-kpi-closing">
-                  <div className="ii-kpi-label">Net Closing Qty</div>
-                  <div className="ii-kpi-value">{fmtQty(kpis.totalClosingQty)}</div>
-                </div>
-                <div className="ii-kpi-card ii-kpi-value-card">
-                  <div className="ii-kpi-label">Closing Value (₹)</div>
-                  <div className="ii-kpi-value">₹ {fmt(kpis.totalClosingValue)}</div>
+        {/* Results */}
+        {searched && !loading && (
+          <>
+            {rows.length === 0 ? (
+              <div className="inv-empty-state">
+                <div className="inv-empty-icon">🔍</div>
+                <div className="inv-empty-title">No Records Found</div>
+                <div className="inv-empty-sub">
+                  No GRN entries match the selected filters. Try adjusting your search criteria.
                 </div>
               </div>
+            ) : (
+              <>
+                {/* ── STOCK TABLE CARD ── */}
+                <div className="inv-card" style={{ padding: 0 }}>
+                  <div className="inv-table-header">
+                    <span className="inv-table-title">📋 GRN Stock Summary</span>
+                    <span className="inv-table-count">
+                      {rows.length} item{rows.length !== 1 ? "s" : ""} ·{" "}
+                      {selectedRow ? "click another row to switch" : "click a row to view GRN transactions"}
+                    </span>
+                  </div>
 
-              {stockRows.length === 0 ? (
-                <div className="ii-no-data">No inventory records found for the selected filters.</div>
-              ) : (
-                <div className="ii-results-area">
-
-                  {/* STOCK TABLE */}
-                  <div className="ii-card ii-table-card">
-                    <div className="ii-section-title">
-                      <span className="ii-section-icon">📋</span>
-                      Stock Summary
-                      <span className="ii-count">{stockRows.length} item(s) — click a row to see transactions</span>
-                    </div>
-
-                    <div className="ii-table-wrap">
-                      <table className="ii-table">
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>Item Code</th>
-                            <th>Item Name</th>
-                            <th>UOM</th>
-                            <th>Inward Qty</th>
-                            <th>Outward Qty</th>
-                            <th>Closing Qty</th>
-                            <th>Inward Value (₹)</th>
-                            <th>Outward Value (₹)</th>
-                            <th>Closing Value (₹)</th>
-                            <th>Stock Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stockRows.map((row, idx) => (
-                            <tr
-                              key={row.itemCode}
-                              className={`ii-tr ${selectedItem?.itemCode === row.itemCode ? "ii-tr--selected" : ""}`}
-                              onClick={() => setSelectedItem(row)}
-                            >
-                              <td>{idx + 1}</td>
-                              <td><span className="ii-code-chip">{row.itemCode}</span></td>
-                              <td className="ii-item-name">{row.itemName}</td>
-                              <td>{row.uom || "-"}</td>
-                              <td className="ii-num ii-in">{fmtQty(row.inwardQty)}</td>
-                              <td className="ii-num ii-out">{fmtQty(row.outwardQty)}</td>
-                              <td className={`ii-num ii-closing ${stockClass(row.closingQty)}`}>
-                                {fmtQty(row.closingQty)}
-                              </td>
-                              <td className="ii-num">{fmt(row.inwardValue)}</td>
-                              <td className="ii-num">{fmt(row.outwardValue)}</td>
-                              <td className="ii-num ii-closing-val">{fmt(row.closingValue)}</td>
+                  <div className="inv-table-wrap">
+                    <table className="inv-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Item Code</th>
+                          <th>Item Name</th>
+                          <th>Item Type</th>
+                          <th>Category</th>
+                          <th>Group</th>
+                          <th>Base UOM</th>
+                          <th className="inv-num">Base Qty</th>
+                          <th>Actual UOM</th>
+                          <th className="inv-num">Actual Qty</th>
+                          <th className="inv-num">Total Amount (₹)</th>
+                          <th className="inv-num">GRN Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, idx) => {
+                          const { actualUOM, actualQty } = toActual(row.totalQty, row.uom);
+                          const isSelected = selectedRow?.itemCode === row.itemCode;
+                          return (
+                            <React.Fragment key={row.itemCode}>
+                              <tr
+                                className={`inv-row${isSelected ? " inv-row--selected" : ""}`}
+                                onClick={() =>
+                                  setSelectedRow(isSelected ? null : row)
+                                }
+                              >
+                              <td className="inv-sno">{idx + 1}</td>
                               <td>
-                                <span className={`ii-stock-badge ${stockClass(row.closingQty)}`}>
-                                  {row.closingQty <= 0
-                                    ? "Out of Stock"
-                                    : row.closingQty < 10
-                                    ? "Low Stock"
-                                    : "In Stock"}
+                                <span className="inv-code-chip">{row.itemCode}</span>
+                              </td>
+                              <td className="inv-item-name" title={row.itemName}>
+                                {row.itemName}
+                              </td>
+                              <td>
+                                {row.itemTypes ? (
+                                  <span className="inv-type-badge">{row.itemTypes}</span>
+                                ) : "—"}
+                              </td>
+                              <td title={row.category}>{row.category || "—"}</td>
+                              <td title={row.itemGroup}>{row.itemGroup || "—"}</td>
+
+                              {/* BASE UOM */}
+                              <td>
+                                <span className="inv-uom-pill inv-uom-base">
+                                  {row.uom || "—"}
+                                </span>
+                              </td>
+                              <td className="inv-num inv-qty-base">
+                                {fmtQty(row.totalQty)}
+                              </td>
+
+                              {/* ACTUAL UOM */}
+                              <td>
+                                <span className="inv-uom-pill inv-uom-actual">
+                                  {actualUOM}
+                                </span>
+                              </td>
+                              <td className="inv-num inv-qty-actual">
+                                {fmtQty(actualQty)}
+                              </td>
+
+                              <td className="inv-num inv-amount">
+                                ₹ {fmt2(row.totalAmount)}
+                              </td>
+                              <td className="inv-num">
+                                <span className="inv-count-badge">
+                                  {row.transactions.length}
                                 </span>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                        {/* TOTALS ROW */}
-                        <tfoot>
-                          <tr className="ii-totals-row">
-                            <td colSpan={4}><strong>Grand Total</strong></td>
-                            <td className="ii-num"><strong>{fmtQty(kpis.totalInward)}</strong></td>
-                            <td className="ii-num"><strong>{fmtQty(kpis.totalOutward)}</strong></td>
-                            <td className="ii-num"><strong>{fmtQty(kpis.totalClosingQty)}</strong></td>
-                            <td className="ii-num"><strong>{fmt(stockRows.reduce((s, r) => s + r.inwardValue, 0))}</strong></td>
-                            <td className="ii-num"><strong>{fmt(stockRows.reduce((s, r) => s + r.outwardValue, 0))}</strong></td>
-                            <td className="ii-num"><strong>₹ {fmt(kpis.totalClosingValue)}</strong></td>
-                            <td></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+
+                            {/* ── INLINE DETAIL PANEL ROW ── */}
+                            {isSelected && (
+                              <tr className="inv-detail-inline-row">
+                                <td colSpan={12} style={{ padding: 0 }}>
+                                  <div className="inv-detail-inline">
+
+                                    {/* Header */}
+                                    <div className="inv-detail-header">
+                                      <div className="inv-detail-left">
+                                        <span className="inv-detail-icon">🧾</span>
+                                        <div>
+                                          <div className="inv-detail-title">
+                                            {selectedRow.itemName}
+                                          </div>
+                                          <div className="inv-detail-sub">
+                                            Code: <strong>{selectedRow.itemCode}</strong>
+                                            &nbsp;·&nbsp;
+                                            {selectedRow.transactions.length} GRN transaction{selectedRow.transactions.length !== 1 ? "s" : ""}
+                                            &nbsp;·&nbsp;
+                                            Total: <strong>{fmtQty(selectedRow.totalQty)} {selectedRow.uom}</strong>
+                                            &nbsp;/&nbsp;
+                                            <strong>
+                                              {fmtQty(toActual(selectedRow.totalQty, selectedRow.uom).actualQty)}{" "}
+                                              {toActual(selectedRow.totalQty, selectedRow.uom).actualUOM}
+                                            </strong>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <button
+                                        className="inv-close-btn"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedRow(null); }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+
+                                    {/* KPI STRIP */}
+                                    <div className="inv-kpi-strip">
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">Total GRN Qty (Base)</span>
+                                        <span className="inv-kpi-val inv-kpi-blue">
+                                          {fmtQty(selectedRow.totalQty)} {selectedRow.uom}
+                                        </span>
+                                      </div>
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">Total GRN Qty (Actual)</span>
+                                        <span className="inv-kpi-val inv-kpi-green">
+                                          {fmtQty(toActual(selectedRow.totalQty, selectedRow.uom).actualQty)}{" "}
+                                          {toActual(selectedRow.totalQty, selectedRow.uom).actualUOM}
+                                        </span>
+                                      </div>
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">Total Amount</span>
+                                        <span className="inv-kpi-val">₹ {fmt2(selectedRow.totalAmount)}</span>
+                                      </div>
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">GRN Count</span>
+                                        <span className="inv-kpi-val">{selectedRow.transactions.length}</span>
+                                      </div>
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">Item Type</span>
+                                        <span className="inv-kpi-val">{selectedRow.itemTypes || "—"}</span>
+                                      </div>
+                                      <div className="inv-kpi">
+                                        <span className="inv-kpi-label">Category / Group</span>
+                                        <span className="inv-kpi-val">
+                                          {selectedRow.category || "—"} / {selectedRow.itemGroup || "—"}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* GRN TRANSACTION TABLE */}
+                                    <div className="inv-txn-wrap">
+                                      <table className="inv-table inv-txn-table">
+                                        <thead>
+                                          <tr>
+                                            <th>#</th>
+                                            <th>GRN No</th>
+                                            <th>GRN Date</th>
+                                            <th>Party Name</th>
+                                            <th>Invoice No</th>
+                                            <th>Vehicle No</th>
+                                            <th>Status</th>
+                                            <th className="inv-num">Base Qty ({selectedRow.uom})</th>
+                                            <th className="inv-num">
+                                              Actual Qty ({toActual(1, selectedRow.uom).actualUOM})
+                                            </th>
+                                            <th className="inv-num">Rate (₹)</th>
+                                            <th className="inv-num">Amount (₹)</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {[...selectedRow.transactions]
+                                            .sort((a, b) => (a.grnDate < b.grnDate ? 1 : -1))
+                                            .map((txn, i) => {
+                                              const { actualQty } = toActual(txn.qty, txn.uom || selectedRow.uom);
+                                              return (
+                                                <tr key={i} className="inv-txn-row">
+                                                  <td>{i + 1}</td>
+                                                  <td>
+                                                    <span className="inv-grn-chip">{txn.grnNo}</span>
+                                                  </td>
+                                                  <td>{txn.grnDate}</td>
+                                                  <td title={txn.partyName}>{txn.partyName}</td>
+                                                  <td>{txn.invoiceNo}</td>
+                                                  <td>{txn.vehicleNo}</td>
+                                                  <td>
+                                                    <span
+                                                      className={`inv-status-badge inv-status-${
+                                                        (txn.status || "").toLowerCase()
+                                                      }`}
+                                                    >
+                                                      {txn.status}
+                                                    </span>
+                                                  </td>
+                                                  <td className="inv-num inv-qty-base">
+                                                    {fmtQty(txn.qty)}
+                                                  </td>
+                                                  <td className="inv-num inv-qty-actual">
+                                                    {fmtQty(actualQty)}
+                                                  </td>
+                                                  <td className="inv-num">{fmt2(txn.rate)}</td>
+                                                  <td className="inv-num inv-amount">
+                                                    ₹ {fmt2(txn.amount)}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                        </tbody>
+                                        <tfoot>
+                                          <tr className="inv-totals-row">
+                                            <td colSpan={7}><strong>Total</strong></td>
+                                            <td className="inv-num">
+                                              <strong>{fmtQty(selectedRow.totalQty)}</strong>
+                                            </td>
+                                            <td className="inv-num">
+                                              <strong>
+                                                {fmtQty(toActual(selectedRow.totalQty, selectedRow.uom).actualQty)}
+                                              </strong>
+                                            </td>
+                                            <td></td>
+                                            <td className="inv-num">
+                                              <strong>₹ {fmt2(selectedRow.totalAmount)}</strong>
+                                            </td>
+                                          </tr>
+                                        </tfoot>
+                                      </table>
+                                    </div>
+
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+
+                      {/* TOTALS ROW */}
+                      <tfoot>
+                        <tr className="inv-totals-row">
+                          <td colSpan={7}><strong>Grand Total</strong></td>
+                          <td className="inv-num">
+                            <strong>
+                              {fmtQty(rows.reduce((s, r) => s + r.totalQty, 0))}
+                            </strong>
+                          </td>
+                          <td></td>
+                          <td className="inv-num">
+                            <strong>
+                              {/* Actual totals across different UOMs don't add meaningfully — show dash */}
+                              —
+                            </strong>
+                          </td>
+                          <td className="inv-num">
+                            <strong>
+                              ₹ {fmt2(rows.reduce((s, r) => s + r.totalAmount, 0))}
+                            </strong>
+                          </td>
+                          <td className="inv-num">
+                            <strong>
+                              {rows.reduce((s, r) => s + r.transactions.length, 0)}
+                            </strong>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
-
-                  {/* TRANSACTION DETAIL PANEL (appears when row is selected) */}
-                  {selectedItem && (
-                    <div className="ii-card ii-detail-card">
-                      <div className="ii-detail-header">
-                        <div className="ii-detail-title">
-                          <span className="ii-section-icon">🧾</span>
-                          Transaction History —&nbsp;
-                          <strong>{selectedItem.itemName}</strong>
-                          <span className="ii-detail-code">({selectedItem.itemCode})</span>
-                        </div>
-                        <button className="ii-close-detail-btn" onClick={() => setSelectedItem(null)}>✕</button>
-                      </div>
-
-                      {/* ITEM KPI STRIP */}
-                      <div className="ii-item-kpi-strip">
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">Inward Qty</span>
-                          <span className="ii-item-kpi-val ii-val-in">{fmtQty(selectedItem.inwardQty)}</span>
-                        </div>
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">Outward Qty</span>
-                          <span className="ii-item-kpi-val ii-val-out">{fmtQty(selectedItem.outwardQty)}</span>
-                        </div>
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">Closing Qty</span>
-                          <span className={`ii-item-kpi-val ${stockClass(selectedItem.closingQty)}`}>
-                            {fmtQty(selectedItem.closingQty)}
-                          </span>
-                        </div>
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">Closing Value</span>
-                          <span className="ii-item-kpi-val">₹ {fmt(selectedItem.closingValue)}</span>
-                        </div>
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">UOM</span>
-                          <span className="ii-item-kpi-val">{selectedItem.uom || "-"}</span>
-                        </div>
-                        <div className="ii-item-kpi">
-                          <span className="ii-item-kpi-label">Transactions</span>
-                          <span className="ii-item-kpi-val">{selectedItem.transactions.length}</span>
-                        </div>
-                      </div>
-
-                      {/* STOCK PROGRESS BAR */}
-                      {(selectedItem.inwardQty + selectedItem.outwardQty) > 0 && (
-                        <div className="ii-progress-wrap">
-                          <div className="ii-progress-label">
-                            <span>Inward</span>
-                            <span>
-                              {Math.round(
-                                (selectedItem.inwardQty /
-                                  (selectedItem.inwardQty + selectedItem.outwardQty)) *
-                                  100
-                              )}% received, {Math.round(
-                                (selectedItem.outwardQty /
-                                  (selectedItem.inwardQty + selectedItem.outwardQty)) *
-                                  100
-                              )}% issued
-                            </span>
-                            <span>Outward</span>
-                          </div>
-                          <div className="ii-progress-bar">
-                            <div
-                              className="ii-progress-in"
-                              style={{
-                                width: `${Math.round(
-                                  (selectedItem.inwardQty /
-                                    (selectedItem.inwardQty + selectedItem.outwardQty)) *
-                                    100
-                                )}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* TRANSACTION TABLE */}
-                      <div className="ii-table-wrap ii-txn-table-wrap">
-                        <table className="ii-table ii-txn-table">
-                          <thead>
-                            <tr>
-                              <th>#</th>
-                              <th>Date</th>
-                              <th>GIN No</th>
-                              <th>Type</th>
-                              <th>Vendor / Party</th>
-                              <th>Qty</th>
-                              <th>Rate (₹)</th>
-                              <th>Value (₹)</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[...selectedItem.transactions]
-                              .sort((a, b) => (a.date < b.date ? 1 : -1))
-                              .map((txn, i) => (
-                                <tr key={i} className={txn.type === "Inward" ? "ii-txn-in" : "ii-txn-out"}>
-                                  <td>{i + 1}</td>
-                                  <td>{txn.date}</td>
-                                  <td><span className="ii-gin-chip">{txn.ginNo}</span></td>
-                                  <td>
-                                    <span className={`ii-type-badge ${txn.type.toLowerCase()}`}>
-                                      {txn.type}
-                                    </span>
-                                  </td>
-                                  <td>{txn.vendor}</td>
-                                  <td className="ii-num">{fmtQty(txn.qty)}</td>
-                                  <td className="ii-num">{fmt(txn.rate)}</td>
-                                  <td className="ii-num">{fmt(txn.value)}</td>
-                                  <td>
-                                    <span className={`ii-status-badge ${(txn.status || "").toLowerCase()}`}>
-                                      {txn.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
                 </div>
-              )}
-            </>
-          )}
-        </main>
-      </div>
+
+                {/* ── TRANSACTION DETAIL PANEL ── */}
+              </>
+            )}
+          </>
+        )}
+
+      </div>{/* end inv-content */}
     </div>
   );
 };

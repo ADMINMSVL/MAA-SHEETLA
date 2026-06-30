@@ -23,7 +23,7 @@ router.get("/production-details", async (req, res) => {
 
 router.put("/production-details/:id", async (req, res) => {
   try {
-    const updated = await ProductionDetails.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ProductionDetails.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {
     res.status(500).json({ message: error.message });

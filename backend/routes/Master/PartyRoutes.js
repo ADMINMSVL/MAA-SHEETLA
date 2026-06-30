@@ -50,10 +50,10 @@ router.post("/create-party", async (req, res) => {
   try {
     const payload = buildPartyDocument(req.body);
 
-    if (!payload.partyCode || !payload.partyName || !payload.pin) {
+    if (!payload.partyCode || !payload.partyName) {
       return res.status(400).json({
         success: false,
-        message: "Party Code, Party Name and Pin are required.",
+        message: "Party Code and Party Name are required.",
       });
     }
 
@@ -73,15 +73,15 @@ router.post("/bulk-create-parties", async (req, res) => {
       return res.status(400).json({ success: false, message: "No data provided." });
     }
 
-    // Basic validation: partyCode, partyName & pin must be present
+    // Basic validation: partyCode & partyName must be present
     const invalid = data.filter((r) => {
       const row = buildPartyDocument(r);
-      return !row.partyCode?.toString().trim() || !row.partyName?.toString().trim() || !row.pin?.toString().trim();
+      return !row.partyCode?.toString().trim() || !row.partyName?.toString().trim();
     });
     if (invalid.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `${invalid.length} row(s) are missing Party Code, Party Name or Pin.`,
+        message: `${invalid.length} row(s) are missing Party Code or Party Name.`,
       });
     }
 
@@ -154,15 +154,15 @@ router.put("/party/:id", async (req, res) => {
   try {
     const payload = buildPartyDocument(req.body);
 
-    if (!payload.partyCode || !payload.partyName || !payload.pin) {
+    if (!payload.partyCode || !payload.partyName) {
       return res.status(400).json({
         success: false,
-        message: "Party Code, Party Name and Pin are required.",
+        message: "Party Code and Party Name are required.",
       });
     }
 
     const updated = await Party.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     res.json({ success: true, message: "Updated Successfully", data: normalizePartyResponse(updated) });

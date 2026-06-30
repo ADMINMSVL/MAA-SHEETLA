@@ -26,7 +26,7 @@ router.get("/service-master", async (req, res) => {
 /* UPDATE */
 router.put("/service-master/:id", async (req, res) => {
   try {
-    const updated = await ServiceMaster.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await ServiceMaster.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

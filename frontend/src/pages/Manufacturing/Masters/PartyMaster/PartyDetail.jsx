@@ -49,6 +49,9 @@ const detailFields = [
   { label: "Status", key: "status" },
 ];
 
+/* Type is a fixed list — no longer sourced from a Type master */
+const PARTY_TYPE_OPTIONS = ["Supplier", "Customer", "Both"];
+
 const getValue = (item, keys) => {
   const keyList = Array.isArray(keys) ? keys : [keys];
 
@@ -201,19 +204,39 @@ const PartyDetail = () => {
                   <span>{field.label}</span>
 
                   {isEditing ? (
-                    <input
-                      type="text"
-                      name={fieldKey}
-                      value={formData[fieldKey] || ""}
-                      onChange={handleChange}
-                      style={{
-                        width: "100%",
-                        padding: "8px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        marginTop: "5px",
-                      }}
-                    />
+                    fieldKey === "type" ? (
+                      <select
+                        name={fieldKey}
+                        value={formData[fieldKey] || ""}
+                        onChange={handleChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #ccc",
+                          borderRadius: "4px",
+                          marginTop: "5px",
+                        }}
+                      >
+                        <option value="">- Select -</option>
+                        {PARTY_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        name={fieldKey}
+                        value={formData[fieldKey] || ""}
+                        onChange={handleChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #ccc",
+                          borderRadius: "4px",
+                          marginTop: "5px",
+                        }}
+                      />
+                    )
                   ) : (
                     <strong>
                       {getValue(party, field.key) || "-"}
