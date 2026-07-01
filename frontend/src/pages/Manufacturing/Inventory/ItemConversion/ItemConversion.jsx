@@ -461,7 +461,6 @@ const ItemConversion = () => {
                   <th>CQty</th>
                   <th>RQty</th>
                   <th>UOM</th>
-                  <th>Amount</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -469,7 +468,6 @@ const ItemConversion = () => {
                 {filtered.length > 0 ? (
                   filtered.map((r, i) => {
                     const rqty   = r.totalRaQty ?? (r.conversionRows || []).reduce((s, row) => s + (Number(row.raQty || row.rQty) || 0), 0);
-                    const amount = r.totalAmount ?? r.totalRate ?? 0;
                     return (
                       <tr key={r._id} className="ic-table-row-link" onClick={() => navigate(`/item-conversion-detail/${r._id}`)}>
                         <td className="ic-sno-cell">{i + 1}</td>
@@ -486,7 +484,6 @@ const ItemConversion = () => {
                         <td className="ic-num-cell">{fmt(r.baseQty)}</td>
                         <td className="ic-num-cell">{fmt(rqty)}</td>
                         <td>{r.uom || "-"}</td>
-                        <td className="ic-amt-cell"><strong>₹ {fmt(amount)}</strong></td>
                         <td>
                           <span className={`ic-status-badge ic-status-${(r.status || "open").toLowerCase()}`}>
                             {r.status || "Open"}
@@ -497,7 +494,7 @@ const ItemConversion = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="14" className="ic-no-data">No Item Conversions found</td>
+                    <td colSpan="13" className="ic-no-data">No Item Conversions found</td>
                   </tr>
                 )}
               </tbody>

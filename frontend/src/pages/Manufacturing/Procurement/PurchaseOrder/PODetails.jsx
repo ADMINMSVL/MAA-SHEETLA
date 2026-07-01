@@ -347,7 +347,7 @@ const PODetail = () => {
           </div>
 
           <div className="pod-field">
-            <div className="pod-label">PO No (IN/OUT WARD NO)</div>
+            <div className="pod-label">PO No</div>
             <div className="pod-value pod-mono">{po?.poNo || "-"}</div>
           </div>
 

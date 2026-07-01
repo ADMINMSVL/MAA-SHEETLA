@@ -35,7 +35,7 @@ const directGRNSchema = new mongoose.Schema({
   status:              { type: String, default: "Open" },
   grnDate:             String,
   grnDescription:      String,
-  grnType:             String,           // "F and A Impact", "Domestic", "International"
+  grnType:             String,           // "T" or "UT" — mirrors the linked PO's poType, auto-fetched from PO
   transactionCategory: String,
 
   site:                String,
@@ -69,7 +69,8 @@ const directGRNSchema = new mongoose.Schema({
   remarks:             String,
   comments:            String,
 
-  /* ── linked GIN / Item Conversion ── */
+  /* ── linked PO / GIN / Item Conversion ── */
+  poNo:                String,   // PO No this GRN was raised against (auto-fetched from PO or the linked IC's PO)
   linkedGinNo:         String,
   linkedIcNo:          String,   // IC No that sourced this GRN (set when created from Item Conversion)
 

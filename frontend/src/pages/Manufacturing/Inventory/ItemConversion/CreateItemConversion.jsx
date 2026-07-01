@@ -16,6 +16,15 @@ const buildDatePart = (format) => {
   const yy = String(d.getFullYear()).slice(-2);
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+       documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+    const year   = d.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;
 };
 
@@ -428,30 +437,33 @@ const CreateItemConversion = () => {
   }, []);
 
   /* ── Preview IC No from Transaction Category + Document Sequence ──
-     Mirrors the Inward GIN / Weighment logic: prefix = category code, then
-     look up the matching Document Sequence record (module + businessEntity +
-     entityPrefix) and preview the next code. The increment is only
-     OFFICIALLY committed (via /api/create-document-sequence) at save time. ── */
+     Links to the Document Sequence configured for THIS Transaction Category
+     via module + businessEntity + transactionCategory (description) — Entity
+     Prefix is entered manually on the Document Sequence screen and has no
+     fixed relationship to the transaction category code, so it must be read
+     from the matched sequence record. The increment is only OFFICIALLY
+     committed (via /api/create-document-sequence) at save time. ── */
   useEffect(() => {
     if (!transactionCategory) { setIcNo(""); return; }
     const cat = transactionCategories.find((tx) => tx.categoryDescription === transactionCategory);
-    if (!cat || !cat.transactionCategoryCode) { setIcNo(""); return; }
-    const prefix = cat.transactionCategoryCode.trim().toUpperCase();
+    if (!cat) { setIcNo(""); return; }
     const mod    = cat.module         || "Inventory";
     const entity = cat.businessEntity || "Item Conversion";
 
     axios.get(`${API_URL}/api/document-sequence`)
       .then((res) => {
         const matching = (Array.isArray(res.data) ? res.data : []).filter(
-          (r) => r.module === mod && r.businessEntity === entity && r.entityPrefix === prefix
+          (r) => r.module === mod && r.businessEntity === entity && r.transactionCategory === cat.categoryDescription
         );
         if (!matching.length) {
-          setIcNo(`${prefix}??? (Create document sequence first)`);
+          setIcNo(`(Create a Document Sequence for "${cat.categoryDescription}" first)`);
           return;
         }
         const last   = matching.reduce((a, b) => Number(a.incrementNo) > Number(b.incrementNo) ? a : b);
+        const prefix = (last.entityPrefix || "").trim().toUpperCase();
         const digits = Math.max(1, Number(last.sequenceDigits) || 2);
-        const nextNo = Number(last.incrementNo) + 1;
+        const step   = Math.max(1, Number(last.incrementStep) || 1);
+        const nextNo = Number(last.incrementNo) + step;
         const date   = last.useDateFragment ? buildDatePart(last.sequenceFormat || "dd/mm/yy") : "";
         setIcNo(`${prefix}${date}${String(nextNo).padStart(digits, "0")}`);
       })
@@ -707,19 +719,35 @@ const CreateItemConversion = () => {
     setLoading(true);
     try {
       /* Officially register the document sequence to commit the increment,
-         mirroring the Inward GIN / Weighment flow. */
+         mirroring the Inward GIN / Weighment flow. Entity Prefix is entered
+         manually on the Document Sequence screen — it must be read from the
+         actual configured sequence, not derived from the category code. */
       let finalIcNo = icNo;
+      const mod    = cat.module         || "Inventory";
+      const entity = cat.businessEntity || "Item Conversion";
       try {
-        const prefix = cat.transactionCategoryCode.trim().toUpperCase();
+        const seqListRes  = await axios.get(`${API_URL}/api/document-sequence`);
+        const matchingSeq = (Array.isArray(seqListRes.data) ? seqListRes.data : []).filter(
+          (r) => r.module === mod && r.businessEntity === entity && r.transactionCategory === cat.categoryDescription
+        );
+        if (!matchingSeq.length) {
+          throw new Error(`No Document Sequence is set up for "${cat.categoryDescription}". Please create one first.`);
+        }
+        const seqEntry     = matchingSeq.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b));
+        const entityPrefix = (seqEntry.entityPrefix || "").trim().toUpperCase();
+
         const seqRes = await axios.post(`${API_URL}/api/create-document-sequence`, {
-          module:              cat.module         || "Inventory",
-          businessEntity:      cat.businessEntity || "Item Conversion",
-          entityPrefix:        prefix,
+          module:              mod,
+          businessEntity:      entity,
+          entityPrefix,
           transactionCategory: cat.categoryDescription,
         });
         if (seqRes.data?.generatedCode) finalIcNo = seqRes.data.generatedCode;
       } catch (seqErr) {
         console.warn("Could not register document sequence:", seqErr.message);
+        alert(seqErr.message || "Could not register the document sequence for this Transaction Category.");
+        setLoading(false);
+        return;
       }
 
       const res = await axios.post(`${API_URL}/api/item-conversion`, { ...buildPayload(icStatus), icNo: finalIcNo });

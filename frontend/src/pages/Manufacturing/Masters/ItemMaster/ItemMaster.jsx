@@ -232,6 +232,8 @@ const ItemMaster = () => {
     } catch (error) { console.log(error); }
   };
 
+  const handleCancelEdit = () => setEditId(null);
+
   const TEXT_FIELDS = [
     "itemCode", "itemName", "itemTypes", "category",
     "itemGroup", "uom", "hsn", "gstPercent",
@@ -399,7 +401,7 @@ const ItemMaster = () => {
             <tbody>
               {filteredData.length > 0 ? (
                 filteredData.map((item, index) => (
-                  <tr key={item._id}>
+                  <tr key={item._id} className={editId === item._id ? "editing-row" : ""}>
                     <td>{index + 1}</td>
 
                     {TEXT_FIELDS.map((field) => (
@@ -497,9 +499,12 @@ const ItemMaster = () => {
                     </td>
 
                     {/* ACTION */}
-                    <td>
+                    <td className="action-cell">
                       {editId === item._id ? (
-                        <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
+                        <>
+                          <button className="save-btn" onClick={() => handleUpdate(item._id)}>Save</button>
+                          <button className="cancel-edit-btn" onClick={handleCancelEdit}>Cancel</button>
+                        </>
                       ) : (
                         <button className="edit-btn" onClick={() => handleEdit(item)}>Edit</button>
                       )}

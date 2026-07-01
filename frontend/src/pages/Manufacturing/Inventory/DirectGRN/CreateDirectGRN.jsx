@@ -8,6 +8,7 @@ import { API_URL } from "../../../../config";
 const GRN_API           = `${API_URL}/api/direct-grn`;
 const IC_API            = `${API_URL}/api/item-conversion`;
 const PO_API            = `${API_URL}/api/purchase-order`;
+const GIN_API           = `${API_URL}/api/goods-inward-note`; // Inward/Outward note — source of Inv/Challan No & Date
 const DIRECT_GRN_MODULE = "Inventory";
 const DIRECT_GRN_ENTITY = "GRN";
 const today             = new Date().toISOString().split("T")[0];
@@ -20,9 +21,12 @@ const blankCharge = (sNo) => ({
   sNo, code: "", description: "", addOrSubtract: "", amount: "", _checked: false,
 });
 const defaultForm = () => ({
-  grnNo: "", status: "Draft", grnDate: today, grnDescription: "", grnType: "F and A Impact",
-  transactionCategory: "", site: "", challanInvoiceNo: "", challanDate: today,
-  partyCode: "", partyName: "", vehicleNo: "", linkedGinNo: "", linkedIcNo: "", remarks: "",
+  // challanInvoiceNo / challanDate are left blank by default — they are
+  // auto-fetched from the matching Inward/Outward (GIN) note once a PO No
+  // is known (see the poNo-driven enrichment effect in the main component).
+  grnNo: "", status: "Draft", grnDate: today, grnDescription: "", grnType: "",
+  transactionCategory: "", site: "", challanInvoiceNo: "", challanDate: "",
+  partyCode: "", partyName: "", vehicleNo: "", poNo: "", linkedGinNo: "", linkedIcNo: "", remarks: "",
 });
 
 /* ─── Rate logic ─── */
@@ -32,6 +36,10 @@ const resolveItemRate = (itemCode, baseItemCode, poRate, itemMaster) => {
 
   // If rateDiff is explicitly 0 on the item master → use the full base rate
   // (PO rate if available, otherwise the item master's own base rate) instead of 0.
+  if (itemCode === "RM025") {
+  return 0;
+}
+  
   if (masterRecord && Number(masterRecord.rateDiff) === 0 && masterRecord.rateDiff !== undefined && masterRecord.rateDiff !== null && masterRecord.rateDiff !== "") {
     if (poRate > 0) return poRate;
     return Number(masterRecord?.rate || masterRecord?.baseRate || masterRecord?.price || 0) || "";
@@ -197,6 +205,7 @@ const CreateDirectGRN = () => {
   const fromItemConversion = !!location.state?.fromItemConversion;
   const existingGrns       = location.state?.existingGrns || [];
   const directIc           = location.state?.directIc || null; // set by ItemConversionDetail "Import to GRN"
+  const fromPO             = location.state?.fromPO || null;    // set by PODetails "Export to DGRN"
   const isDetail           = !!id;
 
   const [form,              setForm]              = useState(defaultForm());
@@ -289,6 +298,88 @@ const CreateDirectGRN = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directIc, itemMaster]);
 
+  /* ── Auto-populate from fromPO (navigated from PODetails "Export to DGRN")
+     PO No, Party Code, Party Name, GRN Type (T/UT ← PO Type) and Items are
+     pulled straight from the PO. Inv/Challan No & Date are then resolved by
+     the poNo-driven enrichment effect below (from the matching Inward/Outward
+     note), same as the Item-Conversion path. ── */
+  useEffect(() => {
+    if (!fromPO || isDetail) return;
+    setForm((prev) => ({
+      ...prev,
+      poNo:           fromPO.poNo   || prev.poNo,
+      grnType:        fromPO.poType || prev.grnType,     // T / UT
+      partyCode:      fromPO.partyCode || prev.partyCode,
+      partyName:      fromPO.partyName || prev.partyName,
+      site:           fromPO.site   || prev.site,
+      grnDescription: prev.grnDescription || `From Purchase Order ${fromPO.poNo || ""}`,
+    }));
+    if (Array.isArray(fromPO.items) && fromPO.items.length > 0) {
+      setItems(fromPO.items.map((it, idx) => {
+        const qty  = Number(it.qty  || 0);
+        const rate = Number(it.rate || 0);
+        return {
+          sNo: idx + 1,
+          itemCode:    it.itemCode || "",
+          itemName:    it.itemName || "",
+          uom:         it.uom || "",
+          qty:         qty  || "",
+          rate:        rate || "",
+          totalAmount: qty && rate ? String(qty * rate) : "",
+          _checked:    false,
+        };
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromPO, isDetail]);
+
+  /* ── PO-driven enrichment — whenever the GRN has a PO No attached (either
+     from the Item-Conversion path above, which resolves the IC's linked PO,
+     or from the direct "Export to DGRN" path above), pull:
+       • GRN Type  ← PO's poType (T / UT)
+       • Party Code / Party Name ← PO (only fills if still blank)
+       • Inv/Challan No & Date, Vehicle No ← matching Inward/Outward (GIN)
+         record for that PO No
+     Only fills blanks — never overwrites a value the user already has. ── */
+  useEffect(() => {
+    if (isDetail || !form.poNo) return;
+    let cancelled = false;
+
+    axios.get(`${PO_API}s`)
+      .then((res) => {
+        if (cancelled) return;
+        const poList    = Array.isArray(res.data) ? res.data : [];
+        const matchedPO = poList.find((po) => po.poNo === form.poNo);
+        if (!matchedPO) return;
+        setForm((prev) => ({
+          ...prev,
+          grnType:   prev.grnType   || matchedPO.poType    || prev.grnType,
+          partyCode: prev.partyCode || matchedPO.partyCode || prev.partyCode,
+          partyName: prev.partyName || matchedPO.partyName || prev.partyName,
+        }));
+      })
+      .catch((err) => console.warn("Could not auto-fetch PO for GRN Type/Party:", err.message));
+
+    axios.get(GIN_API)
+      .then((res) => {
+        if (cancelled) return;
+        const ginList   = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        const matchedGin = ginList
+          .filter((g) => g.poCpoNo === form.poNo)
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+        if (!matchedGin) return;
+        setForm((prev) => ({
+          ...prev,
+          challanInvoiceNo: prev.challanInvoiceNo || matchedGin.challanInvoiceNo || prev.challanInvoiceNo,
+          challanDate:      prev.challanDate      || matchedGin.challanDate      || prev.challanDate,
+          vehicleNo:        prev.vehicleNo        || matchedGin.vehicleNo        || prev.vehicleNo,
+        }));
+      })
+      .catch((err) => console.warn("Could not auto-fetch Inward/Outward for Inv/Challan details:", err.message));
+
+    return () => { cancelled = true; };
+  }, [form.poNo, isDetail]);
+
   const itemNameOptions = useMemo(() => itemMaster.map((it) => it.itemName).filter(Boolean), [itemMaster]);
   const itemCodeOptions = useMemo(() => itemMaster.map((it) => it.itemCode).filter(Boolean), [itemMaster]);
 
@@ -328,8 +419,9 @@ const CreateDirectGRN = () => {
         grnDate:        fullIc.conversionDate || prev.grnDate,
         grnDescription: `From Item Conversion ${fullIc.icNo || ""}`,
         partyCode:      fullIc.partyCode  || poPartyCode  || prev.partyCode,   // ← IC first, then PO fallback
-        partyName:      fullIc.partyName  || prev.partyName,
+        partyName:      fullIc.partyName  || prev.partyName,                  // PO fallback handled by poNo-driven enrichment effect once poNo is set below
         vehicleNo:      fullIc.vehicleNo  || prev.vehicleNo,
+        poNo:           fullIc.poNo       || prev.poNo,   // ← drives GRN Type / Party / Challan auto-fetch
         linkedGinNo:    fullIc.ginId      || prev.linkedGinNo,
         linkedIcNo:     fullIc.icNo       || "",
         remarks:        fullIc.remarks    || prev.remarks,
@@ -546,7 +638,7 @@ const CreateDirectGRN = () => {
             ← Back
           </button>
           <h2>
-            {isDetail ? "Direct GRN Detail" : fromItemConversion ? "Create Direct GRN from Item Conversion" : "Create Direct GRN"}
+            {isDetail ? "Direct GRN Detail" : fromItemConversion ? "Create GRN from Item Conversion" : "Create GRN"}
           </h2>
           {isDetail && form.grnNo && (
             <span className="cdgrn-grn-no-badge">{form.grnNo}</span>
@@ -635,11 +727,20 @@ const CreateDirectGRN = () => {
             <div className="cdgrn-fg">
               <label>GRN Type</label>
               <select name="grnType" value={form.grnType} onChange={handleChange} disabled={!canEdit}>
-                <option>F and A Impact</option>
-                <option>Domestic</option>
-                <option>International</option>
-                <option>No Impact</option>
+                <option value="">Select</option>
+                <option value="T">T</option>
+                <option value="UT">UT</option>
               </select>
+              {!isDetail && !form.grnType && form.poNo && (
+                <span style={{ fontSize: 10.5, color: "#6b7280", marginTop: 3, display: "block" }}>
+                  Auto-fetching from PO {form.poNo}…
+                </span>
+              )}
+            </div>
+
+            <div className="cdgrn-fg">
+              <label>PO No</label>
+              <input name="poNo" value={form.poNo} readOnly className="cdgrn-readonly" placeholder="Auto-filled from PO" />
             </div>
 
             <div className="cdgrn-fg">
@@ -691,7 +792,7 @@ const CreateDirectGRN = () => {
 
             <div className="cdgrn-fg">
               <label>Inv / Challan No</label>
-              <input name="challanInvoiceNo" value={form.challanInvoiceNo} onChange={handleChange} readOnly={!canEdit} />
+              <input name="challanInvoiceNo" value={form.challanInvoiceNo} onChange={handleChange} readOnly={!canEdit} placeholder="Auto-fetched from Inward/Outward" />
             </div>
 
             <div className="cdgrn-fg">

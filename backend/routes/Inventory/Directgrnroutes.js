@@ -21,6 +21,15 @@ const buildDatePart = (format) => {
 
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed)
+       e.g. 01-Jan-2026 → 26001, 31-Dec-2026 → 26365 */
+    const year   = today.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((today - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`; // default dd/mm/yy
 };
 
@@ -123,7 +132,7 @@ router.get("/", async (req, res) => {
       fromDate, toDate, grnNo, status,
       vendorCode, vendorName, vehicleNo, site,
       invoiceNo, invoiceDate, transactionCategory,
-      deliveryMode, grnType,
+      deliveryMode, grnType, poNo,
     } = req.query;
 
     const query = {};
@@ -138,6 +147,7 @@ router.get("/", async (req, res) => {
     if (transactionCategory) query.transactionCategory  = { $regex: transactionCategory, $options: "i" };
     if (deliveryMode)        query.deliveryMode         = deliveryMode;
     if (grnType)             query.grnType              = grnType;
+    if (poNo)                query.poNo                 = { $regex: poNo,                $options: "i" };
 
     if (fromDate || toDate) {
       query.grnDate = {};

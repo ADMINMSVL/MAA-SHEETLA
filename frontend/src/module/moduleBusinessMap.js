@@ -2,15 +2,15 @@ export const MODULE_BUSINESS_MAP = {
 
   /* ══ MFG ══ */
   "Procurement": [
-    "REQ.",
+    // "REQ.",
     "PO",
   ],
 
   "Inventory": [
-    "Inward",
+    "Inward/Outward",
     "Weighment",
     "GRN",
-    "Quality",
+    // "Quality",
     "Item Conversion"
   ],
 

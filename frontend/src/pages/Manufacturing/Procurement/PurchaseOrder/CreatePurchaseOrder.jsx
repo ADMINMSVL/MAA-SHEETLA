@@ -275,22 +275,31 @@ const CreatePurchaseOrder = () => {
     if (!form.transactionCategory) { setPoNoPreview(""); setForm((f) => ({ ...f, poNo: "" })); return; }
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) { setPoNoPreview(""); return; }
-    const prefix = (cat.transactionCategoryCode || "").trim().toUpperCase();
 
     axios.get(`${API_URL}/api/document-sequence`)
       .then((res) => {
+        /* Link to the Document Sequence configured for THIS Transaction Category.
+           Entity Prefix is entered manually on the Document Sequence screen and
+           has no fixed relationship to the transaction category code — so we
+           match on module + businessEntity + transactionCategory (description)
+           instead, and use that record's own entityPrefix. */
         const matching = (res.data || []).filter(
-          (r) => r.module === cat.module && r.businessEntity === cat.businessEntity && r.entityPrefix === prefix
+          (r) =>
+            r.module === cat.module &&
+            r.businessEntity === cat.businessEntity &&
+            r.transactionCategory === cat.categoryDescription
         );
         if (!matching.length) {
-          const preview = `${prefix}??? (Create document sequence first)`;
+          const preview = `(Create a Document Sequence for "${cat.categoryDescription}" first)`;
           setPoNoPreview(preview);
-          setForm((f) => ({ ...f, poNo: preview }));
+          setForm((f) => ({ ...f, poNo: "" }));
           return;
         }
         const last   = matching.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b));
+        const prefix = (last.entityPrefix || "").trim().toUpperCase();
         const digits = Math.max(1, Number(last.sequenceDigits) || 2);
-        const nextNo = Number(last.incrementNo) + 1;
+        const step   = Math.max(1, Number(last.incrementStep) || 1);
+        const nextNo = Number(last.incrementNo) + step;
         const useDate = last.useDateFragment ?? true;
         let datePart = "";
         if (useDate) {
@@ -299,7 +308,21 @@ const CreatePurchaseOrder = () => {
           const mm = String(d.getMonth() + 1).padStart(2, "0");
           const yy = String(d.getFullYear()).slice(-2);
           const fmt = last.sequenceFormat || "dd/mm/yy";
-          datePart = fmt === "mm/dd/yy" ? `${mm}${dd}${yy}` : fmt === "yy/mm/dd" ? `${yy}${mm}${dd}` : `${dd}${mm}${yy}`;
+          if (fmt === "mm/dd/yy") {
+            datePart = `${mm}${dd}${yy}`;
+          } else if (fmt === "yy/mm/dd") {
+            datePart = `${yy}${mm}${dd}`;
+          } else if (fmt === "julian") {
+            /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches the
+               backend's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+            const year   = d.getFullYear();
+            const start  = new Date(year, 0, 0);
+            const oneDay = 1000 * 60 * 60 * 24;
+            const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+            datePart = `${yy}${doy}`;
+          } else {
+            datePart = `${dd}${mm}${yy}`;
+          }
         }
         const preview = `${prefix}${datePart}${String(nextNo).padStart(digits, "0")}`;
         setPoNoPreview(preview);
@@ -406,7 +429,6 @@ const CreatePurchaseOrder = () => {
     if (validRows.length === 0) return alert("Add at least one item.");
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) return alert("Invalid Transaction Category");
-    const prefix = (cat.transactionCategoryCode || "").trim().toUpperCase();
     const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
     const payload = {
       ...form, status: DEFAULT_STATUS,
@@ -418,11 +440,30 @@ const CreatePurchaseOrder = () => {
       serviceRows, chargeRows, taxRows,
     };
     try {
+      /* Find the Document Sequence configured for THIS Transaction Category
+         (module + businessEntity + transactionCategory description) and use
+         ITS entityPrefix. Entity Prefix is entered manually on the Document
+         Sequence screen — it must NOT be re-derived from the category code,
+         or this ends up registering against an unrelated / auto-created
+         sequence instead of the one actually set up for this category. */
+      const seqListRes = await axios.get(`${API_URL}/api/document-sequence`);
+      const matchingSeq = (seqListRes.data || []).filter(
+        (r) =>
+          r.module === cat.module &&
+          r.businessEntity === cat.businessEntity &&
+          r.transactionCategory === cat.categoryDescription
+      );
+      if (!matchingSeq.length) {
+        return alert(`No Document Sequence is set up for "${cat.categoryDescription}". Please create one first.`);
+      }
+      const seqEntry     = matchingSeq.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b));
+      const entityPrefix = (seqEntry.entityPrefix || "").trim().toUpperCase();
+
       /* Register sequence → get official PO No / IN-OUT WARD NO */
       const seqRes = await axios.post(`${API_URL}/api/create-document-sequence`, {
         module:              cat.module,
         businessEntity:      cat.businessEntity,
-        entityPrefix:        prefix,
+        entityPrefix,
         transactionCategory: cat.categoryDescription,
       });
       const officialNo = seqRes.data.generatedCode || form.poNo;

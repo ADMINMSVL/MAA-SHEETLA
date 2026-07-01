@@ -4,16 +4,26 @@ const Weighment       = require("../../models/Inventory/Weighment");
 const GoodsInwardNote = require("../../models/Inventory/GoodsInwardNote");
 const DocumentSequence = require("../../models/Master/DocumentSequence");
 
-/* ── shared date builder ── */
+/* ── shared date builder — MUST match Document Sequence's format keys
+   (dd/mm/yy, mm/dd/yy, yy/mm/dd, julian), 2-digit year, not 4 ── */
 const buildDatePart = (format) => {
   const today = new Date();
-  const dd   = String(today.getDate()).padStart(2, "0");
-  const mm   = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(today.getFullYear());
+  const dd = String(today.getDate()).padStart(2, "0");
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const yy = String(today.getFullYear()).slice(-2);
 
-  if (format === "mm/dd/yyyy") return `${mm}${dd}${yyyy}`;
-  if (format === "yyyy/mm/dd") return `${yyyy}${mm}${dd}`;
-  return `${dd}${mm}${yyyy}`;
+  if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
+  if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+       documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+    const year   = today.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((today - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
+  return `${dd}${mm}${yy}`;  // default dd/mm/yy
 };
 
 /* ══════════════════════════════════════════════
@@ -43,7 +53,8 @@ router.get("/goods-inward-note/next-sequence", async (req, res) => {
     }
 
     const digits   = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
-    const nextNo   = Number(lastRecord.incrementNo) + 1;
+    const step     = Math.max(1, Number(lastRecord.incrementStep) || 1);
+    const nextNo   = Number(lastRecord.incrementNo) + step;
     const paddedNo = String(nextNo).padStart(digits, "0");
     const datePart = lastRecord.useDateFragment ? buildDatePart(lastRecord.sequenceFormat) : "";
     const nextCode = `${prefix}${datePart}${paddedNo}`;

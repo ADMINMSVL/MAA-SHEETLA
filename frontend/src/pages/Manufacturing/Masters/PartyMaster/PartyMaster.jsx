@@ -47,6 +47,14 @@ const PartyMaster = () => {
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
 
+  /* EDIT */
+  const [editId,   setEditId]   = useState(null);
+  const [editData, setEditData] = useState({
+    partyCode: "", partyName: "", type: "", city: "",
+    addressLine1: "", addressLine2: "", pin: "", gstNo: "",
+    mobile: "", payTerms: "", creditDays: "", status: "Active",
+  });
+
   /* FETCH */
   const fetchParties = async () => {
     try {
@@ -79,6 +87,53 @@ const PartyMaster = () => {
     setType("");
     setStatus("");
     setFilteredData(parties);
+  };
+
+  /* ── CRUD ─────────────────────────────────────────────────────────── */
+  const handleEdit = (item, rowId) => {
+    setEditId(rowId);
+    setEditData({
+      partyCode:    item.partyCode || "",
+      partyName:    getValue(item, "partyName"),
+      type:         getValue(item, "type"),
+      city:         getValue(item, "city"),
+      addressLine1: getValue(item, ["addressLine1", "address1", "address_1", "address line 1", "Address Line 1"]),
+      addressLine2: getValue(item, ["addressLine2", "address2", "address_2", "address line 2", "Address Line 2"]),
+      pin:          getValue(item, ["pin", "pincode", "pinCode", "pinNo", "Pin", "PIN", "Pin Code"]),
+      gstNo:        getValue(item, "gstNo"),
+      mobile:       getValue(item, "mobile"),
+      payTerms:     getValue(item, "payTerms"),
+      creditDays:   getValue(item, "creditDays"),
+      status:       getValue(item, "status") || "Active",
+    });
+  };
+
+  const handleCancelEdit = () => setEditId(null);
+
+  const handleUpdate = async (item) => {
+    const partyId = item._id || item.id;
+    if (!partyId) { alert("Cannot update: this record has no id."); return; }
+    try {
+      await axios.put(`${API_URL}/api/party/${partyId}`, editData);
+      setEditId(null);
+      fetchParties();
+    } catch (err) {
+      console.log(err);
+      alert(err.response?.data?.message || "Error updating party");
+    }
+  };
+
+  const handleDelete = async (item) => {
+    const partyId = item._id || item.id;
+    if (!partyId) { alert("Cannot delete: this record has no id."); return; }
+    if (!window.confirm("Delete this party?")) return;
+    try {
+      await axios.delete(`${API_URL}/api/party/${partyId}`);
+      fetchParties();
+    } catch (err) {
+      console.log(err);
+      alert(err.response?.data?.message || "Error deleting party");
+    }
   };
 
   return (
@@ -163,41 +218,162 @@ const PartyMaster = () => {
                 <th>Pay Terms</th>
                 <th>Credit Days</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredData.length > 0 ? (
                 filteredData.map((item, index) => {
                   const partyIdentifier = item._id || item.id || item.partyCode;
+                  const isEditing = editId === partyIdentifier;
 
                   return (
-                  <tr key={partyIdentifier}>
+                  <tr key={partyIdentifier} className={isEditing ? "editing-row" : ""}>
                     <td>{index + 1}</td>
                     <td>
-                      <Link
-                        className="party-code-link"
-                        to={`/party-detail/${encodeURIComponent(partyIdentifier)}`}
-                        state={{ party: item }}
-                      >
-                        {item.partyCode}
-                      </Link>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.partyCode}
+                          onChange={(e) => setEditData({ ...editData, partyCode: e.target.value })}
+                        />
+                      ) : (
+                        <Link
+                          className="party-code-link"
+                          to={`/party-detail/${encodeURIComponent(partyIdentifier)}`}
+                          state={{ party: item }}
+                        >
+                          {item.partyCode}
+                        </Link>
+                      )}
                     </td>
-                    <td>{getValue(item, "partyName")}</td>
-                    <td>{getValue(item, "type")}</td>
-                    <td>{getValue(item, "city")}</td>
-                    <td>{getValue(item, ["addressLine1", "address1", "address_1", "address line 1", "Address Line 1"])}</td>
-                    <td>{getValue(item, ["addressLine2", "address2", "address_2", "address line 2", "Address Line 2"])}</td>
-                    <td>{getValue(item, ["pin", "pincode", "pinCode", "pinNo", "Pin", "PIN", "Pin Code"])}</td>
-                    <td>{getValue(item, "gstNo")}</td>
-                    <td>{getValue(item, "mobile")}</td>
-                    <td>{getValue(item, "payTerms")}</td>
-                    <td>{getValue(item, "creditDays")}</td>
-                    <td>{getValue(item, "status")}</td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.partyName}
+                          onChange={(e) => setEditData({ ...editData, partyName: e.target.value })}
+                        />
+                      ) : getValue(item, "partyName")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <select
+                          value={editData.type}
+                          onChange={(e) => setEditData({ ...editData, type: e.target.value })}
+                        >
+                          <option value="">- Select -</option>
+                          {PARTY_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : getValue(item, "type")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.city}
+                          onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                        />
+                      ) : getValue(item, "city")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.addressLine1}
+                          onChange={(e) => setEditData({ ...editData, addressLine1: e.target.value })}
+                        />
+                      ) : getValue(item, ["addressLine1", "address1", "address_1", "address line 1", "Address Line 1"])}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.addressLine2}
+                          onChange={(e) => setEditData({ ...editData, addressLine2: e.target.value })}
+                        />
+                      ) : getValue(item, ["addressLine2", "address2", "address_2", "address line 2", "Address Line 2"])}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.pin}
+                          onChange={(e) => setEditData({ ...editData, pin: e.target.value })}
+                        />
+                      ) : getValue(item, ["pin", "pincode", "pinCode", "pinNo", "Pin", "PIN", "Pin Code"])}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.gstNo}
+                          onChange={(e) => setEditData({ ...editData, gstNo: e.target.value })}
+                        />
+                      ) : getValue(item, "gstNo")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editData.mobile}
+                          onChange={(e) => setEditData({ ...editData, mobile: e.target.value })}
+                        />
+                      ) : getValue(item, "mobile")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <select
+                          value={editData.payTerms}
+                          onChange={(e) => setEditData({ ...editData, payTerms: e.target.value })}
+                        >
+                          <option value="">- Select -</option>
+                          <option>Advance</option>
+                          <option>Credit</option>
+                          <option>COD</option>
+                        </select>
+                      ) : getValue(item, "payTerms")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={editData.creditDays}
+                          onChange={(e) => setEditData({ ...editData, creditDays: e.target.value })}
+                        />
+                      ) : getValue(item, "creditDays")}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <select
+                          value={editData.status}
+                          onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                        >
+                          <option>Active</option>
+                          <option>Inactive</option>
+                        </select>
+                      ) : getValue(item, "status")}
+                    </td>
+
+                    {/* ACTION */}
+                    <td className="action-cell">
+                      {isEditing ? (
+                        <>
+                          <button className="save-btn" onClick={() => handleUpdate(item)}>Save</button>
+                          <button className="cancel-edit-btn" onClick={handleCancelEdit}>Cancel</button>
+                        </>
+                      ) : (
+                        <button className="edit-btn" onClick={() => handleEdit(item, partyIdentifier)}>Edit</button>
+                      )}
+                      <button className="delete-btn" onClick={() => handleDelete(item)}>Delete</button>
+                    </td>
                   </tr>
                   );
                 })
               ) : (
-                <tr><td colSpan="13" className="no-data">No Data Found</td></tr>
+                <tr><td colSpan="14" className="no-data">No Data Found</td></tr>
               )}
             </tbody>
           </table>

@@ -13,6 +13,10 @@ const documentSequenceSchema = new mongoose.Schema(
     sequenceDigits:      { type: Number, default: 2 },
 
     incrementNo:         { type: Number, default: 1 },
+
+    // Step size added to the running number every time a new document is generated.
+    // e.g. incrementStep = 1 → 1, 2, 3, 4 ...   incrementStep = 2 → 2, 4, 6, 8 ...
+    incrementStep:       { type: Number, default: 1 },
     generatedCode:       { type: String },
   },
   { timestamps: true }

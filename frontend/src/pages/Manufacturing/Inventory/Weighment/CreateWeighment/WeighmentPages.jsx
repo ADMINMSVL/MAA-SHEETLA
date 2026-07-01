@@ -37,6 +37,15 @@ const buildDatePart = (format) => {
   const yy = String(d.getFullYear()).slice(-2);
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+       documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+    const year   = d.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;
 };
 
@@ -86,7 +95,6 @@ const OUTWARD_FIELDS = new Set([
   "inwardOutwardNoteNo", "vehicleNo", "partyCode", "partyName", "site", "status",
   "weighmentInDate", "weighmentInTime", "weighmentOutDate", "weighmentOutTime",
   "transactionCategory", "transporterName",
-  "billNo", "billDate",
   "remarks",
 ]);
 
@@ -96,10 +104,8 @@ const GENERAL_FIELDS = new Set([
   "weighmentInDate", "weighmentInTime", "weighmentOutDate", "weighmentOutTime",
   "transactionCategory", "transporterName",
   "poCpoNo",
-  "manufacturerCode", "manufacturerName",
   "supplierInvoiceNo", "supplierInvoiceDate",
   "challanDate", "ewayDate",
-  "billNo", "billDate",
   "remarks",
 ]);
 
@@ -116,9 +122,9 @@ const BLANK_FORM = {
   partyCode: "", partyName: "", site: "", status: "Open",
   weighmentInDate: today, weighmentInTime: "", weighmentOutDate: today, weighmentOutTime: "",
   transactionCategory: "", transporterName: "",
-  poCpoNo: "", manufacturerCode: "", manufacturerName: "",
+  poCpoNo: "",
   supplierInvoiceNo: "", supplierInvoiceDate: "",
-  challanDate: "", ewayDate: "", billNo: "", billDate: today,
+  challanDate: "", ewayDate: "",
   remarks: "",
   firstWeight: "", secondWeight: "", netWeight: "", currentWeight: "",
 };
@@ -236,10 +242,13 @@ const WeighmentForm = ({
   }, []);
 
   /* ── Preview Weighment No from Transaction Category + Document Sequence ──
-     Mirrors the Inward GIN logic: prefix = category code, then look up the
-     matching Document Sequence record (module + businessEntity + entityPrefix)
-     and preview the next code. The increment is only OFFICIALLY committed
-     (via /api/create-document-sequence) at save time in persistWeighment. ── */
+     Links to the Document Sequence configured for THIS Transaction Category
+     via module + businessEntity + transactionCategory (description) — Entity
+     Prefix is entered manually on the Document Sequence screen and has no
+     fixed relationship to the transaction category code, so it must be read
+     from the matched sequence record, not derived from the category code.
+     The increment is only OFFICIALLY committed (via /api/create-document-sequence)
+     at save time in persistWeighment. ── */
   useEffect(() => {
     if (recordId) return; // only preview on create
     if (!form.transactionCategory) {
@@ -247,26 +256,27 @@ const WeighmentForm = ({
       return;
     }
     const cat = transactionCategories.find((tx) => tx.categoryDescription === form.transactionCategory);
-    if (!cat || !cat.transactionCategoryCode) {
+    if (!cat) {
       setForm((prev) => ({ ...prev, weighmentNo: "" }));
       return;
     }
-    const prefix = cat.transactionCategoryCode.trim().toUpperCase();
     const mod    = cat.module         || "Inventory";
     const entity = cat.businessEntity || "Weighment";
 
     axios.get(`${API_URL}/api/document-sequence`)
       .then((res) => {
         const matching = (Array.isArray(res.data) ? res.data : []).filter(
-          (r) => r.module === mod && r.businessEntity === entity && r.entityPrefix === prefix
+          (r) => r.module === mod && r.businessEntity === entity && r.transactionCategory === cat.categoryDescription
         );
         if (!matching.length) {
-          setForm((prev) => ({ ...prev, weighmentNo: `${prefix}??? (Create document sequence first)` }));
+          setForm((prev) => ({ ...prev, weighmentNo: `(Create a Document Sequence for "${cat.categoryDescription}" first)` }));
           return;
         }
         const last   = matching.reduce((a, b) => Number(a.incrementNo) > Number(b.incrementNo) ? a : b);
+        const prefix = (last.entityPrefix || "").trim().toUpperCase();
         const digits = Math.max(1, Number(last.sequenceDigits) || 2);
-        const nextNo = Number(last.incrementNo) + 1;
+        const step   = Math.max(1, Number(last.incrementStep) || 1);
+        const nextNo = Number(last.incrementNo) + step;
         const date   = last.useDateFragment ? buildDatePart(last.sequenceFormat || "dd/mm/yy") : "";
         setForm((prev) => ({ ...prev, weighmentNo: `${prefix}${date}${String(nextNo).padStart(digits, "0")}` }));
       })
@@ -485,24 +495,37 @@ const WeighmentForm = ({
     } else {
       /* Officially register the document sequence to commit the increment,
          mirroring the Inward GIN flow. transactionCategory is mandatory,
-         so a matching Document Sequence record must exist. */
+         so a matching Document Sequence record must exist. Entity Prefix is
+         entered manually on the Document Sequence screen — it must be read
+         from the actual configured sequence, not derived from the category code. */
       const cat = transactionCategories.find((tx) => tx.categoryDescription === payload.transactionCategory);
       if (!cat) {
         throw new Error("Please select a valid Transaction Category before saving.");
       }
-      const prefix = cat.transactionCategoryCode.trim().toUpperCase();
+      const mod    = cat.module         || "Inventory";
+      const entity = cat.businessEntity || "Weighment";
       try {
+        const seqListRes  = await axios.get(`${API_URL}/api/document-sequence`);
+        const matchingSeq = (Array.isArray(seqListRes.data) ? seqListRes.data : []).filter(
+          (r) => r.module === mod && r.businessEntity === entity && r.transactionCategory === cat.categoryDescription
+        );
+        if (!matchingSeq.length) {
+          throw new Error(`No Document Sequence is set up for "${cat.categoryDescription}". Please create one first.`);
+        }
+        const seqEntry     = matchingSeq.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b));
+        const entityPrefix = (seqEntry.entityPrefix || "").trim().toUpperCase();
+
         const seqRes = await axios.post(`${API_URL}/api/create-document-sequence`, {
-          module:              cat.module         || "Inventory",
-          businessEntity:      cat.businessEntity || "Weighment",
-          entityPrefix:        prefix,
+          module:              mod,
+          businessEntity:      entity,
+          entityPrefix,
           transactionCategory: cat.categoryDescription,
         });
         if (seqRes.data?.generatedCode) payload.weighmentNo = seqRes.data.generatedCode;
       } catch (seqErr) {
         console.warn("Could not register document sequence:", seqErr.message);
         /* Fallback to legacy next-no endpoint so save is never blocked */
-        if (!payload.weighmentNo || payload.weighmentNo.includes("???")) {
+        if (!payload.weighmentNo || payload.weighmentNo.includes("???") || payload.weighmentNo.startsWith("(")) {
           try {
             const fallbackRes = await axios.get(`${WEIGHMENT_API}/next-no`, {
               params: { transactionType: payload.transactionType },
@@ -797,31 +820,16 @@ const WeighmentForm = ({
           )}
 
           {show("partyCode") && (
-            <div className="wc-field" style={{ position: "relative" }}>
+            <div className="wc-field">
               <label>Party Code</label>
-              <input name="partyCode" value={form.partyCode || ""}
-                onChange={(e) => { handleChange(e); setShowPartySug(true); }}
-                onFocus={() => setShowPartySug(true)}
-                onBlur={() => setTimeout(() => setShowPartySug(false), 150)}
-                readOnly={!canEditForm}
-                className={!canEditForm ? "wc-readonly" : ""} autoComplete="off" />
-              {canEditForm && showPartySug && partySuggestions.length > 0 && (
-                <ul style={{
-                  position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999,
-                  background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6,
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)", margin: 0, padding: 0,
-                  listStyle: "none", maxHeight: 200, overflowY: "auto", fontSize: 13,
-                }}>
-                  {partySuggestions.map((p) => (
-                    <li key={p._id || p.partyCode} onMouseDown={() => handlePartySelect(p)}
-                      style={{ padding: "8px 12px", cursor: "pointer", color: "#1e293b" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                      {p.partyCode} — {p.partyName}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <input
+                name="partyCode"
+                value={form.partyCode || ""}
+                readOnly
+                className="wc-readonly"
+                placeholder="Auto-filled"
+                title="Party Code is auto-filled — set it via Party Name or the linked Inward/Outward record"
+              />
             </div>
           )}
 
@@ -945,25 +953,6 @@ const WeighmentForm = ({
             </div>
           )}
 
-          {/* ── General-only fields ── */}
-          {show("manufacturerCode") && (
-            <div className="wc-field">
-              <label>Manufacturer Code</label>
-              <input name="manufacturerCode" value={form.manufacturerCode || ""}
-                onChange={handleChange} readOnly={!canEditForm}
-                className={!canEditForm ? "wc-readonly" : ""} />
-            </div>
-          )}
-
-          {show("manufacturerName") && (
-            <div className="wc-field">
-              <label>Manufacturer Name</label>
-              <input name="manufacturerName" value={form.manufacturerName || ""}
-                onChange={handleChange} readOnly={!canEditForm}
-                className={!canEditForm ? "wc-readonly" : ""} />
-            </div>
-          )}
-
           {show("challanDate") && (
             <div className="wc-field">
               <label>Challan Date</label>
@@ -977,25 +966,6 @@ const WeighmentForm = ({
             <div className="wc-field">
               <label>E-Way Date</label>
               <input type="date" name="ewayDate" value={form.ewayDate || ""}
-                onChange={handleChange} readOnly={!canEditForm}
-                className={!canEditForm ? "wc-readonly" : ""} />
-            </div>
-          )}
-
-          {/* ── Outward-only fields ── */}
-          {show("billNo") && (
-            <div className="wc-field">
-              <label>Bill No</label>
-              <input name="billNo" value={form.billNo || ""}
-                onChange={handleChange} readOnly={!canEditForm}
-                className={!canEditForm ? "wc-readonly" : ""} />
-            </div>
-          )}
-
-          {show("billDate") && (
-            <div className="wc-field">
-              <label>Bill Date</label>
-              <input type="date" name="billDate" value={form.billDate || ""}
                 onChange={handleChange} readOnly={!canEditForm}
                 className={!canEditForm ? "wc-readonly" : ""} />
             </div>
@@ -1360,58 +1330,55 @@ const InwardOutwardList = ({ type }) => {
 
       /* No weighment yet — go to pre-filled form. Nothing is written to DB here.
          Record only created when user clicks Save or Save as Draft on the form. */
-const ginData = {
-  transactionType: type,
-  transactionCategory: form.transactionCategory || "",
-  inwardOutwardNoteNo: gin.ginNo,
+      const ginData = {
+        transactionType: type,
+        transactionCategory: gin.transactionCategory || "",
+        inwardOutwardNoteNo: gin.ginNo,
 
-  vehicleNo: form.vehicleNo || "",
-  partyName: form.partyName || form.vendorName || "",
-  site: form.site || "",
+        vehicleNo: gin.vehicleNo || "",
 
-  weighmentDate: form.ginDate || today,
-  weighmentInDate: form.ginDate || today,
+        // Party Code / Name are auto-filled from the linked GIN record —
+        // Party Code is locked (read-only) on the form itself.
+        partyCode: gin.partyCode || gin.vendorCode || "",
+        partyName: gin.partyName || gin.vendorName || "",
 
-  // Blank by default
-  weighmentOutDate: "",
+        site: gin.site || "",
 
-  supplierInvoiceNo: form.challanInvoiceNo || "",
+        weighmentDate: gin.ginDate || today,
+        weighmentInDate: gin.ginDate || today,
 
-  // Blank by default
-  supplierInvoiceDate: "",
+        // Blank by default
+        weighmentOutDate: "",
 
-  billNo: form.billNo || "",
-  billDate: form.billDate || today,
+        // Auto-fetched from the linked Inward/Outward (GIN) record
+        supplierInvoiceNo: gin.challanInvoiceNo || "",
+        supplierInvoiceDate: gin.challanDate || "",
 
-  remarks: form.remarks || "",
+        remarks: gin.remarks || gin.comments || "",
 
-  vendorCode: form.vendorCode || "",
-  vendorName: form.vendorName || "",
+        vendorCode: gin.vendorCode || "",
+        vendorName: gin.vendorName || "",
 
-  poCpoNo: form.poCpoNo || "",
+        poCpoNo: gin.poCpoNo || "",
 
-  manufacturerName: form.manufacturerName || "",
-  manufacturerCode: form.manufacturerCode || "",
+        challanDate: gin.challanDate || "",
+        ewayDate: gin.ewayDate || "",
 
-  challanDate: form.challanDate || "",
-  ewayDate: form.ewayDate || "",
-
-  // Auto fetch Part Code
-  partCode: items?.[0]?.itemCode || "",
-
-  items: items
-    .filter((r) => r.itemCode || r.itemName)
-    .map((it, i) => ({
-      sNo: i + 1,
-      itemCode: it.itemCode || "",
-      itemName: it.itemName || "",
-      uom: it.uom || "",
-      remarks: it.remarks || "",
-      firstWeight: "",
-      secondWeight: "",
-      netWeight: "",
-    })),
-};
+        items: Array.isArray(gin.items) && gin.items.length > 0
+          ? gin.items
+              .filter((r) => r.itemCode || r.itemName)
+              .map((it, i) => ({
+                sNo: i + 1,
+                itemCode: it.itemCode || "",
+                itemName: it.itemName || "",
+                uom: it.uom || "",
+                remarks: "",
+                firstWeight: "",
+                secondWeight: "",
+                netWeight: "",
+              }))
+          : [],
+      };
 
       const route = type === "Inward"
         ? "/weighment/create/inward/form"

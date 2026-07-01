@@ -30,7 +30,9 @@ const buildDatePart = (format) => {
 };
 
 /** Re-compute the generated code client-side so the user sees the preview
- *  while filling in the edit form, exactly the same way the backend does. */
+ *  while filling in the edit form, exactly the same way the backend does.
+ *  (Preview always reflects the CURRENT incrementNo — incrementStep only
+ *  affects the number generated the NEXT time this sequence is used.) */
 const previewCode = (prefix, useDateFragment, sequenceFormat, sequenceDigits, incrementNo) => {
   const p       = (prefix || "").trim().toUpperCase();
   const digits  = Math.max(1, Number(sequenceDigits) || 2);
@@ -63,6 +65,7 @@ const DocumentSequence = () => {
     useDateFragment:     true,
     sequenceDigits:      2,
     incrementNo:         1,
+    incrementStep:       1,
   });
 
   /* ── fetch ── */
@@ -106,6 +109,7 @@ const DocumentSequence = () => {
       useDateFragment:     item.useDateFragment !== false,  // default true
       sequenceDigits:      item.sequenceDigits      || 2,
       incrementNo:         item.incrementNo          || 1,
+      incrementStep:       item.incrementStep        || 1,
     });
   };
 
@@ -221,7 +225,8 @@ const DocumentSequence = () => {
               <th>Sequence Format</th>
               <th>Date Fragment</th>
               <th>Digits</th>
-              <th>Increment No</th>
+              <th>Starting Sequence No</th>
+              <th>Increment Value</th>
               <th>Transaction Code</th>
               <th>Action</th>
             </tr>
@@ -284,6 +289,13 @@ const DocumentSequence = () => {
                         onChange={setF("incrementNo")} className="seq-input seq-input--xs"
                       />
                     </td>
+                    <td>
+                      <input
+                        type="number" min="1" value={editData.incrementStep}
+                        onChange={setF("incrementStep")} className="seq-input seq-input--xs"
+                        title="Amount added to the running number each time a document is generated"
+                      />
+                    </td>
                     {/* live preview */}
                     <td className="code-cell preview-code" title="Live preview">{liveCode}</td>
                     <td className="action-cell">
@@ -302,6 +314,7 @@ const DocumentSequence = () => {
                     <td>{item.useDateFragment === false ? "No" : "Yes"}</td>
                     <td>{item.sequenceDigits}</td>
                     <td>{item.incrementNo}</td>
+                    <td>{item.incrementStep || 1}</td>
                     <td className="code-cell">{item.generatedCode}</td>
                     <td className="action-cell">
                       <button className="edit-btn"   onClick={() => handleEdit(item)}>Edit</button>
@@ -313,7 +326,7 @@ const DocumentSequence = () => {
               </tr>
             )) : (
               <tr>
-                <td colSpan="10" className="no-data">No Data Found</td>
+                <td colSpan="11" className="no-data">No Data Found</td>
               </tr>
             )}
           </tbody>

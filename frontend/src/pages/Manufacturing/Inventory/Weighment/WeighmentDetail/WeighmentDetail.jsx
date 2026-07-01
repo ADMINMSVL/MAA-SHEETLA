@@ -689,7 +689,6 @@ const WeighmentDetail = () => {
           {[
             ["Inward/Outward Note No",     form.inwardOutwardNoteNo, true],
             ["PO/CPO No",         form.poCpoNo],
-            ["Manufacturer Name", form.manufacturerName],
             ["Challan Date",      form.challanDate],
             ["E-Way Date",        form.ewayDate],
           ].map(([label, value, highlight]) => (
@@ -769,30 +768,16 @@ const WeighmentDetail = () => {
               onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
           </div>
 
-          <div className="wd-field" style={{ position: "relative" }}>
+          <div className="wd-field">
             <label>Party Code</label>
-            <input name="partyCode" value={form.partyCode || ""}
-              onChange={(e) => { handleChange(e); setShowPartySug(true); }}
-              onFocus={() => setShowPartySug(true)}
-              onBlur={() => setTimeout(() => setShowPartySug(false), 150)}
-              readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} autoComplete="off" />
-            {editMode && showPartySug && partySuggestions.length > 0 && (
-              <ul style={{
-                position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999,
-                background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.10)", margin: 0, padding: 0,
-                listStyle: "none", maxHeight: 200, overflowY: "auto", fontSize: 13,
-              }}>
-                {partySuggestions.map((p) => (
-                  <li key={p._id || p.partyCode} onMouseDown={() => handlePartySelect(p)}
-                    style={{ padding: "8px 12px", cursor: "pointer", color: "#1e293b" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                    {p.partyCode} — {p.partyName}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <input
+              name="partyCode"
+              value={form.partyCode || ""}
+              readOnly
+              className="wd-readonly"
+              placeholder="Auto-filled"
+              title="Party Code is auto-filled — set it via Party Name or the linked Inward/Outward record"
+            />
           </div>
 
           <div className="wd-field" style={{ position: "relative" }}>
@@ -833,11 +818,11 @@ const WeighmentDetail = () => {
               onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
           </div>
 
-          <div className="wd-field">
+          {/* <div className="wd-field">
             <label>Weighment Date</label>
             <input type="date" name="weighmentDate" value={form.weighmentDate || ""}
               onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
-          </div>
+          </div> */}
 
           <div className="wd-field">
             <label>Weighment In Date</label>
@@ -872,18 +857,6 @@ const WeighmentDetail = () => {
           <div className="wd-field">
             <label>Supplier Invoice Date</label>
             <input type="date" name="supplierInvoiceDate" value={form.supplierInvoiceDate || ""}
-              onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
-          </div>
-
-          <div className="wd-field">
-            <label>Bill No</label>
-            <input name="billNo" value={form.billNo || ""}
-              onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
-          </div>
-
-          <div className="wd-field">
-            <label>Bill Date</label>
-            <input type="date" name="billDate" value={form.billDate || ""}
               onChange={handleChange} readOnly={!editMode} className={!editMode ? "wd-readonly" : ""} />
           </div>
 

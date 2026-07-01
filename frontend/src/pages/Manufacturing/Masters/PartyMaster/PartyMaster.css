@@ -247,6 +247,7 @@
 .table-container {
   overflow-x: auto;
   border-top: 1px solid var(--border);
+  position: relative;
 }
 
 table {
@@ -277,6 +278,35 @@ table td {
 
 table tbody tr:hover {
   background: #fafcfe;
+}
+
+/* ── Sticky Action column ──────────────────────────────────────────
+   When a row enters edit mode, its <input>/<select> cells can widen
+   the table well past the viewport. Pinning the last column keeps
+   Save/Edit + Delete visible at all times instead of scrolling off
+   screen. ─────────────────────────────────────────────────────────── */
+table th:last-child,
+table td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--bg-white);
+  box-shadow: -6px 0 8px -6px rgba(0,0,0,0.15);
+}
+table th:last-child {
+  background: #eef4f8;
+  z-index: 3;
+}
+table td:last-child {
+  z-index: 2;
+}
+table tbody tr:hover td:last-child {
+  background: #fafcfe;
+}
+
+/* ── Row currently being edited ──────────────────────────────────── */
+tr.editing-row td {
+  background: #fffbeb !important;
+  border-color: #fbbf24;
 }
 
 /* Inline edit inputs inside table cells */
@@ -348,6 +378,35 @@ table td select:focus {
   white-space: nowrap;
 }
 .save-btn:hover { background: #bbf7d0; }
+
+/* ── Action cell (Edit/Save/Cancel + Delete) ─────────────────────── */
+.action-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.action-cell .edit-btn,
+.action-cell .save-btn,
+.action-cell .delete-btn,
+.action-cell .cancel-edit-btn {
+  margin-right: 0; /* spacing now handled by flex gap */
+}
+
+.cancel-edit-btn {
+  background: var(--bg-white);
+  color: var(--text-label);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: background 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.cancel-edit-btn:hover { background: #f1f5f9; }
 
 /* ── No data row ──────────────────────────────────────────────────── */
 .no-data {

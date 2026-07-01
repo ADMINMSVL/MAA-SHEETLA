@@ -19,6 +19,7 @@ const EMPTY_FILTERS = {
   vehicleNo: "",
   site: "",
   invoiceNo: "",
+  poNo: "",
 };
 
 const DirectGRN = () => {
@@ -119,7 +120,7 @@ const DirectGRN = () => {
         <div className="dgrn-topbar-left">
           <button className="dgrn-back-btn" onClick={() => navigate("/inventory")}>← Back</button>
           <div>
-            <h1>Direct GRN</h1>
+            <h1>GRN</h1>
             <span className="dgrn-topbar-sub">
               Showing {results.length} record{results.length !== 1 ? "s" : ""}
             </span>
@@ -193,11 +194,13 @@ const DirectGRN = () => {
               <label>GRN Type</label>
               <select name="grnType" value={filters.grnType} onChange={handleFilterChange}>
                 <option value="">All</option>
-                <option>F and A Impact</option>
-                <option>Domestic</option>
-                <option>International</option>
-                <option>No Impact</option>
+                <option value="T">T</option>
+                <option value="UT">UT</option>
               </select>
+            </div>
+            <div className="dgrn-fg">
+              <label>PO No</label>
+              <input name="poNo" value={filters.poNo} onChange={handleFilterChange} placeholder="Search PO No…" />
             </div>
             <div className="dgrn-fg">
               <label>Party Code</label>
@@ -257,6 +260,7 @@ const DirectGRN = () => {
                       <th>#</th>
                       <th>GRN NO</th>
                       <th>DATE</th>
+                      <th>PO NO</th>
                       <th>TRANSACTION CATEGORY</th>
                       <th>PARTY NAME</th>
                       <th>INV NO</th>
@@ -278,6 +282,7 @@ const DirectGRN = () => {
                           </span>
                         </td>
                         <td>{row.grnDate || "-"}</td>
+                        <td>{row.poNo || "-"}</td>
                         <td>{row.transactionCategory || "-"}</td>
                         <td>{row.partyName || row.vendorName || "-"}</td>
                         <td>{row.challanInvoiceNo || "-"}</td>

@@ -12,6 +12,15 @@ const buildDatePart = (format) => {
   const yy = String(d.getFullYear()).slice(-2);
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+       documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+    const year   = d.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;
 };
 
@@ -75,7 +84,8 @@ router.get("/item-conversion/next-sequence", async (req, res) => {
 
     const last     = records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     const digits   = Math.max(1, Number(last.sequenceDigits) || 2);
-    const nextNo   = Math.max(...records.map((r) => Number(r.incrementNo))) + 1;
+    const step     = Math.max(1, Number(last.incrementStep) || 1);
+    const nextNo   = Math.max(...records.map((r) => Number(r.incrementNo))) + step;
     const datePart = last.useDateFragment ? buildDatePart(last.sequenceFormat || "dd/mm/yy") : "";
     const prefix   = last.entityPrefix || "IC";
     const nextCode = `${prefix}${datePart}${String(nextNo).padStart(digits, "0")}`;
@@ -96,21 +106,11 @@ router.post("/item-conversion", async (req, res) => {
     const doc = new ItemConversion(req.body);
     await doc.save();
 
-    /* Increment document sequence */
-    try {
-      const seqRec = await DocumentSequence.findOne({
-        module: "Inventory", businessEntity: "Item Conversion",
-      }).sort({ createdAt: -1 });
-      if (seqRec) {
-        const nextNo      = Number(seqRec.incrementNo) + 1;
-        const digits      = Math.max(1, Number(seqRec.sequenceDigits) || 2);
-        const datePart    = seqRec.useDateFragment ? buildDatePart(seqRec.sequenceFormat || "dd/mm/yy") : "";
-        const generatedCode = `${seqRec.entityPrefix}${datePart}${String(nextNo).padStart(digits, "0")}`;
-        await DocumentSequence.findByIdAndUpdate(seqRec._id, {
-          incrementNo: nextNo, generatedCode,
-        });
-      }
-    } catch (seqErr) { console.warn("Sequence increment skip:", seqErr.message); }
+    /* NOTE: The document sequence increment for this IC No is already
+       committed by the frontend's call to POST /api/create-document-sequence
+       (see CreateItemConversion.jsx persistIC) BEFORE this route is hit.
+       Incrementing it again here would double-advance the counter and skip
+       numbers, so no sequence mutation happens in this handler. */
 
     res.status(201).json({ success: true, message: "Item Conversion Saved Successfully", data: doc });
   } catch (e) {

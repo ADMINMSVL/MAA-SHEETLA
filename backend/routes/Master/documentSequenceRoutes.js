@@ -36,6 +36,7 @@ router.post("/create-document-sequence", async (req, res) => {
       sequenceFormat      = "dd/mm/yy",
       useDateFragment     = true,
       incrementNo,
+      incrementStep       = 1,
       sequenceDigits      = 2,
     } = req.body;
 
@@ -55,7 +56,9 @@ router.post("/create-document-sequence", async (req, res) => {
     const digits          = lastRecord ? Math.max(1, Number(lastRecord.sequenceDigits) || 2) : Math.max(1, Number(sequenceDigits) || 2);
     const resolvedFormat  = lastRecord ? lastRecord.sequenceFormat  : (sequenceFormat  || "dd/mm/yy");
     const resolvedUseDate = lastRecord ? lastRecord.useDateFragment : (useDateFragment ?? true);
-    const nextNumber      = lastRecord ? Number(lastRecord.incrementNo) + 1 : (Number(incrementNo) || 1);
+    // step size used to advance the running number each time a document is generated
+    const resolvedStep    = lastRecord ? Math.max(1, Number(lastRecord.incrementStep) || 1) : Math.max(1, Number(incrementStep) || 1);
+    const nextNumber       = lastRecord ? Number(lastRecord.incrementNo) + resolvedStep : (Number(incrementNo) || 1);
 
     const paddedNo      = String(nextNumber).padStart(digits, "0");
     const datePart      = resolvedUseDate ? buildDatePart(resolvedFormat) : "";
@@ -70,13 +73,14 @@ router.post("/create-document-sequence", async (req, res) => {
           useDateFragment: resolvedUseDate,
           sequenceDigits:  digits,
           incrementNo:     nextNumber,
+          incrementStep:   resolvedStep,
           generatedCode,
         },
       },
       { returnDocument: "after", upsert: true, runValidators: true }
     );
 
-    res.status(201).json({ success: true, message: "Document Sequence Saved", generatedCode, data: newData });
+    res.status(201).json({ success: true, message: "Document Sequence Saved", generatedCode, incrementStep: resolvedStep, data: newData });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -114,11 +118,13 @@ router.put("/document-sequence/:id", async (req, res) => {
       sequenceFormat     = existing.sequenceFormat,
       useDateFragment    = existing.useDateFragment,
       sequenceDigits     = existing.sequenceDigits,
-      incrementNo        = existing.incrementNo,   // editor can manually set the counter
+      incrementNo        = existing.incrementNo,     // editor can manually set the counter
+      incrementStep      = existing.incrementStep,   // editor can manually set the step
     } = req.body;
 
     const prefix    = entityPrefix.toString().trim().toUpperCase();
     const digits    = Math.max(1, Number(sequenceDigits) || 2);
+    const step      = Math.max(1, Number(incrementStep) || 1);
     const paddedNo  = String(Number(incrementNo)).padStart(digits, "0");
     const datePart  = useDateFragment ? buildDatePart(sequenceFormat) : "";
     const generatedCode = `${prefix}${datePart}${paddedNo}`;
@@ -135,6 +141,7 @@ router.put("/document-sequence/:id", async (req, res) => {
           useDateFragment,
           sequenceDigits:      digits,
           incrementNo:         Number(incrementNo),
+          incrementStep:       step,
           generatedCode,
         },
       },

@@ -157,7 +157,7 @@ const GINDetail = () => {
   }, [id]);
 
   /* master data */
-  const { sites: siteOptions, loading: sitesLoading } = useSiteOptions("Inventory", "Inward");
+  const { sites: siteOptions, loading: sitesLoading } = useSiteOptions("Inventory", "Inward/Outward");
   const [transactionCategories, setTransactionCategories] = useState([]);
   const [parties,   setParties]   = useState([]);
   const [itemList,  setItemList]  = useState([]);
@@ -189,7 +189,7 @@ const GINDetail = () => {
   useEffect(() => {
     axios.get(`${API_URL}/api/transactions`)
       .then((res) => setTransactionCategories(
-        res.data.filter((t) => t.module === "Inventory" && t.businessEntity === "Inward")
+        res.data.filter((t) => t.module === "Inventory" && t.businessEntity === "Inward/Outward")
       ))
       .catch(console.error);
 
@@ -419,22 +419,25 @@ const handleChange = (e) => {
         transactionCategory: form.transactionCategory || "",
         inwardOutwardNoteNo: gin.ginNo,
         vehicleNo:           form.vehicleNo            || "",
-         partyCode: form.partyCode || "",
+
+        // Party Code / Name are auto-filled from this GIN — Party Code is
+        // locked (read-only) on the Weighment form itself.
+        partyCode:           form.partyCode            || "",
         partyName:           form.partyName            || form.vendorName || "",
+
         site:                form.site                 || "",
         weighmentDate:       form.ginDate              || today,
         weighmentInDate:     form.ginDate              || today,
         weighmentOutDate: "",
+
+        // Auto-fetched from this GIN's challan fields
         supplierInvoiceNo:   form.challanInvoiceNo     || "",
-        supplierInvoiceDate: "",
-        billNo:              form.billNo               || "",
-        billDate:            form.billDate             || today,
+        supplierInvoiceDate: form.challanDate          || "",
+
         remarks:             form.remarks              || "",
         vendorCode:          form.vendorCode           || "",
         vendorName:          form.vendorName           || "",
         poCpoNo:             form.poCpoNo              || "",
-        manufacturerName:    form.manufacturerName     || "",
-        manufacturerCode:    form.manufacturerCode     || "",
         challanDate:         form.challanDate          || "",
         ewayDate:            form.ewayDate             || "",
         items: items

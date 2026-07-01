@@ -187,7 +187,7 @@ const InwardOutwardNote = () => {
       setSites(Array.isArray(siteData)    ? siteData.filter((s)  => s.status === "Active") : []);
       setTransactionCategories(
         (Array.isArray(txnData) ? txnData : []).filter(
-          (t) => t.module === "Inventory" && t.businessEntity === "Inward" && t.status === "Open"
+          (t) => t.module === "Inventory" && t.businessEntity === "Inward/Outward" && t.status === "Open"
         )
       );
     } catch (err) { console.error("Master fetch error:", err); }

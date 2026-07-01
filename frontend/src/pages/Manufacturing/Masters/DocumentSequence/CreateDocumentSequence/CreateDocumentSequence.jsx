@@ -52,6 +52,7 @@ const CreateDocumentSequence = () => {
     sequenceFormat:      "dd/mm/yy",
     useDateFragment:     true,
     incrementNo:         1,
+    incrementStep:       1,
     sequenceDigits:      2,
   });
 
@@ -95,21 +96,10 @@ const CreateDocumentSequence = () => {
     fetchCategories();
   }, [formData.module, formData.businessEntity]);
 
-  /* ── When a transaction category is selected, auto-fill entityPrefix with its code ── */
-  useEffect(() => {
-    if (!formData.transactionCategory) return;
-
-    const matched = transactionCategories.find(
-      (t) => t._id === formData.transactionCategory || t.transactionCategoryCode === formData.transactionCategory
-    );
-    if (matched) {
-      setFormData((prev) => ({
-        ...prev,
-        entityPrefix: matched.transactionCategoryCode,
-      }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.transactionCategory]);
+  /* NOTE: Entity Prefix is intentionally NOT auto-filled from the selected
+     Transaction Category. The two fields are independent — whatever
+     Transaction Category is picked, the user always types the Entity
+     Prefix manually. */
 
   /* ── Fetch next increment whenever module / entity / prefix changes ── */
   useEffect(() => {
@@ -132,8 +122,14 @@ const CreateDocumentSequence = () => {
             r.businessEntity === businessEntity &&
             r.entityPrefix   === prefix
         );
-        const next = matching.length > 0
-          ? Math.max(...matching.map((r) => Number(r.incrementNo))) + 1
+        const lastMatch = matching.length > 0
+          ? matching.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b))
+          : null;
+        const step = lastMatch
+          ? Math.max(1, Number(lastMatch.incrementStep) || 1)
+          : Math.max(1, Number(formData.incrementStep) || 1);
+        const next = lastMatch
+          ? Number(lastMatch.incrementNo) + step
           : Number(formData.incrementNo) || 1;
 
         setNextIncrement(next);
@@ -151,10 +147,10 @@ const CreateDocumentSequence = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.module, formData.businessEntity, formData.entityPrefix]);
 
-  /* ── Rebuild preview on format / digits / toggle change ── */
+  /* ── Rebuild preview on format / digits / toggle / step change ── */
   useEffect(() => {
     setPreviewCode(buildPreviewCode(formData, nextIncrement));
-  }, [formData.sequenceFormat, formData.useDateFragment, formData.sequenceDigits, nextIncrement]);
+  }, [formData.sequenceFormat, formData.useDateFragment, formData.sequenceDigits, formData.incrementStep, nextIncrement]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -204,6 +200,7 @@ const CreateDocumentSequence = () => {
         ...formData,
         entityPrefix:        formData.entityPrefix.trim().toUpperCase(),
         sequenceDigits:      Number(formData.sequenceDigits) || 2,
+        incrementStep:       Math.max(1, Number(formData.incrementStep) || 1),
         transactionCategory: selectedCat?.categoryDescription || formData.transactionCategory || "",
       };
       const res = await axios.post(`${API_URL}/api/create-document-sequence`, payload);
@@ -309,9 +306,9 @@ const CreateDocumentSequence = () => {
             )}
           </div>
 
-          {/* ENTITY PREFIX — auto-filled from transaction category code, still editable */}
+          {/* ENTITY PREFIX — always typed manually, independent of Transaction Category */}
           <div className="cds-group">
-            <label>Entity Prefix <small style={{ fontWeight: 400 }}>(auto-filled from category code)</small></label>
+            <label>* Entity Prefix <small style={{ fontWeight: 400 }}>(enter manually)</small></label>
             <input
               type="text"
               name="entityPrefix"
@@ -350,6 +347,21 @@ const CreateDocumentSequence = () => {
               onChange={handleChange}
               min={1}
             />
+          </div>
+
+          {/* INCREMENT VALUE (step) */}
+          <div className="cds-group">
+            <label>Increment Value <small style={{ fontWeight: 400 }}>(step per document)</small></label>
+            <input
+              type="number"
+              name="incrementStep"
+              value={formData.incrementStep}
+              onChange={handleChange}
+              min={1}
+            />
+            <small className="cds-preview-hint">
+              e.g. 1 → 1, 2, 3 … &nbsp;|&nbsp; 2 → next number jumps by 2 each time
+            </small>
           </div>
 
           {/* DATE FRAGMENT */}

@@ -18,7 +18,7 @@ import useSiteOptions from "../../../../hooks/useSiteOptions";
   • PO No dropdown shows only "Intransit" POs; selecting one auto-fills party + items
 */
 
-/* ── 2-digit year date builder ── */
+/* ── 2-digit year date builder (mirrors Document Sequence backend) ── */
 const buildDatePart = (format) => {
   const d  = new Date();
   const dd = String(d.getDate()).padStart(2, "0");
@@ -26,6 +26,15 @@ const buildDatePart = (format) => {
   const yy = String(d.getFullYear()).slice(-2);
   if (format === "mm/dd/yy") return `${mm}${dd}${yy}`;
   if (format === "yy/mm/dd") return `${yy}${mm}${dd}`;
+  if (format === "julian") {
+    /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+       documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+    const year   = d.getFullYear();
+    const start  = new Date(year, 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+    return `${yy}${doy}`;
+  }
   return `${dd}${mm}${yy}`;
 };
 
@@ -177,7 +186,7 @@ const CreateGIN = () => {
   }, []);
 
   /* ── master data ── */
-  const { sites: siteOptions, loading: sitesLoading } = useSiteOptions("Inventory", "Inward");
+  const { sites: siteOptions, loading: sitesLoading } = useSiteOptions("Inventory", "Inward/Outward");
   const [transactionCategories, setTransactionCategories] = useState([]);
   const [parties,    setParties]    = useState([]);
   const [itemList,   setItemList]   = useState([]);
@@ -233,7 +242,7 @@ const CreateGIN = () => {
       .then((res) => {
         setTransactionCategories(
           res.data.filter(
-            (t) => t.module === "Inventory" && t.businessEntity === "Inward" && t.status === "Open"
+            (t) => t.module === "Inventory" && t.businessEntity === "Inward/Outward" && t.status === "Open"
           )
         );
       })
@@ -303,18 +312,29 @@ const CreateGIN = () => {
     if (!form.transactionCategory) { setInOutNo(""); return; }
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) { setInOutNo(""); return; }
-    const prefix = cat.transactionCategoryCode.trim().toUpperCase();
 
     axios.get(`${API_URL}/api/document-sequence`)
       .then((res) => {
+        /* Link to the Document Sequence configured for THIS Transaction Category
+           (module + businessEntity + transactionCategory description) — Entity
+           Prefix is entered manually on the Document Sequence screen and has no
+           fixed relationship to the transaction category code. */
         const matching = res.data.filter(
-          (r) => r.module === "Inventory" && r.businessEntity === "Inward" && r.entityPrefix === prefix
+          (r) =>
+            r.module === "Inventory" &&
+            r.businessEntity === "Inward/Outward" &&
+            r.transactionCategory === cat.categoryDescription
         );
-        if (!matching.length) { setInOutNo(`${prefix}??? (Create document sequence first)`); return; }
-        const last    = matching.reduce((a, b) => Number(a.incrementNo) > Number(b.incrementNo) ? a : b);
-        const digits  = Math.max(1, Number(last.sequenceDigits) || 2);
-        const nextNo  = Number(last.incrementNo) + 1;
-        const date    = last.useDateFragment ? buildDatePart(last.sequenceFormat || "dd/mm/yy") : "";
+        if (!matching.length) {
+          setInOutNo(`(Create a Document Sequence for "${cat.categoryDescription}" first)`);
+          return;
+        }
+        const last   = matching.reduce((a, b) => Number(a.incrementNo) > Number(b.incrementNo) ? a : b);
+        const prefix = (last.entityPrefix || "").trim().toUpperCase();
+        const digits = Math.max(1, Number(last.sequenceDigits) || 2);
+        const step   = Math.max(1, Number(last.incrementStep) || 1);
+        const nextNo = Number(last.incrementNo) + step;
+        const date   = last.useDateFragment ? buildDatePart(last.sequenceFormat || "dd/mm/yy") : "";
         setInOutNo(`${prefix}${date}${String(nextNo).padStart(digits, "0")}`);
       })
       .catch(() => setInOutNo(""));
@@ -485,16 +505,34 @@ const handleChange = (e) => {
 
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) { alert("Invalid transaction category"); return; }
-    const prefix = cat.transactionCategoryCode.trim().toUpperCase();
 
     try {
       setLoading(true);
 
+      /* Find the Document Sequence configured for THIS Transaction Category
+         (module + businessEntity + transactionCategory description) and use
+         ITS entityPrefix — Entity Prefix is entered manually on the Document
+         Sequence screen, not derived from the category code. */
+      const seqListRes = await axios.get(`${API_URL}/api/document-sequence`);
+      const matchingSeq = (seqListRes.data || []).filter(
+        (r) =>
+          r.module === "Inventory" &&
+          r.businessEntity === "Inward/Outward" &&
+          r.transactionCategory === cat.categoryDescription
+      );
+      if (!matchingSeq.length) {
+        alert(`No Document Sequence is set up for "${cat.categoryDescription}". Please create one first.`);
+        setLoading(false);
+        return;
+      }
+      const seqEntry     = matchingSeq.reduce((a, b) => (Number(a.incrementNo) > Number(b.incrementNo) ? a : b));
+      const entityPrefix = (seqEntry.entityPrefix || "").trim().toUpperCase();
+
       /* 1. Register sequence → get official number */
       const seqRes = await axios.post(`${API_URL}/api/create-document-sequence`, {
         module:              "Inventory",
-        businessEntity:      "Inward",
-        entityPrefix:        prefix,
+        businessEntity:      "Inward/Outward",
+        entityPrefix,
         transactionCategory: cat.categoryDescription,
       });
       const officialNo = seqRes.data.generatedCode;

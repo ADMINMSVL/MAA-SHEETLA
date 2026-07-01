@@ -102,7 +102,8 @@ router.get("/purchase-order/next-sequence", async (req, res) => {
 
     const lastRecord = records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     const digits     = Math.max(1, Number(lastRecord.sequenceDigits) || 2);
-    const nextNo     = Math.max(...records.map((r) => Number(r.incrementNo))) + 1;
+    const step       = Math.max(1, Number(lastRecord.incrementStep) || 1);
+    const nextNo     = Math.max(...records.map((r) => Number(r.incrementNo))) + step;
     const paddedNo   = String(nextNo).padStart(digits, "0");
 
     const buildDate = (fmt) => {
@@ -112,6 +113,15 @@ router.get("/purchase-order/next-sequence", async (req, res) => {
       const yy = String(new Date().getFullYear()).slice(-2); // 2-digit year e.g. '26'
       if (fmt === "mm/dd/yy") return `${mm}${dd}${yy}`;
       if (fmt === "yy/mm/dd") return `${yy}${mm}${dd}`;
+      if (fmt === "julian") {
+        /* Julian: YY + DDD (3-digit day-of-year, 1-indexed) — matches
+           documentSequenceRoutes.js's buildDatePart, e.g. 01-Jan-2026 → 26001 */
+        const year   = d.getFullYear();
+        const start  = new Date(year, 0, 0);
+        const oneDay = 1000 * 60 * 60 * 24;
+        const doy    = String(Math.floor((d - start) / oneDay)).padStart(3, "0");
+        return `${yy}${doy}`;
+      }
       return `${dd}${mm}${yy}`;
     };
 
