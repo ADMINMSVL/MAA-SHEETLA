@@ -393,15 +393,10 @@ const ItemInventory = () => {
                           <th>#</th>
                           <th>Item Code</th>
                           <th>Item Name</th>
-                          <th>Item Type</th>
-                          <th>Category</th>
-                          <th>Group</th>
-                          <th>Base UOM</th>
-                          <th className="inv-num">Base Qty</th>
-                          <th>Actual UOM</th>
-                          <th className="inv-num">Actual Qty</th>
-                          <th className="inv-num">Total Amount (₹)</th>
-                          <th className="inv-num">GRN Count</th>
+                          <th>B UOM</th>
+                          <th className="inv-num">Qty</th>
+                          <th>Aut UOM</th>
+                          <th className="inv-num">Qty</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -423,14 +418,6 @@ const ItemInventory = () => {
                               <td className="inv-item-name" title={row.itemName}>
                                 {row.itemName}
                               </td>
-                              <td>
-                                {row.itemTypes ? (
-                                  <span className="inv-type-badge">{row.itemTypes}</span>
-                                ) : "—"}
-                              </td>
-                              <td title={row.category}>{row.category || "—"}</td>
-                              <td title={row.itemGroup}>{row.itemGroup || "—"}</td>
-
                               {/* BASE UOM */}
                               <td>
                                 <span className="inv-uom-pill inv-uom-base">
@@ -450,21 +437,12 @@ const ItemInventory = () => {
                               <td className="inv-num inv-qty-actual">
                                 {fmtQty(actualQty)}
                               </td>
-
-                              <td className="inv-num inv-amount">
-                                ₹ {fmt2(row.totalAmount)}
-                              </td>
-                              <td className="inv-num">
-                                <span className="inv-count-badge">
-                                  {row.transactions.length}
-                                </span>
-                              </td>
                             </tr>
 
                             {/* ── INLINE DETAIL PANEL ROW ── */}
                             {isSelected && (
                               <tr className="inv-detail-inline-row">
-                                <td colSpan={12} style={{ padding: 0 }}>
+                                <td colSpan={7} style={{ padding: 0 }}>
                                   <div className="inv-detail-inline">
 
                                     {/* Header */}
@@ -515,20 +493,6 @@ const ItemInventory = () => {
                                       <div className="inv-kpi">
                                         <span className="inv-kpi-label">Total Amount</span>
                                         <span className="inv-kpi-val">₹ {fmt2(selectedRow.totalAmount)}</span>
-                                      </div>
-                                      <div className="inv-kpi">
-                                        <span className="inv-kpi-label">GRN Count</span>
-                                        <span className="inv-kpi-val">{selectedRow.transactions.length}</span>
-                                      </div>
-                                      <div className="inv-kpi">
-                                        <span className="inv-kpi-label">Item Type</span>
-                                        <span className="inv-kpi-val">{selectedRow.itemTypes || "—"}</span>
-                                      </div>
-                                      <div className="inv-kpi">
-                                        <span className="inv-kpi-label">Category / Group</span>
-                                        <span className="inv-kpi-val">
-                                          {selectedRow.category || "—"} / {selectedRow.itemGroup || "—"}
-                                        </span>
                                       </div>
                                     </div>
 
@@ -622,7 +586,7 @@ const ItemInventory = () => {
                       {/* TOTALS ROW */}
                       <tfoot>
                         <tr className="inv-totals-row">
-                          <td colSpan={7}><strong>Grand Total</strong></td>
+                          <td colSpan={4}><strong>Grand Total</strong></td>
                           <td className="inv-num">
                             <strong>
                               {fmtQty(rows.reduce((s, r) => s + r.totalQty, 0))}
@@ -633,16 +597,6 @@ const ItemInventory = () => {
                             <strong>
                               {/* Actual totals across different UOMs don't add meaningfully — show dash */}
                               —
-                            </strong>
-                          </td>
-                          <td className="inv-num">
-                            <strong>
-                              ₹ {fmt2(rows.reduce((s, r) => s + r.totalAmount, 0))}
-                            </strong>
-                          </td>
-                          <td className="inv-num">
-                            <strong>
-                              {rows.reduce((s, r) => s + r.transactions.length, 0)}
                             </strong>
                           </td>
                         </tr>

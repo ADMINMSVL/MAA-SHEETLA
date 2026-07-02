@@ -7,7 +7,7 @@ import { API_URL } from "../../../../config";
 
 const WEIGHMENT_API = `${API_URL}/api/weighment`;
 const GIN_API       = `${API_URL}/api/goods-inward-note`;
-// import "./ItemConversion.css";
+import "./ItemConversion.css";
 
 /* ── Portal ItemTypeAhead — renders on <body>, never clipped by table overflow ── */
 const PortalItemTypeAhead = ({ value, onChange, items, onSelectItem, placeholder, className }) => {
@@ -391,7 +391,13 @@ const ItemConversionDetail = () => {
       {/* ── TOPBAR ── */}
       <div className="ic-topbar">
         <div className="ic-topbar-left">
-          <button className="ic-back-btn" onClick={() => navigate("/item-conversion")}>← Back</button>
+          <button
+            className="ic-back-btn"
+            onClick={() => navigate("/item-conversion")}
+            style={{ backgroundColor: "#2563eb", color: "#fff", border: "none" }}
+          >
+            ← Back
+          </button>
           <div>
             <h2>Item Conversion Details</h2>
             <span className="ic-topbar-sub">{doc?.icNo ? `Document: ${doc.icNo}` : "View record"}</span>

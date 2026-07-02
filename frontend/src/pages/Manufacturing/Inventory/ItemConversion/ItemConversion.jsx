@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
+import "./ItemConversion.css";
 
 const WeighmentImportModal = ({ records, onSelect, onClose, loading }) => (
   <div className="ic-modal-overlay" onClick={onClose}>
@@ -341,7 +342,13 @@ const ItemConversion = () => {
       {/* ── TOP BAR ── */}
       <div className="ic-topbar">
         <div className="ic-topbar-left">
-          <button className="ic-back-btn" onClick={() => navigate("/inventory")}>←Back</button>
+          <button
+            className="ic-back-btn"
+            onClick={() => navigate("/inventory")}
+            style={{ backgroundColor: "#2563eb", color: "#fff", border: "none" }}
+          >
+            ←Back
+          </button>
           <div>
             <h1>Item Conversion</h1>
             <span className="ic-topbar-sub">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>

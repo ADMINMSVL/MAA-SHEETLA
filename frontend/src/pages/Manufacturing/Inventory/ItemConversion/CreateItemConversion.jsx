@@ -4,6 +4,7 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
+import "./ItemConversion.css";
 
 const WEIGHMENT_API = `${API_URL}/api/weighment`;
 const GIN_API       = `${API_URL}/api/goods-inward-note`;
@@ -807,7 +808,13 @@ const CreateItemConversion = () => {
       {/* TOPBAR */}
       <div className="ic-topbar">
         <div className="ic-topbar-left">
-          <button className="ic-back-btn" onClick={() => navigate("/item-conversion")}>← Back</button>
+          <button
+            className="ic-back-btn"
+            onClick={() => navigate("/item-conversion")}
+            style={{ backgroundColor: "#2563eb", color: "#fff", border: "none" }}
+          >
+            ← Back
+          </button>
           <div>
             <h2>Create Item Conversion</h2>
             <span className="ic-topbar-sub">{sourceLabel || "Fill in details and save"}</span>

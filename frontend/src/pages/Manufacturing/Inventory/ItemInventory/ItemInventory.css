@@ -52,24 +52,34 @@
   margin-top: 1px;
 }
 
+.inv-topbar .inv-back-btn,
 .inv-back-btn {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 4px;
   height: 32px;
   padding: 0 14px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
+  background-color: #2563eb !important;
+  background-image: none !important;
+  color: #fff !important;
+  border: none !important;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
+  transition: none;
   flex-shrink: 0;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
-.inv-back-btn:hover { background: #1d4ed8; }
+.inv-topbar .inv-back-btn:hover,
+.inv-back-btn:hover,
+.inv-back-btn:focus,
+.inv-back-btn:active {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
 
 /* ══════════════════════════════════════════
    CONTENT AREA

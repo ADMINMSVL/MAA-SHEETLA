@@ -59,23 +59,31 @@
 
 /* ── Back button ── */
 .ic-back-btn {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 5px;
   height: 32px;
   padding: 0 14px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
+  background-color: #2563eb !important;
+  background-image: none !important;
+  color: #fff !important;
+  border: none !important;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
+  transition: none;
   flex-shrink: 0;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
-.ic-back-btn:hover { background: #1d4ed8; }
+.ic-back-btn:hover,
+.ic-back-btn:focus,
+.ic-back-btn:active {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
 
 /* ── Create button (dark, like Inward "+ Create") ── */
 .ic-create-btn {

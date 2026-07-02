@@ -1,14 +1,16 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
-import Home         from "../pages/Home/Home";
-import Signin       from "../pages/auth/Signin";
-import Signup       from "../pages/auth/Signup";
+import RequireAuth   from "./RequireAuth";
+import Home          from "../pages/Home/Home";
+import Signin        from "../pages/auth/Signin";
+import Signup        from "../pages/auth/Signup";
 import Manufacturing from "../pages/Manufacturing/Manufacturing";
-import Procurement  from "../pages/Manufacturing/Procurement/Procurement";
-import Inventory    from "../pages/Manufacturing/Inventory/Inventory";
-import Production   from "../pages/Manufacturing/Production/Production";
-import Masters      from "../pages/Manufacturing/Masters/Masters";
+import Procurement   from "../pages/Manufacturing/Procurement/Procurement";
+import Inventory     from "../pages/Manufacturing/Inventory/Inventory";
+import Production    from "../pages/Manufacturing/Production/Production";
+import Masters       from "../pages/Manufacturing/Masters/Masters";
+import SystemAdmin   from "../pages/SystemAdmin/SystemAdmin";
 
 import InwardOutwardNote     from "../pages/Manufacturing/Inventory/InwardOutwardNote/InwardOutwardNote";
 import GINDetail             from "../pages/Manufacturing/Inventory/InwardOutwardNote/GINDetail";
@@ -108,111 +110,125 @@ const AppRoutes = () => {
   return (
     <Routes>
 
-      {/* AUTH */}
-      <Route path="/signin" element={<Signin />} />
-      <Route path="/signup" element={<Signup />} />
+      {/* ── PUBLIC ROUTES — reachable without signing in ──────────────
+          /signin and /signup obviously need to be public.
+          /sys_admin also stays public at the ROUTING level because it
+          must be reachable on a brand-new install (no admin exists yet,
+          no token exists yet) to create the first admin account. The
+          page itself (SystemAdmin.jsx) already handles the rest of the
+          gating internally: once an admin exists, it shows "Access
+          Denied" to anyone who isn't a signed-in admin. */}
+      <Route path="/signin"    element={<Signin />} />
+      <Route path="/signup"    element={<Signup />} />
+      <Route path="/sys_admin" element={<SystemAdmin />} />
 
-      {/* HOME */}
-      <Route path="/" element={<Home />} />
+      {/* ── PROTECTED ROUTES — require a valid token, or bounce to /signin ── */}
+      <Route element={<RequireAuth />}>
 
-      {/* MODULE ROUTES */}
-      <Route path="/manufacturing" element={<Manufacturing />} />
-      <Route path="/procurement"   element={<Procurement />} />
-      <Route path="/inventory"     element={<Inventory />} />
-      <Route path="/production"    element={<Production />} />
-      <Route path="/masters"       element={<Masters />} />
+        {/* HOME */}
+        <Route path="/" element={<Home />} />
 
-      {/* SALES */}
-      <Route path="/sales-search"            element={<SalesSearch />} />
-      <Route path="/sales-contract/create"   element={<SalesContractForm />} />
-      <Route path="/sales-contract/edit/:id" element={<SalesContractForm />} />
+        {/* MODULE ROUTES */}
+        <Route path="/manufacturing" element={<Manufacturing />} />
+        <Route path="/procurement"   element={<Procurement />} />
+        <Route path="/inventory"     element={<Inventory />} />
+        <Route path="/production"    element={<Production />} />
+        <Route path="/masters"       element={<Masters />} />
 
-      {/* INVENTORY */}
-      <Route path="/inward-outward-note"        element={<InwardOutwardNote />} />
-      <Route path="/gin-detail/:id"             element={<GINDetail />} />
-      <Route path="/create-goods-inward-note"   element={<CreateGoodsInwardNote />} />
-      <Route path="/goods-receipt-note"         element={<GoodsReceiptNote />} />
-      <Route path="/direct-grn"                 element={<DirectGRN />} />
-      <Route path="/create-direct-grn"          element={<CreateDirectGRN />} />
-      <Route path="/direct-grn-details/:id"     element={<CreateDirectGRN />} />
-      <Route path="/item-inventory"             element={<ItemInventory />} />
-      <Route path="/item-Conversion"            element={<ItemConversion />} />
-      <Route path="/create-item-conversion"     element={<CreateItemConversion />} />
-      <Route path="/item-conversion-detail/:id" element={<ItemConversionDetail />} />
+        {/* SALES */}
+        <Route path="/sales-search"            element={<SalesSearch />} />
+        <Route path="/sales-contract/create"   element={<SalesContractForm />} />
+        <Route path="/sales-contract/edit/:id" element={<SalesContractForm />} />
 
-      {/* PROCUREMENT */}
-      <Route path="/create-purchase-order"           element={<CreatePurchaseOrder />} />
-      <Route path="/purchase-order"                  element={<PurchaseOrder />} />
-      <Route path="/purchase-order-detail/:id"       element={<PODetail />} />
-      <Route path="/purchase-requisition"            element={<PurchaseRequisition />} />
-      <Route path="/create-purchase-requisition"     element={<CreatePurchaseRequisition />} />
-      <Route path="/purchase-requisition-detail/:id" element={<PRDetail />} />
+        {/* INVENTORY */}
+        <Route path="/inward-outward-note"        element={<InwardOutwardNote />} />
+        <Route path="/gin-detail/:id"             element={<GINDetail />} />
+        <Route path="/create-goods-inward-note"   element={<CreateGoodsInwardNote />} />
+        <Route path="/goods-receipt-note"         element={<GoodsReceiptNote />} />
+        <Route path="/direct-grn"                 element={<DirectGRN />} />
+        <Route path="/create-direct-grn"          element={<CreateDirectGRN />} />
+        <Route path="/direct-grn-details/:id"     element={<CreateDirectGRN />} />
+        <Route path="/item-inventory"             element={<ItemInventory />} />
+        <Route path="/item-Conversion"            element={<ItemConversion />} />
+        <Route path="/create-item-conversion"     element={<CreateItemConversion />} />
+        <Route path="/item-conversion-detail/:id" element={<ItemConversionDetail />} />
 
-      {/* PRODUCTION */}
-      <Route path="/ccm-production"             element={<CCMProduction />} />
-      <Route path="/create-ccm-production"      element={<CreateCCMProduction />} />
-      <Route path="/ccm-detail/:id"             element={<CCMDetail />} />
-      <Route path="/rolling-production"         element={<RollingProduction />} />
-      <Route path="/create-rolling-production"  element={<CreateRollingProduction />} />
-      <Route path="/rolling-detail/:id"         element={<RollingDetail />} />
-      <Route path="/bundling-production"        element={<BundlingProduction />} />
-      <Route path="/create-bundling-production" element={<CreateBundlingProduction />} />
-      <Route path="/bundling-detail/:id"        element={<BundlingDetail />} />
-      <Route path="/production-inventory"       element={<ProductionDashboard />} />
-      <Route path="/production-reports"         element={<ProductionInventory />} />
-      <Route path="/production-dashboard"       element={<ProductionReports />} />
+        {/* PROCUREMENT */}
+        <Route path="/create-purchase-order"           element={<CreatePurchaseOrder />} />
+        <Route path="/purchase-order"                  element={<PurchaseOrder />} />
+        <Route path="/purchase-order-detail/:id"       element={<PODetail />} />
+        <Route path="/purchase-requisition"            element={<PurchaseRequisition />} />
+        <Route path="/create-purchase-requisition"     element={<CreatePurchaseRequisition />} />
+        <Route path="/purchase-requisition-detail/:id" element={<PRDetail />} />
 
-      {/* WEIGHMENT */}
-      <Route path="/weighment-search"         element={<WeighmentSearch />} />
-      <Route path="/weighment/create/inward"  element={<CreateInwardWeighment />} />
-      <Route path="/weighment/create/outward" element={<CreateOutwardWeighment />} />
-      <Route path="/weighment/create/general" element={<CreateGeneralWeighment />} />
-      <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} />
-      <Route path="/weighment/create/inward/form"  element={<CreateInwardWeighmentForm />} />
-      <Route path="/weighment/create/outward/form" element={<CreateOutwardWeighmentForm />} />
-      {/* MASTERS — existing */}
-      <Route path="/document-sequence"        element={<DocumentSequence />} />
-      <Route path="/create-document-sequence" element={<CreateDocumentSequence />} />
-      <Route path="/transaction-module"       element={<Transaction />} />
-      <Route path="/create-transaction"       element={<CreateTransaction />} />
+        {/* PRODUCTION */}
+        <Route path="/ccm-production"             element={<CCMProduction />} />
+        <Route path="/create-ccm-production"      element={<CreateCCMProduction />} />
+        <Route path="/ccm-detail/:id"             element={<CCMDetail />} />
+        <Route path="/rolling-production"         element={<RollingProduction />} />
+        <Route path="/create-rolling-production"  element={<CreateRollingProduction />} />
+        <Route path="/rolling-detail/:id"         element={<RollingDetail />} />
+        <Route path="/bundling-production"        element={<BundlingProduction />} />
+        <Route path="/create-bundling-production" element={<CreateBundlingProduction />} />
+        <Route path="/bundling-detail/:id"        element={<BundlingDetail />} />
+        <Route path="/production-inventory"       element={<ProductionDashboard />} />
+        <Route path="/production-reports"         element={<ProductionInventory />} />
+        <Route path="/production-dashboard"       element={<ProductionReports />} />
 
-      {/* MASTERS — batch 1 */}
-      <Route path="/party-master"                  element={<PartyMaster />} />
-      <Route path="/create-party"                  element={<CreateParty />} />
-      <Route path="/party-detail/:id"              element={<PartyDetail />} />
-      <Route path="/item-master"                   element={<ItemMaster />} />
-      <Route path="/create-item"                   element={<CreateItem />} />
-      <Route path="/uom-master"                    element={<UOMMaster />} />
-      <Route path="/create-uom"                    element={<CreateUOM />} />
-      <Route path="/party-type"                    element={<PartyType />} />
-      <Route path="/create-party-type"             element={<CreatePartyType />} />
-      <Route path="/item-conversion-master"        element={<ItemConversionMasterPage />} />
-      <Route path="/create-item-conversion-master" element={<CreateItemConversionMaster />} />
+        {/* WEIGHMENT */}
+        <Route path="/weighment-search"         element={<WeighmentSearch />} />
+        <Route path="/weighment/create/inward"  element={<CreateInwardWeighment />} />
+        <Route path="/weighment/create/outward" element={<CreateOutwardWeighment />} />
+        <Route path="/weighment/create/general" element={<CreateGeneralWeighment />} />
+        <Route path="/weighment-detail/:id"     element={<WeighmentDetail />} />
+        <Route path="/weighment/create/inward/form"  element={<CreateInwardWeighmentForm />} />
+        <Route path="/weighment/create/outward/form" element={<CreateOutwardWeighmentForm />} />
 
-      {/* MASTERS — batch 2 */}
-      <Route path="/item-category"             element={<ItemCategory />} />
-      <Route path="/create-item-category"      element={<CreateItemCategory />} />
-      <Route path="/item-group"                 element={<ItemGroup />} />
-      <Route path="/create-item-group"          element={<CreateItemGroup />} />
-      <Route path="/item-class"                element={<ItemClass />} />
-      <Route path="/create-item-class"         element={<CreateItemClass />} />
-      <Route path="/item-tax-class"            element={<ItemTaxClass />} />
-      <Route path="/create-item-tax-class"     element={<CreateItemTaxClass />} />
-      <Route path="/tax-details"               element={<TaxDetails />} />
-      <Route path="/create-tax-details"        element={<CreateTaxDetails />} />
-      <Route path="/production-details"        element={<ProductionDetails />} />
-      <Route path="/create-production-details" element={<CreateProductionDetails />} />
-      <Route path="/scheme-master"             element={<SchemeMaster />} />
-      <Route path="/create-scheme"             element={<CreateSchemeMaster />} />
-      <Route path="/site-master"               element={<SiteMaster />} />
-      <Route path="/create-site"               element={<CreateSite />} />
-      <Route path="/item-detail/:id"           element={<ItemDetail />} />
+        {/* MASTERS — existing */}
+        <Route path="/document-sequence"        element={<DocumentSequence />} />
+        <Route path="/create-document-sequence" element={<CreateDocumentSequence />} />
+        <Route path="/transaction-module"       element={<Transaction />} />
+        <Route path="/create-transaction"       element={<CreateTransaction />} />
 
-      {/* MASTERS — batch 3 */}
-      <Route path="/service-master"        element={<ServiceMaster />} />
-      <Route path="/create-service-master" element={<CreateServiceMaster />} />
-      <Route path="/charges-master"        element={<ChargesMaster />} />
-      <Route path="/create-charges-master" element={<CreateChargesMaster />} />
+        {/* MASTERS — batch 1 */}
+        <Route path="/party-master"                  element={<PartyMaster />} />
+        <Route path="/create-party"                  element={<CreateParty />} />
+        <Route path="/party-detail/:id"              element={<PartyDetail />} />
+        <Route path="/item-master"                   element={<ItemMaster />} />
+        <Route path="/create-item"                   element={<CreateItem />} />
+        <Route path="/uom-master"                    element={<UOMMaster />} />
+        <Route path="/create-uom"                    element={<CreateUOM />} />
+        <Route path="/party-type"                    element={<PartyType />} />
+        <Route path="/create-party-type"             element={<CreatePartyType />} />
+        <Route path="/item-conversion-master"        element={<ItemConversionMasterPage />} />
+        <Route path="/create-item-conversion-master" element={<CreateItemConversionMaster />} />
+
+        {/* MASTERS — batch 2 */}
+        <Route path="/item-category"             element={<ItemCategory />} />
+        <Route path="/create-item-category"      element={<CreateItemCategory />} />
+        <Route path="/item-group"                 element={<ItemGroup />} />
+        <Route path="/create-item-group"          element={<CreateItemGroup />} />
+        <Route path="/item-class"                element={<ItemClass />} />
+        <Route path="/create-item-class"         element={<CreateItemClass />} />
+        <Route path="/item-tax-class"            element={<ItemTaxClass />} />
+        <Route path="/create-item-tax-class"     element={<CreateItemTaxClass />} />
+        <Route path="/tax-details"               element={<TaxDetails />} />
+        <Route path="/create-tax-details"        element={<CreateTaxDetails />} />
+        <Route path="/production-details"        element={<ProductionDetails />} />
+        <Route path="/create-production-details" element={<CreateProductionDetails />} />
+        <Route path="/scheme-master"             element={<SchemeMaster />} />
+        <Route path="/create-scheme"             element={<CreateSchemeMaster />} />
+        <Route path="/site-master"               element={<SiteMaster />} />
+        <Route path="/create-site"               element={<CreateSite />} />
+        <Route path="/item-detail/:id"           element={<ItemDetail />} />
+
+        {/* MASTERS — batch 3 */}
+        <Route path="/service-master"        element={<ServiceMaster />} />
+        <Route path="/create-service-master" element={<CreateServiceMaster />} />
+        <Route path="/charges-master"        element={<ChargesMaster />} />
+        <Route path="/create-charges-master" element={<CreateChargesMaster />} />
+
+      </Route>
 
     </Routes>
   );
