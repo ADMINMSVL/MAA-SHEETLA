@@ -56,7 +56,7 @@ const CreateParty = () => {
       <ModuleNavbar />
 
       <div className="create-header">
-        <button className="back-btn" onClick={() => navigate("/party-master")}>← Back</button>
+        <button className="back-btn" onClick={() => navigate("/party-master", { replace: true })}>←</button>
         <h1>Party Master</h1>
       </div>
 
@@ -143,7 +143,7 @@ const CreateParty = () => {
           <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
             {loading ? "Saving..." : "Submit"}
           </button>
-          <button className="cancel-btn" onClick={() => navigate("/party-master")}>Cancel</button>
+          <button className="cancel-btn" onClick={() => navigate("/party-master", { replace: true })}>Cancel</button>
         </div>
       </div>
     </div>

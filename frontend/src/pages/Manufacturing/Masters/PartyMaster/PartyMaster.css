@@ -61,6 +61,36 @@
   letter-spacing: -0.3px;
 }
 
+/* Left-side group: back button + title (same pattern as the PO page header) */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Back button — identical style/behaviour on every master (list) page */
+.back-btn {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-white);
+  color: var(--text-label);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.back-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
 /* Right-side button group */
 .topbar-actions {
   display: flex;

@@ -167,7 +167,7 @@ const PartyDetail = () => {
 
           <button
             className="create-btn"
-            onClick={() => navigate("/party-master")}
+            onClick={() => navigate("/party-master", { replace: true })}
           >
             Back
           </button>

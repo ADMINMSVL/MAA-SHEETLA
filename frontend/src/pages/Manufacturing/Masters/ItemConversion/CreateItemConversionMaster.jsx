@@ -36,8 +36,8 @@ const CreateItemConversionMaster = () => {
 
       <div className="ic-topbar">
         <div className="ic-topbar-left">
-          <button className="ic-back-btn" onClick={() => navigate("/item-conversion-master")}>
-            ← Back
+          <button className="ic-back-btn" onClick={() => navigate("/item-conversion-master", { replace: true })}>
+            ←
           </button>
           <h1>Create Item Conversion Type</h1>
         </div>
@@ -76,7 +76,7 @@ const CreateItemConversionMaster = () => {
         </div>
 
         <div className="ic-actions">
-          <button className="ic-cancel-btn" onClick={() => navigate("/item-conversion-master")}>
+          <button className="ic-cancel-btn" onClick={() => navigate("/item-conversion-master", { replace: true })}>
             Cancel
           </button>
           <button className="ic-save-btn" onClick={handleSubmit}>

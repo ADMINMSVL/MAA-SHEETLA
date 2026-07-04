@@ -11,6 +11,7 @@ app.use(
   cors({
     origin: [
       "https://maasheetla.netlify.app",
+      "https://maa-sheetla.vercel.app",
       "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],

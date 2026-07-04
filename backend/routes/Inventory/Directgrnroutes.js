@@ -2,6 +2,17 @@ const express = require("express");
 const router  = express.Router();
 const DirectGRN        = require("../../models/Inventory/Directgrn");
 const DocumentSequence = require("../../models/Master/DocumentSequence"); // same model used by Document Sequence master
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+const GRN_HEADERS = ["DB ID","GRN No","GRN Date","Status","Vendor Code","Vendor Name","PO No","Vehicle No","S No","Item Code","Item Name","UOM","Qty","Rate","Total Amount","Remarks"];
+
+function grnToRows(grn) {
+  const base = [String(grn._id), grn.grnNo, grn.grnDate, grn.status, grn.vendorCode, grn.vendorName, grn.poNo, grn.vehicleNo];
+  if (!grn.items || !grn.items.length) return [[...base, "", "", "", "", "", "", grn.remarks || ""]];
+  return grn.items.map((it) => [
+    ...base, it.sNo, it.itemCode, it.itemName, it.uom, it.qty, it.rate, it.totalAmount, grn.remarks || "",
+  ]);
+}
 
 /* ── Document Sequence master for Direct GRN is configured as:
    Module = "Inventory", Business Entity = "GRN"
@@ -116,6 +127,13 @@ router.post("/", async (req, res) => {
     const grnNo = await generateGrnNo(req.body.transactionCategory || "");
     const doc   = new DirectGRN({ ...req.body, grnNo });
     await doc.save();
+
+    try {
+      await syncRowsForDoc("GRN", GRN_HEADERS, doc._id, grnToRows(doc));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (GRN create):", sheetErr.message);
+    }
+
     res.status(201).json({ success: true, message: "Direct GRN Saved Successfully", data: doc });
   } catch (err) {
     console.error(err);
@@ -184,6 +202,13 @@ router.put("/:id", async (req, res) => {
       req.params.id, req.body, { returnDocument: "after", runValidators: true }
     );
     if (!updated) return res.status(404).json({ success: false, message: "Record Not Found" });
+
+    try {
+      await syncRowsForDoc("GRN", GRN_HEADERS, updated._id, grnToRows(updated));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (GRN update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (err) {
     console.error(err);
@@ -198,6 +223,13 @@ router.delete("/:id", async (req, res) => {
   try {
     const deleted = await DirectGRN.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ success: false, message: "Record Not Found" });
+
+    try {
+      await deleteDocFromSheet("GRN", req.params.id);
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (GRN delete):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Deleted Successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -75,7 +75,10 @@ const ItemClass = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Item Class</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Item Class</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-item-class")}>Create ▼</button>
       </div>
 

@@ -115,7 +115,10 @@ const Transaction = () => {
 
       {/* TOPBAR */}
       <div className="transaction-topbar">
-        <h1>Transaction Category</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Transaction Category</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-transaction")}>
           Create ▼
         </button>

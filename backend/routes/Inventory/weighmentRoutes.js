@@ -1,6 +1,15 @@
 const express  = require("express");
 const router   = express.Router({ mergeParams: true });
 const Weighment = require("../../models/Inventory/Weighment");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+const WT_HEADERS = ["DB ID","Weighment No","Date","Transaction Type","Vehicle No","Party Code","Party Name","Status","First Weight","Second Weight","Net Weight","S No","Item Code","Item Name","UOM","Remarks"];
+
+function weighmentToRows(wt) {
+  const base = [String(wt._id), wt.weighmentNo, wt.weighmentDate, wt.transactionType, wt.vehicleNo, wt.partyCode, wt.partyName, wt.status, wt.firstWeight, wt.secondWeight, wt.netWeight];
+  if (!wt.items || !wt.items.length) return [[...base, "", "", "", "", wt.remarks || ""]];
+  return wt.items.map((it) => [...base, it.sNo, it.itemCode, it.itemName, it.uom, wt.remarks || ""]);
+}
 
 /* ─────────────────────────────────────────────────────────────
    Helper — generate next weighment number from document sequence
@@ -73,6 +82,7 @@ router.post("/", async (req, res) => {
     }
     const weighment = new Weighment(body);
     await weighment.save();
+    await syncRowsForDoc("Weightment", WT_HEADERS, weighment._id, weighmentToRows(weighment));
     res.status(201).json({ success: true, message: "Weighment Saved", data: weighment });
   } catch (error) {
     console.error("Weighment POST error:", error.message);
@@ -155,6 +165,7 @@ router.put("/:id", async (req, res) => {
     );
     if (!updated)
       return res.status(404).json({ success: false, message: "Record not found" });
+    if (updated) await syncRowsForDoc("Weightment", WT_HEADERS, updated._id, weighmentToRows(updated));
     res.status(200).json({ success: true, message: "Weighment Updated", data: updated });
   } catch (error) {
     console.error("Weighment PUT error:", error.message);
@@ -168,6 +179,7 @@ router.delete("/:id", async (req, res) => {
     const deleted = await Weighment.findByIdAndDelete(req.params.id);
     if (!deleted)
       return res.status(404).json({ success: false, message: "Record not found" });
+    await deleteDocFromSheet("Weightment", req.params.id);
     res.status(200).json({ success: true, message: "Weighment Deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

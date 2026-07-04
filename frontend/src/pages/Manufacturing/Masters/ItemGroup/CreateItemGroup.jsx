@@ -91,7 +91,7 @@ const CreateItemGroup = () => {
 
       <div className="create-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
-          ← Back
+          ←
         </button>
         <h1>Item Group</h1>
       </div>

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
 
 const CreateProductionDetails = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     grade: "",
     size: "",
@@ -26,7 +28,10 @@ const CreateProductionDetails = () => {
   return (
     <div className="create-page">
       <ModuleNavbar />
-      <div className="create-header"><h1>Production Details</h1></div>
+      <div className="create-header">
+        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+        <h1>Production Details</h1>
+      </div>
       <div className="create-container">
         <div className="create-title">Create Production Details</div>
         <div className="create-grid">
@@ -65,7 +70,7 @@ const CreateProductionDetails = () => {
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
           <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn">Cancel</button>
+          <button className="cancel-btn" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </div>
     </div>

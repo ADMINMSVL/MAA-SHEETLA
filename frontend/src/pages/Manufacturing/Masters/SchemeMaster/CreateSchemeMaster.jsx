@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
@@ -17,6 +18,7 @@ const makeRow = () => ({
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 
 const CreateSchemeMaster = () => {
+  const navigate = useNavigate();
   const [schemeInfo, setSchemeInfo] = useState({
     schemeName: "",
     description: "",
@@ -99,7 +101,10 @@ const CreateSchemeMaster = () => {
   return (
     <div className="create-page">
       <ModuleNavbar />
-      <div className="create-header"><h1>Scheme Master</h1></div>
+      <div className="create-header">
+        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+        <h1>Scheme Master</h1>
+      </div>
 
       <div className="create-container">
         <div className="create-title">Create Scheme</div>
@@ -224,6 +229,7 @@ const CreateSchemeMaster = () => {
           <button className="submit-btn" onClick={handleSubmit} disabled={saving}>
             {saving ? "Saving..." : "Submit"}
           </button>
+          <button className="cancel-btn" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </div>
     </div>

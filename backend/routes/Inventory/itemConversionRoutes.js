@@ -3,6 +3,17 @@ const router  = express.Router();
 const ItemConversion       = require("../../models/Inventory/ItemConversion");
 const ItemConversionMaster = require("../../models/Master/ItemConversionMaster");
 const DocumentSequence     = require("../../models/Master/DocumentSequence");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+const IC_HEADERS = ["DB ID","IC No","Conversion Date","PO No","Vehicle No","Party Code","Party Name","Base Item Code","Base Item Desc","Base Qty","Status","S No","Conv Item Code","Conv Qty","Rate","Amount","Remarks"];
+
+function icToRows(ic) {
+  const base = [String(ic._id), ic.icNo, ic.conversionDate, ic.poNo, ic.vehicleNo, ic.partyCode, ic.partyName, ic.itemCode, ic.itemDescription, ic.baseQty, ic.status];
+  if (!ic.conversionRows || !ic.conversionRows.length) return [[...base, "", "", "", "", "", ic.remarks || ""]];
+  return ic.conversionRows.map((row) => [
+    ...base, row.sNo, row.inventoryCode, row.raQty, row.rate, row.amount, ic.remarks || "",
+  ]);
+}
 
 /* ── 2-digit year date builder ── */
 const buildDatePart = (format) => {
@@ -105,6 +116,7 @@ router.post("/item-conversion", async (req, res) => {
   try {
     const doc = new ItemConversion(req.body);
     await doc.save();
+    await syncRowsForDoc("Item Conversion", IC_HEADERS, doc._id, icToRows(doc));
 
     /* NOTE: The document sequence increment for this IC No is already
        committed by the frontend's call to POST /api/create-document-sequence
@@ -153,6 +165,7 @@ router.get("/item-conversion/:id", async (req, res) => {
 router.put("/item-conversion/:id", async (req, res) => {
   try {
     const updated = await ItemConversion.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
+    if (updated) await syncRowsForDoc("Item Conversion", IC_HEADERS, updated._id, icToRows(updated));
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -161,6 +174,7 @@ router.put("/item-conversion/:id", async (req, res) => {
 router.delete("/item-conversion/:id", async (req, res) => {
   try {
     await ItemConversion.findByIdAndDelete(req.params.id);
+    await deleteDocFromSheet("Item Conversion", req.params.id);
     res.json({ success: true, message: "Deleted" });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

@@ -26,6 +26,34 @@
   font-weight:600;
 }
 
+.topbar-left{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+/* Same 34px circular back button as every other master page,
+   adapted for this header's gradient background. */
+.back-btn{
+  width:34px;
+  height:34px;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:none;
+  border-radius:50%;
+  background:rgba(255,255,255,0.2);
+  color:white;
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+  transition:background 0.15s;
+}
+.back-btn:hover{
+  background:rgba(255,255,255,0.35);
+}
+
 .create-btn{
   background:#0d6efd;
   color:white;

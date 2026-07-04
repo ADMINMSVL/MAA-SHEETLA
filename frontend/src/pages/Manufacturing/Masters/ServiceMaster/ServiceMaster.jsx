@@ -76,7 +76,10 @@ const ServiceMaster = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Service Master</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Service Master</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-service-master")}>Create ▼</button>
       </div>
 

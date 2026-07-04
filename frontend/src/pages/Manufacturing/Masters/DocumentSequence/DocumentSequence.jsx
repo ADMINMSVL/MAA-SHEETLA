@@ -157,7 +157,10 @@ const DocumentSequence = () => {
 
       {/* HEADER */}
       <div className="document-header">
-        <h2>Document Sequence</h2>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h2>Document Sequence</h2>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-document-sequence")}>Create ▼</button>
       </div>
 

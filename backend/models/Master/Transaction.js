@@ -22,25 +22,25 @@ const transactionSchema = new mongoose.Schema({
     type: String,
   },
 
-  rounding: {
-    type: String,
-  },
+  // rounding: {
+  //   type: String,
+  // },
 
-  roundingAccount: {
-    type: String,
-  },
+  // roundingAccount: {
+  //   type: String,
+  // },
 
-  remark1: {
-    type: String,
-  },
+  // remark1: {
+  //   type: String,
+  // },
 
-  remark2: {
-    type: String,
-  },
+  // remark2: {
+  //   type: String,
+  // },
 
-  workflowComments: {
-    type: String,
-  },
+  // workflowComments: {
+  //   type: String,
+  // },
 
 }, { timestamps: true });
 

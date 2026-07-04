@@ -77,7 +77,10 @@ const TaxDetails = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Tax Details</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Tax Details</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-tax-details")}>Create ▼</button>
       </div>
 

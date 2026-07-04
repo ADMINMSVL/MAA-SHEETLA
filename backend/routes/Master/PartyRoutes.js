@@ -2,6 +2,24 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const Party = require("../../models/Master/Party");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+/* ── Google Sheets: "Party Master" tab row mapping ── */
+const PARTY_TAB = "Party Master";
+const PARTY_HEADERS = [
+  "DB ID", "Party Code", "Party Name", "Type", "City",
+  "Address Line 1", "Address Line 2", "Pin", "GST No", "Mobile",
+  "Pay Terms", "Credit Days", "Status",
+];
+
+function partyToRows(party) {
+  const p = party.toObject ? party.toObject() : party;
+  return [[
+    String(p._id), p.partyCode || "", p.partyName || "", p.type || "", p.city || "",
+    p.addressLine1 || "", p.addressLine2 || "", p.pin || "", p.gstNo || "", p.mobile || "",
+    p.payTerms || "", p.creditDays ?? "", p.status || "",
+  ]];
+}
 
 const firstValue = (...values) =>
   values.find((value) => value !== undefined && value !== null && value.toString().trim() !== "") || "";
@@ -59,6 +77,13 @@ router.post("/create-party", async (req, res) => {
 
     const party = new Party(payload);
     await party.save();
+
+    try {
+      await syncRowsForDoc(PARTY_TAB, PARTY_HEADERS, party._id, partyToRows(party));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Party create):", sheetErr.message);
+    }
+
     res.status(201).json({ success: true, message: "Party Saved Successfully", data: normalizePartyResponse(party) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -91,6 +116,15 @@ router.post("/bulk-create-parties", async (req, res) => {
     });
 
     const result = await Party.insertMany(docs, { ordered: false });
+
+    try {
+      for (const doc of result) {
+        await syncRowsForDoc(PARTY_TAB, PARTY_HEADERS, doc._id, partyToRows(doc));
+      }
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Party bulk create):", sheetErr.message);
+    }
+
     res.status(201).json({ success: true, message: "Bulk upload successful.", count: result.length });
   } catch (error) {
     // ordered:false — partial success possible; report what happened
@@ -165,6 +199,14 @@ router.put("/party/:id", async (req, res) => {
       returnDocument: "after",
       runValidators: true,
     });
+    if (!updated) return res.status(404).json({ success: false, message: "Party not found" });
+
+    try {
+      await syncRowsForDoc(PARTY_TAB, PARTY_HEADERS, updated._id, partyToRows(updated));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Party update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Updated Successfully", data: normalizePartyResponse(updated) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -174,7 +216,15 @@ router.put("/party/:id", async (req, res) => {
 /* DELETE */
 router.delete("/party/:id", async (req, res) => {
   try {
-    await Party.findByIdAndDelete(req.params.id);
+    const deleted = await Party.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Party not found" });
+
+    try {
+      await deleteDocFromSheet(PARTY_TAB, req.params.id);
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Party delete):", sheetErr.message);
+    }
+
     res.json({ message: "Deleted Successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });

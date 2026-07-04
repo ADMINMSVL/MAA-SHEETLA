@@ -36,7 +36,7 @@ const CreateItemTaxClass = () => {
       <ModuleNavbar />
 
       <div className="create-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <h1>Item Tax Class</h1>
       </div>
 

@@ -129,7 +129,10 @@ const SiteMaster = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Site Master</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Site Master</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-site")}>
           Create
         </button>

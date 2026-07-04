@@ -217,11 +217,11 @@ const CreateDocumentSequence = () => {
 
   const handleBack = () => {
     if (prefillModule === "Purchase Order") {
-      navigate("/purchase-order");
+      navigate("/purchase-order", { replace: true });
     } else if (prefillModule === "Goods Inward Note" || prefillModule === "Inward Outward Note") {
-      navigate("/inward-outward-note");
+      navigate("/inward-outward-note", { replace: true });
     } else {
-      navigate("/document-sequence");
+      navigate("/document-sequence", { replace: true });
     }
   };
 
@@ -232,7 +232,7 @@ const CreateDocumentSequence = () => {
       <div className="cds-header">
         <div className="cds-left">
           <button className="back-btn" onClick={handleBack}>
-            ← Back
+            ←
           </button>
           <h2>Create Document Sequence</h2>
           {prefillModule && (
@@ -454,7 +454,7 @@ const CreateDocumentSequence = () => {
                 style={{ background: "#2563eb" }}
                 onClick={() => {
                   setShowPopup(false);
-                  navigate("/document-sequence");
+                  navigate("/document-sequence", { replace: true });
                 }}
               >
                 View All Sequences

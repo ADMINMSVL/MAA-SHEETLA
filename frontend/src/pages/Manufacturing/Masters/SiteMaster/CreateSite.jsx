@@ -58,6 +58,7 @@ const CreateSite = () => {
       <ModuleNavbar />
 
       <div className="create-header">
+        <button className="back-btn" onClick={() => navigate("/site-master", { replace: true })}>←</button>
         <h1>Site Master</h1>
       </div>
 
@@ -176,7 +177,7 @@ const CreateSite = () => {
           <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
             {loading ? "Saving..." : "Submit"}
           </button>
-          <button className="cancel-btn" onClick={() => navigate("/site-master")}>
+          <button className="cancel-btn" onClick={() => navigate("/site-master", { replace: true })}>
             Cancel
           </button>
         </div>

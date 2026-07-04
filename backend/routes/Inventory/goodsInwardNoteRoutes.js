@@ -3,6 +3,36 @@ const router  = express.Router();
 const Weighment       = require("../../models/Inventory/Weighment");
 const GoodsInwardNote = require("../../models/Inventory/GoodsInwardNote");
 const DocumentSequence = require("../../models/Master/DocumentSequence");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+/* ── Single tab for BOTH Inward and Outward gate entries.
+   Vehicle-in and vehicle-out are columns on the SAME row (matched by
+   DB ID via syncRowsForDoc), not separate rows/tabs. ── */
+const GIN_TAB = "Inward-Outward";
+
+const GIN_HEADERS = [
+  "DB ID", "GIN No", "In/Out Type", "Date", "PO/CPO No",
+  "Party Code", "Party Name", "Vehicle No",
+  "Vehicle In Date", "Vehicle In Time", "Vehicle Out Date", "Vehicle Out Time",
+  "Status", "S No", "Item Code", "Item Name", "UOM", "Qty", "Rate",
+  "Gross Weight", "Tare Weight", "Net Weight", "Remarks",
+];
+
+function ginToRows(gin) {
+  const base = [
+    String(gin._id), gin.ginNo, gin.inOutType || "Inward", gin.ginDate, gin.poCpoNo,
+    gin.partyCode, gin.partyName, gin.vehicleNo,
+    gin.ginDate || "", gin.entryTime || "", gin.closedDate || "", gin.exitTime || "",
+    gin.status,
+  ];
+  if (!gin.items || !gin.items.length) {
+    return [[...base, "", "", "", "", "", gin.grossWeight, gin.tareWeight, gin.netWeight, gin.remarks || ""]];
+  }
+  return gin.items.map((it) => [
+    ...base, it.sNo, it.itemCode, it.itemName, it.uom, it.qty, it.rate,
+    gin.grossWeight, gin.tareWeight, gin.netWeight, gin.remarks || "",
+  ]);
+}
 
 /* ── shared date builder — MUST match Document Sequence's format keys
    (dd/mm/yy, mm/dd/yy, yy/mm/dd, julian), 2-digit year, not 4 ── */
@@ -73,11 +103,19 @@ router.get("/goods-inward-note/next-sequence", async (req, res) => {
 
 /* ══════════════════════════════════════════════
    POST — Create new GIN
+   (Vehicle-in leg: ginDate/entryTime already set on req.body)
 ══════════════════════════════════════════════ */
 router.post("/goods-inward-note", async (req, res) => {
   try {
     const newGIN = new GoodsInwardNote(req.body);
     await newGIN.save();
+
+    try {
+      await syncRowsForDoc(GIN_TAB, GIN_HEADERS, newGIN._id, ginToRows(newGIN));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (GIN create):", sheetErr.message);
+    }
+
     res.status(201).json({
       success: true,
       message: "Goods Inward Note Saved Successfully",
@@ -212,7 +250,18 @@ router.get("/goods-inward-note/:id", async (req, res) => {
 ══════════════════════════════════════════════ */
 router.delete("/goods-inward-note/:id", async (req, res) => {
   try {
-    await GoodsInwardNote.findByIdAndDelete(req.params.id);
+    const toDelete = await GoodsInwardNote.findById(req.params.id);
+    const deleted = await GoodsInwardNote.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ success: false, message: "Record Not Found" });
+
+    if (toDelete) {
+      try {
+        await deleteDocFromSheet(GIN_TAB, req.params.id);
+      } catch (sheetErr) {
+        console.error("Sheet sync failed (GIN delete):", sheetErr.message);
+      }
+    }
+
     res.json({ success: true, message: "Deleted Successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -221,6 +270,9 @@ router.delete("/goods-inward-note/:id", async (req, res) => {
 
 /* ══════════════════════════════════════════════
    PUT — Update GIN by ID
+   (Vehicle-out leg: closedDate/exitTime get set here when the
+   frontend marks the gate entry Closed — same row on the sheet
+   gets its Vehicle Out Date/Time columns filled in, not a new row.)
 ══════════════════════════════════════════════ */
 router.put("/goods-inward-note/:id", async (req, res) => {
   try {
@@ -231,6 +283,13 @@ router.put("/goods-inward-note/:id", async (req, res) => {
     );
     if (!updatedData)
       return res.status(404).json({ success: false, message: "Record Not Found" });
+
+    try {
+      await syncRowsForDoc(GIN_TAB, GIN_HEADERS, updatedData._id, ginToRows(updatedData));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (GIN update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Updated Successfully", data: updatedData });
   } catch (error) {
     console.error("GIN update error:", error);

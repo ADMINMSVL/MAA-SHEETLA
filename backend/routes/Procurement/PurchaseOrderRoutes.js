@@ -2,6 +2,28 @@ const express = require("express");
 const router  = express.Router();
 const PurchaseOrder    = require("../../models/Procurement/PurchaseOrder");
 const DocumentSequence = require("../../models/Master/DocumentSequence");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+/* ── Google Sheets: "PO" tab row mapping ── */
+const PO_HEADERS = [
+  "DB ID", "PO No", "PO Date", "PO Type", "Site", "Party Code", "Party Name",
+  "Status", "S No", "Item Code", "Item Name", "UOM", "Qty", "Rate",
+  "Basic Amount", "Net Amount", "Remarks",
+];
+
+function poToRows(po) {
+  const base = [
+    String(po._id), po.poNo, po.poDate, po.poType, po.site,
+    po.partyCode, po.partyName, po.status,
+  ];
+  if (!po.items || !po.items.length) {
+    return [[...base, "", "", "", "", "", "", "", po.remarks || ""]];
+  }
+  return po.items.map((it) => [
+    ...base, it.sNo, it.itemCode, it.itemName, it.uom, it.qty, it.rate,
+    it.basicAmount, it.netAmount, po.remarks || "",
+  ]);
+}
 
 /* ── sanitize helper: converts any value to a safe Number ── */
 const toNum = (v) => {
@@ -142,6 +164,13 @@ router.post("/create-purchase-order", async (req, res) => {
   try {
     const po = new PurchaseOrder(sanitizePO(req.body));
     await po.save();
+
+    try {
+      await syncRowsForDoc("PO", PO_HEADERS, po._id, poToRows(po));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (PO create):", sheetErr.message);
+    }
+
     res.status(201).json({ success: true, message: "Purchase Order Saved Successfully", data: po });
   } catch (error) {
     console.error("Create PO error:", error);
@@ -187,6 +216,13 @@ router.put("/purchase-order/:id", async (req, res) => {
       { returnDocument: "after", runValidators: true }
     );
     if (!updated) return res.status(404).json({ success: false, message: "Not found" });
+
+    try {
+      await syncRowsForDoc("PO", PO_HEADERS, updated._id, poToRows(updated));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (PO update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {
     console.error("Update PO error:", error);
@@ -199,7 +235,15 @@ router.put("/purchase-order/:id", async (req, res) => {
 ════════════════════════════════════════ */
 router.delete("/purchase-order/:id", async (req, res) => {
   try {
-    await PurchaseOrder.findByIdAndDelete(req.params.id);
+    const deleted = await PurchaseOrder.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ success: false, message: "Not found" });
+
+    try {
+      await deleteDocFromSheet("PO", req.params.id);
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (PO delete):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Deleted Successfully" });
   } catch (error) {
     console.error("Delete PO error:", error);

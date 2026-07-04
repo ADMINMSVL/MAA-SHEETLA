@@ -1,6 +1,24 @@
 const express = require("express");
 const router  = express.Router();
 const DocumentSequence = require("../../models/Master/DocumentSequence");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+/* ── Google Sheets: "Document Sequence" tab row mapping ── */
+const DOC_SEQ_TAB = "Document Sequence";
+const DOC_SEQ_HEADERS = [
+  "DB ID", "Module", "Business Entity", "Entity Prefix", "Transaction Category",
+  "Sequence Format", "Use Date Fragment", "Sequence Digits", "Increment No",
+  "Increment Step", "Generated Code",
+];
+
+function docSeqToRows(d) {
+  const doc = d.toObject ? d.toObject() : d;
+  return [[
+    String(doc._id), doc.module || "", doc.businessEntity || "", doc.entityPrefix || "",
+    doc.transactionCategory || "", doc.sequenceFormat || "", doc.useDateFragment ? "Yes" : "No",
+    doc.sequenceDigits ?? "", doc.incrementNo ?? "", doc.incrementStep ?? "", doc.generatedCode || "",
+  ]];
+}
 
 /* ── date builder (matches frontend) ── */
 const buildDatePart = (format) => {
@@ -25,6 +43,7 @@ const buildDatePart = (format) => {
 
 /* ══════════════════════════════════════════════
    POST /api/create-document-sequence
+   (upsert — creates OR advances an existing sequence)
 ══════════════════════════════════════════════ */
 router.post("/create-document-sequence", async (req, res) => {
   try {
@@ -79,6 +98,12 @@ router.post("/create-document-sequence", async (req, res) => {
       },
       { returnDocument: "after", upsert: true, runValidators: true }
     );
+
+    try {
+      await syncRowsForDoc(DOC_SEQ_TAB, DOC_SEQ_HEADERS, newData._id, docSeqToRows(newData));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Document Sequence create):", sheetErr.message);
+    }
 
     res.status(201).json({ success: true, message: "Document Sequence Saved", generatedCode, incrementStep: resolvedStep, data: newData });
   } catch (err) {
@@ -148,6 +173,12 @@ router.put("/document-sequence/:id", async (req, res) => {
       { returnDocument: "after", runValidators: true }
     );
 
+    try {
+      await syncRowsForDoc(DOC_SEQ_TAB, DOC_SEQ_HEADERS, updated._id, docSeqToRows(updated));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Document Sequence update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Document Sequence Updated", generatedCode, data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -159,7 +190,15 @@ router.put("/document-sequence/:id", async (req, res) => {
 ══════════════════════════════════════════════ */
 router.delete("/document-sequence/:id", async (req, res) => {
   try {
-    await DocumentSequence.findByIdAndDelete(req.params.id);
+    const deleted = await DocumentSequence.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Record not found" });
+
+    try {
+      await deleteDocFromSheet(DOC_SEQ_TAB, req.params.id);
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Document Sequence delete):", sheetErr.message);
+    }
+
     res.json({ message: "Deleted Successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });

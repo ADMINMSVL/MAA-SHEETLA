@@ -87,7 +87,10 @@ const PartyType = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Party Type</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Party Type</h1>
+        </div>
         <button className="create-btn" onClick={() => navigate("/create-party-type")}>Create ▼</button>
       </div>
 

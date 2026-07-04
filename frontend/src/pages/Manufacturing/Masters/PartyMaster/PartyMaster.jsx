@@ -142,7 +142,10 @@ const PartyMaster = () => {
 
       {/* TOPBAR */}
       <div className="transaction-topbar">
-        <h1>Party Master</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Party Master</h1>
+        </div>
         <div className="topbar-actions">
           <button className="upload-btn" onClick={() => setUploadOpen(true)}>
             Upload

@@ -246,7 +246,10 @@ const ItemMaster = () => {
       <ModuleNavbar />
 
       <div className="transaction-topbar">
-        <h1>Item Master</h1>
+        <div className="topbar-left">
+          <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Item Master</h1>
+        </div>
         <div className="topbar-actions">
           <button className="upload-btn" onClick={() => setUploadOpen(true)}>⬆ Upload</button>
           <button className="create-btn" onClick={() => navigate("/create-item")}>Create ▼</button>

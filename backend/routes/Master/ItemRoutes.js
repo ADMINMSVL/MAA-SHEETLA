@@ -4,6 +4,25 @@ const Item          = require("../../models/Master/Item");
 const ItemCategory  = require("../../models/Master/ItemCategory");
 const ItemGroup     = require("../../models/Master/ItemGroup");
 const ItemClass     = require("../../models/Master/ItemClass");
+const { syncRowsForDoc, deleteDocFromSheet } = require("../../utils/googleSheets");
+
+/* ── Google Sheets: "Item Master" tab row mapping ── */
+const ITEM_TAB = "Item Master";
+const ITEM_HEADERS = [
+  "DB ID", "Item Code", "Item Name", "Item Type", "Category", "Item Group",
+  "UOM", "HSN", "GST %", "Item Class", "Grade", "Size", "Rate Diff",
+  "Item Tax Class", "Reference Item", "Status",
+];
+
+function itemToRows(item) {
+  const it = item.toObject ? item.toObject() : item;
+  return [[
+    String(it._id), it.itemCode || "", it.itemName || "", it.itemTypes || "",
+    it.category || "", it.itemGroup || "", it.uom || "", it.hsn || "",
+    it.gstPercent ?? "", it.itemClass || "", it.grade || "", it.size || "",
+    it.rateDiff ?? 0, it.itemTaxClass || "", it.referenceItem || "", it.status || "",
+  ]];
+}
 
 /**
  * parseExcelDate(val)
@@ -40,6 +59,13 @@ router.post("/create-item", async (req, res) => {
   try {
     const item = new Item(req.body);
     await item.save();
+
+    try {
+      await syncRowsForDoc(ITEM_TAB, ITEM_HEADERS, item._id, itemToRows(item));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Item create):", sheetErr.message);
+    }
+
     res.status(201).json({ success: true, message: "Item Saved Successfully", data: item });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -157,6 +183,15 @@ router.post("/bulk-create-items", async (req, res) => {
     }));
 
     const result = await Item.insertMany(docs, { ordered: false });
+
+    try {
+      for (const doc of result) {
+        await syncRowsForDoc(ITEM_TAB, ITEM_HEADERS, doc._id, itemToRows(doc));
+      }
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Item bulk create):", sheetErr.message);
+    }
+
     res.status(201).json({
       success: true,
       message: `Bulk upload successful. ${result.length} item(s) inserted.`,
@@ -223,6 +258,14 @@ router.get("/items/search", async (req, res) => {
 router.put("/item/:id", async (req, res) => {
   try {
     const updated = await Item.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
+    if (!updated) return res.status(404).json({ success: false, message: "Item not found" });
+
+    try {
+      await syncRowsForDoc(ITEM_TAB, ITEM_HEADERS, updated._id, itemToRows(updated));
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Item update):", sheetErr.message);
+    }
+
     res.json({ success: true, message: "Updated Successfully", data: updated });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -232,7 +275,15 @@ router.put("/item/:id", async (req, res) => {
 /* DELETE */
 router.delete("/item/:id", async (req, res) => {
   try {
-    await Item.findByIdAndDelete(req.params.id);
+    const deleted = await Item.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Item not found" });
+
+    try {
+      await deleteDocFromSheet(ITEM_TAB, req.params.id);
+    } catch (sheetErr) {
+      console.error("Sheet sync failed (Item delete):", sheetErr.message);
+    }
+
     res.json({ message: "Deleted Successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });

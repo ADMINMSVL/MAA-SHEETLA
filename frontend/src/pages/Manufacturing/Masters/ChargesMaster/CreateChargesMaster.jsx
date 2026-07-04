@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "../MasterShared.css";
 import ModuleNavbar from "../../../../components/ModuleNavbar/ModuleNavbar";
 import { API_URL } from "../../../../config";
@@ -7,6 +8,7 @@ import { API_URL } from "../../../../config";
 const TYPE_OPTIONS = ["Charges", "Discount"];
 
 const CreateChargesMaster = () => {
+  const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
 
   const [formData, setFormData] = useState({
@@ -43,6 +45,7 @@ const CreateChargesMaster = () => {
       <ModuleNavbar />
 
       <div className="create-header">
+        <button className="back-btn" onClick={() => navigate(-1)}>←</button>
         <h1>Charges / Discount Master</h1>
       </div>
 
@@ -107,7 +110,7 @@ const CreateChargesMaster = () => {
         <div className="action-buttons">
           <button className="draft-btn">Save as Draft</button>
           <button className="submit-btn" onClick={handleSubmit}>Submit</button>
-          <button className="cancel-btn" onClick={handleClear}>Cancel</button>
+          <button className="cancel-btn" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </div>
     </div>

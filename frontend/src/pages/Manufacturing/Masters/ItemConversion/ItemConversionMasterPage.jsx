@@ -85,6 +85,7 @@ const ItemConversionMasterPage = () => {
 
       <div className="ic-topbar">
         <div className="ic-topbar-left">
+          <button className="ic-back-btn" onClick={() => navigate(-1)}>←</button>
           <h1>Item Conversion Type</h1>
         </div>
         <button className="ic-create-btn" onClick={() => navigate("/create-item-conversion-master")}>
