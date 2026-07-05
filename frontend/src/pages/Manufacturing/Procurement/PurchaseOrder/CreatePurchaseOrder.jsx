@@ -202,6 +202,13 @@ const CreatePurchaseOrder = () => {
   const [poNoPreview, setPoNoPreview] = useState("");
   const [txnCatQuery, setTxnCatQuery] = useState("");
 
+  /* guard against duplicate PO creation from rapid/double clicks on Save.
+     isSavingRef gives an instant, synchronous lock (state updates are async
+     and a second click can slip in before React re-renders the disabled
+     button), while isSaving (state) is used to disable/relabel the button. */
+  const isSavingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   /* header form */
   const [form, setForm] = useState({
     transactionCategory: "",
@@ -423,12 +430,20 @@ const CreatePurchaseOrder = () => {
 
   /* ── save ── */
   const handleSave = async () => {
+    // Block re-entry: if a save is already in flight, ignore this click
+    // entirely so double/rapid clicks can't fire a second create request.
+    if (isSavingRef.current) return;
+
     if (!form.transactionCategory) return alert("Transaction Category is required.");
     if (!form.partyName.trim()) return alert("Party Name is required.");
     const validRows = rows.filter((r) => r.itemName && r.itemName.trim());
     if (validRows.length === 0) return alert("Add at least one item.");
     const cat = transactionCategories.find((t) => t._id === form.transactionCategory);
     if (!cat) return alert("Invalid Transaction Category");
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+
     const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
     const payload = {
       ...form, status: DEFAULT_STATUS,
@@ -472,7 +487,15 @@ const CreatePurchaseOrder = () => {
       await axios.post(`${API_URL}/api/create-purchase-order`, payload);
       alert("Purchase Order saved successfully!");
       navigate("/purchase-order");
-    } catch (err) { console.error(err); alert(err.response?.data?.message || "Error saving Purchase Order"); }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error saving Purchase Order");
+    } finally {
+      // Always release the lock — whether the save succeeded, failed, or
+      // threw — so the form isn't left stuck if the user needs to retry.
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -838,8 +861,15 @@ const CreatePurchaseOrder = () => {
 
       {/* ACTION BUTTONS */}
       <div className="cgin-actions">
-        <button className="btn-reset" onClick={handleReset}>Reset</button>
-        <button className="btn-save"  onClick={handleSave}>Save PO</button>
+        <button className="btn-reset" onClick={handleReset} disabled={isSaving}>Reset</button>
+        <button
+          className="btn-save"
+          onClick={handleSave}
+          disabled={isSaving}
+          style={isSaving ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+        >
+          {isSaving ? "Saving…" : "Save PO"}
+        </button>
       </div>
 
     </div>

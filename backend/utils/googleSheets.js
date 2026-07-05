@@ -1,17 +1,72 @@
 const { google } = require("googleapis");
 const path = require("path");
+const fs = require("fs");
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID;
-const KEY_FILE =
-  process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH ||
-  path.join(__dirname, "../config/google-service-account.json");
+
+/**
+ * Loads service account credentials.
+ *
+ * Priority:
+ *  1. GOOGLE_SERVICE_ACCOUNT_KEY env var — the full JSON (or base64-encoded
+ *     JSON) of the service account key. This is what Railway/production
+ *     should use, since deploy targets don't have the actual key file on
+ *     disk (it's gitignored under config/ and never gets pushed).
+ *  2. GOOGLE_SERVICE_ACCOUNT_KEY_PATH / local config/ file — fallback for
+ *     local development, where the file does exist on disk.
+ *
+ * Throws a clear error instead of failing silently if neither is available,
+ * so a missing/misconfigured key shows up immediately instead of just
+ * logging "Sheet sync failed" deep in a try/catch somewhere.
+ */
+function loadCredentials() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+
+  if (raw) {
+    const trimmed = raw.trim();
+    const jsonStr = trimmed.startsWith("{")
+      ? trimmed
+      : Buffer.from(trimmed, "base64").toString("utf8");
+
+    let creds;
+    try {
+      creds = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(
+        "GOOGLE_SERVICE_ACCOUNT_KEY is set but could not be parsed as JSON " +
+        "(or base64-encoded JSON). Check how it was pasted into the env var."
+      );
+    }
+
+    // Some env-var UIs store the private key with literal \n sequences
+    // instead of real newlines — un-escape them so the PEM parses correctly.
+    if (creds.private_key) {
+      creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+    }
+    return { credentials: creds };
+  }
+
+  // Fallback: local file on disk (local dev only — this path won't exist
+  // on Vercel/Railway unless GOOGLE_SERVICE_ACCOUNT_KEY is also set there).
+  const keyFile =
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH ||
+    path.join(__dirname, "../config/google-service-account.json");
+
+  if (!fs.existsSync(keyFile)) {
+    throw new Error(
+      "No Google service account credentials found. Set GOOGLE_SERVICE_ACCOUNT_KEY " +
+      `(recommended for deployed environments) or provide a key file at ${keyFile}.`
+    );
+  }
+  return { keyFile };
+}
 
 if (!SPREADSHEET_ID) {
   console.warn("[googleSheets] GOOGLE_SHEET_ID is not set in env — sheet sync will fail.");
 }
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: KEY_FILE,
+  ...loadCredentials(),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
